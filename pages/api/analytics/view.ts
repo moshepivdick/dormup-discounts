@@ -1,0 +1,24 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { prisma } from '@/lib/prisma';
+import { apiResponse, withMethods } from '@/lib/api';
+import { venueViewSchema } from '@/lib/validators';
+
+export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiResponse) => {
+  const parsed = venueViewSchema.safeParse({
+    ...req.body,
+    userAgent: req.headers['user-agent'],
+  });
+
+  if (!parsed.success) {
+    return apiResponse.error(res, 400, 'Invalid payload');
+  }
+
+  const { venueId, city, userAgent } = parsed.data;
+
+  await prisma.venueView.create({
+    data: { venueId, city, userAgent },
+  });
+
+  return apiResponse.success(res, { ok: true });
+});
+
