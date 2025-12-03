@@ -5,6 +5,11 @@ import type { GetServerSideProps } from 'next';
 import { prisma } from '@/lib/prisma';
 import { VenueCard } from '@/components/VenueCard';
 import { BrandLogo } from '@/components/BrandLogo';
+import {
+  VenueFiltersDesktop,
+  VenueFiltersMobileBar,
+  VenueFiltersBottomSheet,
+} from '@/components/VenueFilters';
 import { haversineDistance } from '@/utils/distance';
 import type { VenueSummary } from '@/types';
 import { SiteLayout } from '@/components/layout/SiteLayout';
@@ -20,6 +25,7 @@ export default function HomePage({ venues, cities, categories }: HomeProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortedVenues, setSortedVenues] = useState<VenueSummary[]>(venues);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
   useEffect(() => {
     const handleSearchChange = (event: Event) => {
@@ -142,56 +148,28 @@ export default function HomePage({ venues, cities, categories }: HomeProps) {
               {heroWordmark} members every day.
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-4 rounded-3xl bg-white/10 p-6 backdrop-blur sm:grid-cols-2">
-            <div>
-              <p className="text-xs uppercase tracking-[0.4em] text-emerald-100">
-                Filter by city
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <FilterChip
-                  active={selectedCity === 'all'}
-                  onClick={() => setSelectedCity('all')}
-                >
-                  All
-                </FilterChip>
-                {cities.map((city) => (
-                  <FilterChip
-                    key={city}
-                    active={selectedCity === city}
-                    onClick={() => setSelectedCity(city)}
-                  >
-                    {city}
-                  </FilterChip>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.4em] text-emerald-100">
-                Filter by category
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <FilterChip
-                  active={selectedCategory === 'all'}
-                  onClick={() => setSelectedCategory('all')}
-                >
-                  All
-                </FilterChip>
-                {categories.map((category) => (
-                  <FilterChip
-                    key={category}
-                    active={selectedCategory === category}
-                    onClick={() => setSelectedCategory(category)}
-                  >
-                    {category}
-                  </FilterChip>
-                ))}
-              </div>
-            </div>
-          </div>
+          <VenueFiltersDesktop
+            cities={cities}
+            categories={categories}
+            selectedCity={selectedCity}
+            selectedCategory={selectedCategory}
+            onCityChange={setSelectedCity}
+            onCategoryChange={setSelectedCategory}
+          />
         </div>
       </section>
       <section className="-mt-12 bg-slate-50 pb-12 pt-4">
         <div className="mx-auto w-full max-w-6xl px-6">
+          {/* Mobile filter bar - shown above venues */}
+          <VenueFiltersMobileBar
+            cities={cities}
+            categories={categories}
+            selectedCity={selectedCity}
+            selectedCategory={selectedCategory}
+            onCityChange={setSelectedCity}
+            onCategoryChange={setSelectedCategory}
+            onOpenFilters={() => setIsMobileFiltersOpen(true)}
+          />
           <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-6">
             {filteredVenues.length === 0 ? (
               <div className="col-span-full rounded-3xl border border-dashed border-slate-200 bg-white/80 p-10 text-center text-slate-600">
@@ -218,31 +196,21 @@ export default function HomePage({ venues, cities, categories }: HomeProps) {
           </p>
         </div>
       </footer>
+      {/* Mobile bottom sheet - rendered at root level */}
+      <VenueFiltersBottomSheet
+        cities={cities}
+        categories={categories}
+        selectedCity={selectedCity}
+        selectedCategory={selectedCategory}
+        onCityChange={setSelectedCity}
+        onCategoryChange={setSelectedCategory}
+        isOpen={isMobileFiltersOpen}
+        onClose={() => setIsMobileFiltersOpen(false)}
+      />
     </>
   );
 }
 
-type ChipProps = {
-  children: ReactNode;
-  active: boolean;
-  onClick: () => void;
-};
-
-function FilterChip({ children, active, onClick }: ChipProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-        active
-          ? 'bg-white text-emerald-700'
-          : 'bg-white/10 text-white hover:bg-white/20'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
 
 export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
   const venues = await prisma.venue.findMany({
