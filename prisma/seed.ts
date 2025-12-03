@@ -147,8 +147,15 @@ async function main() {
     },
   });
 
-  await prisma.admin.create({
-    data: {
+  // Idempotent admin creation: upsert by email
+  // If admin exists, update passwordHash and keep rest unchanged
+  await prisma.admin.upsert({
+    where: { email: 'admin@dormup.it' },
+    update: {
+      passwordHash: adminPassword,
+      // Keep existing role unchanged
+    },
+    create: {
       email: 'admin@dormup.it',
       passwordHash: adminPassword,
       role: 'superadmin',

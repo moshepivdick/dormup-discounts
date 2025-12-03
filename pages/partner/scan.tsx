@@ -14,7 +14,6 @@ export default function PartnerScanPage() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [showQRConfirmation, setShowQRConfirmation] = useState(false);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isSubmittingRef = useRef(false);
 
   useEffect(() => {
@@ -38,8 +37,8 @@ export default function PartnerScanPage() {
             } catch (e) {
               // Ignore cleanup errors
             }
-            // QR code confirmation - instant, no debounce
-            await handleConfirm(result.getText(), true);
+            // QR code confirmation - instant, single API call
+            await handleQRConfirm(result.getText());
           }
           if (err && err.name === 'NotAllowedError') {
             setPermissionDenied(true);
@@ -61,15 +60,6 @@ export default function PartnerScanPage() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Cleanup debounce timer on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
   }, []);
 
   const confirmCodeAPI = async (codeToConfirm: string, isQRCode = false) => {
@@ -111,31 +101,34 @@ export default function PartnerScanPage() {
     }
   };
 
-  const handleConfirm = async (rawCode?: string, isQRCode = false) => {
-    const code = (rawCode ?? manualCode).trim().toUpperCase();
+  // QR code confirmation handler - called only when QR is scanned
+  const handleQRConfirm = async (qrCode: string) => {
+    const code = qrCode.trim().toUpperCase();
+    if (!code) return;
+    await confirmCodeAPI(code, true);
+  };
+
+  // Manual code confirmation handler - called only on form submit
+  const handleManualConfirm = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    
+    const code = manualCode.trim().toUpperCase();
     if (!code) return;
 
-    // Validate input length (6-8 chars) for manual entry
-    if (!isQRCode && (code.length < 6 || code.length > 8)) {
+    // Validate input length (6-8 chars)
+    if (code.length < 6 || code.length > 8) {
       setStatus('error');
       setMessage('Code must be between 6 and 8 characters');
       return;
     }
 
-    // QR code confirmation - instant, no debounce
-    if (isQRCode) {
-      await confirmCodeAPI(code, true);
+    // Prevent multiple simultaneous requests
+    if (status === 'loading' || isSubmittingRef.current) {
       return;
     }
 
-    // Manual entry - add 800ms debounce
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    debounceTimerRef.current = setTimeout(() => {
-      confirmCodeAPI(code);
-    }, 800);
+    // Call API immediately - no debounce, no auto-retry
+    await confirmCodeAPI(code, false);
   };
 
   return (
@@ -160,14 +153,7 @@ export default function PartnerScanPage() {
           </p>
           <form
             className="flex gap-3"
-            onSubmit={(event) => {
-              event.preventDefault();
-              // Prevent submission if already loading
-              if (status === 'loading' || isSubmittingRef.current) {
-                return;
-              }
-              handleConfirm();
-            }}
+            onSubmit={handleManualConfirm}
           >
             <input
               className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-lg font-semibold tracking-[0.4em] text-slate-900"
