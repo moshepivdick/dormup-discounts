@@ -294,11 +294,21 @@ export function VenueFiltersDesktop({
   onCategoryChange,
 }: VenueFiltersProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCityOpen, setIsCityOpen] = useState(false);
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const hasActiveFilters = selectedCity !== 'all' || selectedCategory !== 'all';
 
   const handleClearAll = () => {
     onCityChange('all');
     onCategoryChange('all');
+  };
+
+  const getCityLabel = () => {
+    return selectedCity === 'all' ? 'All' : selectedCity;
+  };
+
+  const getCategoryLabel = () => {
+    return selectedCategory === 'all' ? 'All' : selectedCategory;
   };
 
   return (
@@ -337,50 +347,104 @@ export function VenueFiltersDesktop({
         </div>
 
         {!isCollapsed && (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-0">
+            {/* City row */}
             <div>
-              <p className="mb-2 text-xs uppercase tracking-[0.4em] text-emerald-100">
-                Filter by city
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <FilterChip
-                  active={selectedCity === 'all'}
-                  onClick={() => onCityChange('all')}
-                >
-                  All
-                </FilterChip>
-                {cities.map((city) => (
-                  <FilterChip
-                    key={city}
-                    active={selectedCity === city}
-                    onClick={() => onCityChange(city)}
+              <button
+                type="button"
+                onClick={() => setIsCityOpen(!isCityOpen)}
+                className="flex w-full items-center justify-between py-2 text-sm text-emerald-50 transition hover:text-white"
+              >
+                <span className="font-medium">City</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-emerald-100/80">{getCityLabel()}</span>
+                  <svg
+                    className={`h-4 w-4 transition-transform text-emerald-100/80 ${
+                      isCityOpen ? 'rotate-180' : ''
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
                   >
-                    {city}
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </button>
+              {isCityOpen && (
+                <div className="mb-2 flex flex-wrap gap-2 pb-3">
+                  <FilterChip
+                    active={selectedCity === 'all'}
+                    onClick={() => onCityChange('all')}
+                  >
+                    All
                   </FilterChip>
-                ))}
-              </div>
+                  {cities.map((city) => (
+                    <FilterChip
+                      key={city}
+                      active={selectedCity === city}
+                      onClick={() => onCityChange(city)}
+                    >
+                      {city}
+                    </FilterChip>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* Divider - show between rows */}
+            <div className="my-1 border-t border-white/10" />
+
+            {/* Category row */}
             <div>
-              <p className="mb-2 text-xs uppercase tracking-[0.4em] text-emerald-100">
-                Filter by category
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <FilterChip
-                  active={selectedCategory === 'all'}
-                  onClick={() => onCategoryChange('all')}
-                >
-                  All
-                </FilterChip>
-                {categories.map((category) => (
-                  <FilterChip
-                    key={category}
-                    active={selectedCategory === category}
-                    onClick={() => onCategoryChange(category)}
+              <button
+                type="button"
+                onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                className="flex w-full items-center justify-between py-2 text-sm text-emerald-50 transition hover:text-white"
+              >
+                <span className="font-medium">Category</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-emerald-100/80">{getCategoryLabel()}</span>
+                  <svg
+                    className={`h-4 w-4 transition-transform text-emerald-100/80 ${
+                      isCategoryOpen ? 'rotate-180' : ''
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
                   >
-                    {category}
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </button>
+              {isCategoryOpen && (
+                <div className="mb-2 flex flex-wrap gap-2 pb-3">
+                  <FilterChip
+                    active={selectedCategory === 'all'}
+                    onClick={() => onCategoryChange('all')}
+                  >
+                    All
                   </FilterChip>
-                ))}
-              </div>
+                  {categories.map((category) => (
+                    <FilterChip
+                      key={category}
+                      active={selectedCategory === category}
+                      onClick={() => onCategoryChange(category)}
+                    >
+                      {category}
+                    </FilterChip>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
