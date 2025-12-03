@@ -155,12 +155,8 @@ export default function HomePage({ venues, cities, categories }: HomeProps) {
               onCategoryChange={setSelectedCategory}
             />
           </div>
-        </div>
-      </section>
-      <section className="-mt-12 bg-slate-50 pb-12 pt-4">
-        <div className="mx-auto w-full max-w-6xl px-6">
-          {/* Mobile filter icon button - shown above venues, only on mobile */}
-          <div className="mb-4 flex justify-end md:hidden">
+          {/* Mobile filter icon button - shown in hero, only on mobile */}
+          <div className="flex justify-end md:hidden">
             <MobileFiltersSheet
               cities={cities}
               categories={categories}
@@ -170,6 +166,10 @@ export default function HomePage({ venues, cities, categories }: HomeProps) {
               onCategoryChange={setSelectedCategory}
             />
           </div>
+        </div>
+      </section>
+      <section className="-mt-12 bg-slate-50 pb-12 pt-4">
+        <div className="mx-auto w-full max-w-6xl px-6">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-6">
             {filteredVenues.length === 0 ? (
               <div className="col-span-full rounded-3xl border border-dashed border-slate-200 bg-white/80 p-10 text-center text-slate-600">
