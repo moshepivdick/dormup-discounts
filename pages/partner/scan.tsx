@@ -8,21 +8,36 @@ import { auth } from '@/lib/auth';
 export default function PartnerScanPage() {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [manualCode, setManualCode] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
+  const [showQRConfirmation, setShowQRConfirmation] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isSubmittingRef = useRef(false);
 
   useEffect(() => {
     const reader = new BrowserMultiFormatReader();
+    readerRef.current = reader;
+    
     reader
       .decodeFromVideoDevice(
         undefined,
         videoRef.current as HTMLVideoElement,
         async (result, err) => {
           if (result) {
+            // Stop scanning when QR code is detected
+            try {
+              const video = videoRef.current;
+              if (video && video.srcObject) {
+                const stream = video.srcObject as MediaStream;
+                stream.getTracks().forEach((track) => track.stop());
+                video.srcObject = null;
+              }
+            } catch (e) {
+              // Ignore cleanup errors
+            }
             // QR code confirmation - instant, no debounce
             await handleConfirm(result.getText(), true);
           }
@@ -34,18 +49,15 @@ export default function PartnerScanPage() {
       .catch(() => setPermissionDenied(true));
     return () => {
       // Cleanup: stop scanning when component unmounts
-      if (reader) {
-        try {
-          // BrowserMultiFormatReader doesn't have reset, just stop scanning
-          const video = document.getElementById('video') as HTMLVideoElement;
-          if (video && video.srcObject) {
-            const stream = video.srcObject as MediaStream;
-            stream.getTracks().forEach((track) => track.stop());
-            video.srcObject = null;
-          }
-        } catch (e) {
-          // Ignore cleanup errors
+      try {
+        const video = videoRef.current;
+        if (video && video.srcObject) {
+          const stream = video.srcObject as MediaStream;
+          stream.getTracks().forEach((track) => track.stop());
+          video.srcObject = null;
         }
+      } catch (e) {
+        // Ignore cleanup errors
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -60,7 +72,7 @@ export default function PartnerScanPage() {
     };
   }, []);
 
-  const confirmCodeAPI = async (codeToConfirm: string) => {
+  const confirmCodeAPI = async (codeToConfirm: string, isQRCode = false) => {
     if (isSubmittingRef.current) return;
     
     isSubmittingRef.current = true;
@@ -82,9 +94,11 @@ export default function PartnerScanPage() {
         }
         setStatus('success');
         setMessage(msg || 'Discount confirmed ✔️');
-        setTimeout(() => {
-          router.push('/partner');
-        }, 2000);
+        
+        // Show QR confirmation modal instead of auto-redirect
+        if (isQRCode) {
+          setShowQRConfirmation(true);
+        }
       } else {
         setStatus('error');
         setMessage(msg || 'Invalid code');
@@ -110,7 +124,7 @@ export default function PartnerScanPage() {
 
     // QR code confirmation - instant, no debounce
     if (isQRCode) {
-      await confirmCodeAPI(code);
+      await confirmCodeAPI(code, true);
       return;
     }
 
@@ -184,11 +198,43 @@ export default function PartnerScanPage() {
             </p>
           )}
         </div>
-        {status === 'success' && (
-          <div className="pointer-events-none fixed inset-0 flex items-center justify-center bg-emerald-900/80 text-white">
-            <div className="rounded-3xl bg-white/10 px-8 py-6 text-center backdrop-blur">
-              <p className="text-2xl font-semibold">Discount confirmed ✔️</p>
-              <p className="mt-2 text-sm text-emerald-100">Redirecting…</p>
+        {/* QR Code Confirmation Modal */}
+        {showQRConfirmation && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="mx-4 w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-2xl">
+              <div className="mb-4 flex justify-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+                  <svg
+                    className="h-8 w-8 text-emerald-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <h2 className="mb-2 text-2xl font-bold text-slate-900">
+                QR Code Confirmed
+              </h2>
+              <p className="mb-6 text-sm text-slate-600">
+                The discount code has been successfully confirmed.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQRConfirmation(false);
+                  router.push('/partner');
+                }}
+                className="w-full rounded-2xl bg-emerald-600 px-6 py-3 text-base font-semibold text-white transition hover:bg-emerald-700"
+              >
+                Advance
+              </button>
             </div>
           </div>
         )}
