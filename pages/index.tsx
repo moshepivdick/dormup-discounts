@@ -5,11 +5,8 @@ import type { GetServerSideProps } from 'next';
 import { prisma } from '@/lib/prisma';
 import { VenueCard } from '@/components/VenueCard';
 import { BrandLogo } from '@/components/BrandLogo';
-import {
-  VenueFiltersDesktop,
-  VenueFiltersMobileBar,
-  VenueFiltersBottomSheet,
-} from '@/components/VenueFilters';
+import { VenueFiltersDesktop } from '@/components/VenueFilters';
+import { MobileFiltersSheet } from '@/components/MobileFiltersSheet';
 import { haversineDistance } from '@/utils/distance';
 import type { VenueSummary } from '@/types';
 import { SiteLayout } from '@/components/layout/SiteLayout';
@@ -25,7 +22,6 @@ export default function HomePage({ venues, cities, categories }: HomeProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortedVenues, setSortedVenues] = useState<VenueSummary[]>(venues);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
   useEffect(() => {
     const handleSearchChange = (event: Event) => {
@@ -148,28 +144,32 @@ export default function HomePage({ venues, cities, categories }: HomeProps) {
               {heroWordmark} members every day.
             </p>
           </div>
-          <VenueFiltersDesktop
-            cities={cities}
-            categories={categories}
-            selectedCity={selectedCity}
-            selectedCategory={selectedCategory}
-            onCityChange={setSelectedCity}
-            onCategoryChange={setSelectedCategory}
-          />
+          {/* Desktop filters - hidden on mobile */}
+          <div className="hidden md:block">
+            <VenueFiltersDesktop
+              cities={cities}
+              categories={categories}
+              selectedCity={selectedCity}
+              selectedCategory={selectedCategory}
+              onCityChange={setSelectedCity}
+              onCategoryChange={setSelectedCategory}
+            />
+          </div>
         </div>
       </section>
       <section className="-mt-12 bg-slate-50 pb-12 pt-4">
         <div className="mx-auto w-full max-w-6xl px-6">
-          {/* Mobile filter bar - shown above venues */}
-          <VenueFiltersMobileBar
-            cities={cities}
-            categories={categories}
-            selectedCity={selectedCity}
-            selectedCategory={selectedCategory}
-            onCityChange={setSelectedCity}
-            onCategoryChange={setSelectedCategory}
-            onOpenFilters={() => setIsMobileFiltersOpen(true)}
-          />
+          {/* Mobile filter icon button - shown above venues, only on mobile */}
+          <div className="mb-4 flex justify-end md:hidden">
+            <MobileFiltersSheet
+              cities={cities}
+              categories={categories}
+              selectedCity={selectedCity}
+              selectedCategory={selectedCategory}
+              onCityChange={setSelectedCity}
+              onCategoryChange={setSelectedCategory}
+            />
+          </div>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-6">
             {filteredVenues.length === 0 ? (
               <div className="col-span-full rounded-3xl border border-dashed border-slate-200 bg-white/80 p-10 text-center text-slate-600">
@@ -196,17 +196,6 @@ export default function HomePage({ venues, cities, categories }: HomeProps) {
           </p>
         </div>
       </footer>
-      {/* Mobile bottom sheet - rendered at root level */}
-      <VenueFiltersBottomSheet
-        cities={cities}
-        categories={categories}
-        selectedCity={selectedCity}
-        selectedCategory={selectedCategory}
-        onCityChange={setSelectedCity}
-        onCategoryChange={setSelectedCategory}
-        isOpen={isMobileFiltersOpen}
-        onClose={() => setIsMobileFiltersOpen(false)}
-      />
     </>
   );
 }
