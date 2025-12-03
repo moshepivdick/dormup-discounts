@@ -1,0 +1,25 @@
+https://github.com/moshepivdick/dormup-discounts.git
+
+
+DATABASE_URL=
+
+PARTNER_JWT_SECRET=
+ADMIN_JWT_SECRET=
+NEXT_PUBLIC_APP_URL
+
+
+BWVztaoSuVuaJQuB
+
+postgresql://postgres.fddskrgoaqiumtrqrtsj:BWVztaoSuVuaJQuB@aws-1-eu-west-1.pooler.supabase.com:5432/postgres
+
+postgresql://postgres.fddskrgoaqiumtrqrtsj:BWVztaoSuVuaJQuB@aws-1-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+
+
+
+Email: admin@dormup.it
+Password: admin123
+
+Email: demo@partner.com
+Password: dormup2024
+
+https://dormup-discounts.vercel.app/admin/login

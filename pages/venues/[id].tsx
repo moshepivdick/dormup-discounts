@@ -28,6 +28,7 @@ export default function VenuePage({ venue }: VenuePageProps) {
   const [codeExpiresAt, setCodeExpiresAt] = useState<Date | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [showExpiredMessage, setShowExpiredMessage] = useState(false);
+  const [isConfirmed, setIsConfirmed] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [openingRange, setOpeningRange] = useState<ReturnType<typeof parseOpeningRangeFromShort> | null>(null);
@@ -92,6 +93,7 @@ export default function VenuePage({ venue }: VenuePageProps) {
       const secondsUntilExpiry = Math.floor((expiresAt.getTime() - now.getTime()) / 1000);
       setRemainingSeconds(Math.max(0, secondsUntilExpiry));
       setShowExpiredMessage(false);
+      setIsConfirmed(false); // Reset confirmation status for new code
     } catch (error) {
       console.error('Error generating discount code:', error);
     }
@@ -143,6 +145,41 @@ export default function VenuePage({ venue }: VenuePageProps) {
       }
     };
   }, [codeExpiresAt, remainingSeconds]);
+
+  // Poll for code confirmation status when code is active
+  useEffect(() => {
+    if (!discountCode || isConfirmed || showExpiredMessage) {
+      return;
+    }
+
+    const checkCodeStatus = async () => {
+      try {
+        const response = await fetch('/api/check-code-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: discountCode }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data.isConfirmed) {
+            setIsConfirmed(true);
+          }
+        }
+      } catch (error) {
+        // Silently fail - don't interrupt user experience
+        console.error('Failed to check code status:', error);
+      }
+    };
+
+    // Check immediately, then every 2 seconds
+    checkCodeStatus();
+    const interval = setInterval(checkCodeStatus, 2000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [discountCode, isConfirmed, showExpiredMessage]);
 
   const isTimerActive = remainingSeconds !== null && remainingSeconds > 0;
   const isTimerExpired = remainingSeconds === 0;
@@ -231,9 +268,14 @@ export default function VenuePage({ venue }: VenuePageProps) {
                 <div className="flex justify-center">
                   <QRCode value={discountCode} size={160} />
                 </div>
-                {(isTimerActive && remainingSeconds !== null) || showExpiredMessage ? (
+                {(isTimerActive && remainingSeconds !== null) || showExpiredMessage || isConfirmed ? (
                   <div className="flex justify-center">
-                    {isTimerActive && remainingSeconds !== null && (
+                    {isConfirmed && (
+                      <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+                        ✓ Already confirmed
+                      </span>
+                    )}
+                    {!isConfirmed && isTimerActive && remainingSeconds !== null && (
                       <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
                         {formatCountdown(remainingSeconds)}
                       </span>
@@ -246,7 +288,7 @@ export default function VenuePage({ venue }: VenuePageProps) {
                   </div>
                 ) : null}
                 <p className="text-xs text-slate-500">
-                  Show this code at the counter.
+                  {isConfirmed ? 'This code has been confirmed by the partner.' : 'Show this code at the counter.'}
                 </p>
                 {isTimerActive && (
                   <button
@@ -316,9 +358,14 @@ export default function VenuePage({ venue }: VenuePageProps) {
           <div className="mt-6 rounded-3xl bg-white p-6">
             <QRCode value={discountCode} size={220} />
           </div>
-          {(isTimerActive && remainingSeconds !== null) || showExpiredMessage ? (
+          {(isTimerActive && remainingSeconds !== null) || showExpiredMessage || isConfirmed ? (
             <div className="mt-4 flex justify-center">
-              {isTimerActive && remainingSeconds !== null && (
+              {isConfirmed && (
+                <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-semibold text-emerald-200">
+                  ✓ Already confirmed
+                </span>
+              )}
+              {!isConfirmed && isTimerActive && remainingSeconds !== null && (
                 <span className="inline-flex items-center rounded-full bg-amber-500/20 px-3 py-1 text-sm font-semibold text-amber-200">
                   {formatCountdown(remainingSeconds)}
                 </span>
@@ -331,7 +378,9 @@ export default function VenuePage({ venue }: VenuePageProps) {
             </div>
           ) : null}
           <p className="mt-4 text-center text-sm text-emerald-100">
-            {isTimerActive
+            {isConfirmed
+              ? 'This code has been confirmed by the partner.'
+              : isTimerActive
               ? `Show this to the barista. Valid for ${formatCountdown(remainingSeconds ?? 0)}.`
               : 'Show this to the barista. Valid for 30 minutes.'}
           </p>
