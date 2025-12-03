@@ -284,7 +284,7 @@ export function VenueFiltersMobileBar({
   );
 }
 
-// Desktop filter panel
+// Desktop filter panel - two independent dropdown buttons
 export function VenueFiltersDesktop({
   cities,
   categories,
@@ -293,15 +293,24 @@ export function VenueFiltersDesktop({
   onCityChange,
   onCategoryChange,
 }: VenueFiltersProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isCityOpen, setIsCityOpen] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
-  const hasActiveFilters = selectedCity !== 'all' || selectedCategory !== 'all';
 
-  const handleClearAll = () => {
-    onCityChange('all');
-    onCategoryChange('all');
-  };
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('[data-filter-dropdown]')) {
+        setIsCityOpen(false);
+        setIsCategoryOpen(false);
+      }
+    };
+
+    if (isCityOpen || isCategoryOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isCityOpen, isCategoryOpen]);
 
   const getCityLabel = () => {
     return selectedCity === 'all' ? 'All' : selectedCity;
@@ -312,139 +321,122 @@ export function VenueFiltersDesktop({
   };
 
   return (
-    <div className="hidden md:block">
-      <div className="rounded-3xl bg-white/10 p-4 backdrop-blur">
-        <div className="mb-3 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.4em] text-emerald-100 transition hover:text-white"
+    <div className="flex flex-col gap-2 md:flex-row md:items-start md:gap-4">
+      {/* City dropdown button */}
+      <div className="relative" data-filter-dropdown>
+        <button
+          type="button"
+          onClick={() => {
+            setIsCityOpen(!isCityOpen);
+            setIsCategoryOpen(false); // Close category when opening city
+          }}
+          className="flex items-center justify-between rounded-full bg-white px-4 py-2 text-sm shadow-sm transition hover:shadow-md md:text-base"
+        >
+          <span className="font-medium text-slate-700">
+            City: <span className="text-slate-500">{getCityLabel()}</span>
+          </span>
+          <svg
+            className={`ml-2 h-4 w-4 text-slate-400 transition-transform ${
+              isCityOpen ? 'rotate-180' : ''
+            }`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
           >
-            Filters
-            <svg
-              className={`h-4 w-4 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          </button>
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={handleClearAll}
-              className="text-xs font-semibold text-emerald-100 transition hover:text-white"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-
-        {!isCollapsed && (
-          <div className="space-y-0">
-            {/* City row */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setIsCityOpen(!isCityOpen)}
-                className="flex w-full items-center justify-between py-2 text-sm text-emerald-50 transition hover:text-white"
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
+        {isCityOpen && (
+          <div className="absolute left-0 right-0 z-10 mt-2 rounded-2xl bg-white p-3 shadow-lg">
+            <div className="flex flex-wrap gap-2">
+              <FilterChip
+                active={selectedCity === 'all'}
+                onClick={() => {
+                  onCityChange('all');
+                  setIsCityOpen(false);
+                }}
+                variant="light"
               >
-                <span className="font-medium">City</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-emerald-100/80">{getCityLabel()}</span>
-                  <svg
-                    className={`h-4 w-4 transition-transform text-emerald-100/80 ${
-                      isCityOpen ? 'rotate-180' : ''
-                    }`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </div>
-              </button>
-              {isCityOpen && (
-                <div className="mb-2 flex flex-wrap gap-2 pb-3">
-                  <FilterChip
-                    active={selectedCity === 'all'}
-                    onClick={() => onCityChange('all')}
-                  >
-                    All
-                  </FilterChip>
-                  {cities.map((city) => (
-                    <FilterChip
-                      key={city}
-                      active={selectedCity === city}
-                      onClick={() => onCityChange(city)}
-                    >
-                      {city}
-                    </FilterChip>
-                  ))}
-                </div>
-              )}
+                All
+              </FilterChip>
+              {cities.map((city) => (
+                <FilterChip
+                  key={city}
+                  active={selectedCity === city}
+                  onClick={() => {
+                    onCityChange(city);
+                    setIsCityOpen(false);
+                  }}
+                  variant="light"
+                >
+                  {city}
+                </FilterChip>
+              ))}
             </div>
+          </div>
+        )}
+      </div>
 
-            {/* Divider - show between rows */}
-            <div className="my-1 border-t border-white/10" />
-
-            {/* Category row */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-                className="flex w-full items-center justify-between py-2 text-sm text-emerald-50 transition hover:text-white"
+      {/* Category dropdown button */}
+      <div className="relative" data-filter-dropdown>
+        <button
+          type="button"
+          onClick={() => {
+            setIsCategoryOpen(!isCategoryOpen);
+            setIsCityOpen(false); // Close city when opening category
+          }}
+          className="flex items-center justify-between rounded-full bg-white px-4 py-2 text-sm shadow-sm transition hover:shadow-md md:text-base"
+        >
+          <span className="font-medium text-slate-700">
+            Category: <span className="text-slate-500">{getCategoryLabel()}</span>
+          </span>
+          <svg
+            className={`ml-2 h-4 w-4 text-slate-400 transition-transform ${
+              isCategoryOpen ? 'rotate-180' : ''
+            }`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
+        {isCategoryOpen && (
+          <div className="absolute left-0 right-0 z-10 mt-2 rounded-2xl bg-white p-3 shadow-lg">
+            <div className="flex flex-wrap gap-2">
+              <FilterChip
+                active={selectedCategory === 'all'}
+                onClick={() => {
+                  onCategoryChange('all');
+                  setIsCategoryOpen(false);
+                }}
+                variant="light"
               >
-                <span className="font-medium">Category</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-emerald-100/80">{getCategoryLabel()}</span>
-                  <svg
-                    className={`h-4 w-4 transition-transform text-emerald-100/80 ${
-                      isCategoryOpen ? 'rotate-180' : ''
-                    }`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </div>
-              </button>
-              {isCategoryOpen && (
-                <div className="mb-2 flex flex-wrap gap-2 pb-3">
-                  <FilterChip
-                    active={selectedCategory === 'all'}
-                    onClick={() => onCategoryChange('all')}
-                  >
-                    All
-                  </FilterChip>
-                  {categories.map((category) => (
-                    <FilterChip
-                      key={category}
-                      active={selectedCategory === category}
-                      onClick={() => onCategoryChange(category)}
-                    >
-                      {category}
-                    </FilterChip>
-                  ))}
-                </div>
-              )}
+                All
+              </FilterChip>
+              {categories.map((category) => (
+                <FilterChip
+                  key={category}
+                  active={selectedCategory === category}
+                  onClick={() => {
+                    onCategoryChange(category);
+                    setIsCategoryOpen(false);
+                  }}
+                  variant="light"
+                >
+                  {category}
+                </FilterChip>
+              ))}
             </div>
           </div>
         )}
