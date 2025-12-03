@@ -36,7 +36,7 @@ export default function PartnerPage({ partner }: PartnerPageProps) {
     setStatus('loading');
     setFeedback(null);
 
-    const response = await fetch('/api/discounts/confirm', {
+    const response = await fetch('/api/confirm-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: code.trim().toUpperCase() }),

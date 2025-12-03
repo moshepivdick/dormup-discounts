@@ -53,7 +53,7 @@ export default function PartnerScanPage() {
     if (!code) return;
 
     setStatus('loading');
-    const response = await fetch('/api/discounts/confirm', {
+    const response = await fetch('/api/confirm-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code }),

@@ -34,9 +34,9 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
     return apiResponse.error(res, 404, 'Code not found ❌');
   }
 
-  // Check if code is already used (status is not 'generated')
-  if (discountUse.status !== 'generated') {
-    return apiResponse.error(res, 400, 'Code already used ❌');
+  // Check if code is already confirmed (isConfirmed check via status)
+  if (discountUse.status === 'confirmed') {
+    return apiResponse.error(res, 400, 'Code already confirmed ❌');
   }
 
   // Check if code is expired
@@ -54,6 +54,7 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
     return apiResponse.error(res, 403, 'Code does not belong to your venue ❌');
   }
 
+  // Mark as confirmed
   await prisma.discountUse.update({
     where: { id: discountUse.id },
     data: {

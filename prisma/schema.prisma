@@ -49,6 +49,7 @@ model Partner {
   id           String   @id @default(uuid())
   email        String   @unique
   passwordHash String
+  isActive     Boolean  @default(true)
   venueId      Int      @unique
   createdAt    DateTime @default(now())
   lastLoginAt  DateTime?

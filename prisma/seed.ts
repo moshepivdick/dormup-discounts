@@ -119,7 +119,7 @@ async function main() {
   await prisma.venue.createMany({ data: venues });
 
   const targetVenue = await prisma.venue.findFirst({
-    where: { name: 'Moka Brew Lab' },
+    where: { name: 'Chi Burdlaz Garden' },
   });
 
   if (!targetVenue) {
@@ -127,15 +127,23 @@ async function main() {
   }
 
   const [partnerPassword, adminPassword] = await Promise.all([
-    bcrypt.hash('password123', 10),
+    bcrypt.hash('dormup2024', 10),
     bcrypt.hash('admin123', 10),
   ]);
 
-  await prisma.partner.create({
-    data: {
+  // Idempotent partner creation: upsert by email
+  // If partner exists, update passwordHash and keep rest unchanged
+  await prisma.partner.upsert({
+    where: { email: 'demo@partner.com' },
+    update: {
+      passwordHash: partnerPassword,
+      // Keep existing name, isActive, venueId, etc. unchanged
+    },
+    create: {
       email: 'demo@partner.com',
       passwordHash: partnerPassword,
       venueId: targetVenue.id,
+      // isActive defaults to true in schema
     },
   });
 

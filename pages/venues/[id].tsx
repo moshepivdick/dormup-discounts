@@ -13,7 +13,6 @@ import {
   formatTimeLabel,
 } from '@/utils/opening';
 import type { VenueDetails } from '@/types';
-import { generateDiscountCode } from '@/utils/random';
 import {
   extractAddressFromDetails,
   removeAddressFromDetails,
@@ -26,7 +25,7 @@ type VenuePageProps = {
 
 export default function VenuePage({ venue }: VenuePageProps) {
   const [discountCode, setDiscountCode] = useState<string | null>(null);
-  const [codeGeneratedAt, setCodeGeneratedAt] = useState<Date | null>(null);
+  const [codeExpiresAt, setCodeExpiresAt] = useState<Date | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [showExpiredMessage, setShowExpiredMessage] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
@@ -63,23 +62,47 @@ export default function VenuePage({ venue }: VenuePageProps) {
     return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
-  // Client-side discount code generation
-  const handleGenerateDiscount = useCallback(() => {
-    // Generate a new code instantly on the client side
-    const newCode = generateDiscountCode(8);
-    const now = new Date();
-    setDiscountCode(newCode);
-    setCodeGeneratedAt(now);
-    setRemainingSeconds(30 * 60); // 30 minutes in seconds
-    setShowExpiredMessage(false);
-  }, []);
+  // API-based discount code generation
+  const handleGenerateDiscount = useCallback(async () => {
+    try {
+      const response = await fetch('/api/generate-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ venueId: venue.id }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Failed to generate code:', error);
+        return;
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        console.error('Failed to generate code:', data.message);
+        return;
+      }
+
+      const newCode = data.data.code;
+      const expiresAt = new Date(data.data.expiresAt);
+      const now = new Date();
+      
+      setDiscountCode(newCode);
+      setCodeExpiresAt(expiresAt);
+      const secondsUntilExpiry = Math.floor((expiresAt.getTime() - now.getTime()) / 1000);
+      setRemainingSeconds(Math.max(0, secondsUntilExpiry));
+      setShowExpiredMessage(false);
+    } catch (error) {
+      console.error('Error generating discount code:', error);
+    }
+  }, [venue.id]);
 
   // Track if expiration has been handled to prevent multiple timeouts
   const expirationHandledRef = useRef(false);
 
-  // Countdown timer effect
+  // Countdown timer effect - based on expiresAt from server
   useEffect(() => {
-    if (codeGeneratedAt === null || remainingSeconds === null) {
+    if (codeExpiresAt === null || remainingSeconds === null) {
       expirationHandledRef.current = false;
       return;
     }
@@ -88,8 +111,7 @@ export default function VenuePage({ venue }: VenuePageProps) {
 
     const updateCountdown = () => {
       const now = new Date();
-      const elapsed = Math.floor((now.getTime() - codeGeneratedAt!.getTime()) / 1000);
-      const remaining = Math.max(0, 30 * 60 - elapsed);
+      const remaining = Math.max(0, Math.floor((codeExpiresAt!.getTime() - now.getTime()) / 1000));
       
       setRemainingSeconds(remaining);
 
@@ -100,7 +122,7 @@ export default function VenuePage({ venue }: VenuePageProps) {
         // Show expired message briefly, then clear
         expiredTimeout = setTimeout(() => {
           setDiscountCode(null);
-          setCodeGeneratedAt(null);
+          setCodeExpiresAt(null);
           setRemainingSeconds(null);
           setShowExpiredMessage(false);
           expirationHandledRef.current = false;
@@ -120,7 +142,7 @@ export default function VenuePage({ venue }: VenuePageProps) {
         clearTimeout(expiredTimeout);
       }
     };
-  }, [codeGeneratedAt, remainingSeconds]);
+  }, [codeExpiresAt, remainingSeconds]);
 
   const isTimerActive = remainingSeconds !== null && remainingSeconds > 0;
   const isTimerExpired = remainingSeconds === 0;
