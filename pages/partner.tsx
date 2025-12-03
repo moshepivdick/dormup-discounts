@@ -1,5 +1,5 @@
 import Head from 'next/head';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import type { GetServerSideProps } from 'next';
 import { auth } from '@/lib/auth';
@@ -23,35 +23,86 @@ export default function PartnerPage({ partner }: PartnerPageProps) {
   const [code, setCode] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading'>('idle');
   const [feedback, setFeedback] = useState<PartnerResponse | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isSubmittingRef = useRef(false);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleLogout = async () => {
     await fetch('/api/partner/logout', { method: 'POST' });
     router.push('/partner/login');
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!code.trim()) return;
-
+  const confirmCodeAPI = async (codeToConfirm: string) => {
+    if (isSubmittingRef.current) return;
+    
+    isSubmittingRef.current = true;
     setStatus('loading');
     setFeedback(null);
 
-    const response = await fetch('/api/confirm-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: code.trim().toUpperCase() }),
-    });
+    try {
+      const response = await fetch('/api/confirm-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: codeToConfirm }),
+      });
 
-    const raw = await response.json();
-    const payload: PartnerResponse = {
-      success: raw.success ?? false,
-      message: raw.data?.message ?? raw.message ?? '',
-    };
-    setFeedback(payload);
-    setStatus('idle');
-    if (payload.success) {
-      setCode('');
+      const raw = await response.json();
+      const payload: PartnerResponse = {
+        success: raw.success ?? false,
+        message: raw.data?.message ?? raw.message ?? '',
+      };
+      setFeedback(payload);
+      if (payload.success) {
+        setCode('');
+      }
+    } catch (error) {
+      setFeedback({
+        success: false,
+        message: 'Failed to confirm code. Please try again.',
+      });
+    } finally {
+      setStatus('idle');
+      isSubmittingRef.current = false;
     }
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    
+    // Clear any existing debounce timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+
+    const trimmedCode = code.trim().toUpperCase();
+    
+    // Validate input length (6-8 chars)
+    if (trimmedCode.length < 6 || trimmedCode.length > 8) {
+      setFeedback({
+        success: false,
+        message: 'Code must be between 6 and 8 characters',
+      });
+      return;
+    }
+
+    // Prevent multiple simultaneous requests
+    if (status === 'loading' || isSubmittingRef.current) {
+      return;
+    }
+
+    // Add 800ms debounce before calling API
+    debounceTimerRef.current = setTimeout(() => {
+      confirmCodeAPI(trimmedCode);
+    }, 800);
   };
 
   return (

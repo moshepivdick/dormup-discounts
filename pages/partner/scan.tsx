@@ -12,6 +12,8 @@ export default function PartnerScanPage() {
   const [manualCode, setManualCode] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isSubmittingRef = useRef(false);
 
   useEffect(() => {
     const reader = new BrowserMultiFormatReader();
@@ -21,7 +23,8 @@ export default function PartnerScanPage() {
         videoRef.current as HTMLVideoElement,
         async (result, err) => {
           if (result) {
-            await handleConfirm(result.getText());
+            // QR code confirmation - instant, no debounce
+            await handleConfirm(result.getText(), true);
           }
           if (err && err.name === 'NotAllowedError') {
             setPermissionDenied(true);
@@ -48,33 +51,77 @@ export default function PartnerScanPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleConfirm = async (rawCode?: string) => {
-    const code = (rawCode ?? manualCode).toUpperCase();
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
+  const confirmCodeAPI = async (codeToConfirm: string) => {
+    if (isSubmittingRef.current) return;
+    
+    isSubmittingRef.current = true;
+    setStatus('loading');
+
+    try {
+      const response = await fetch('/api/confirm-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: codeToConfirm }),
+      });
+      const payload = await response.json();
+      const success = payload.success ?? false;
+      const msg = payload.data?.message ?? payload.message ?? '';
+
+      if (success) {
+        if (navigator.vibrate) {
+          navigator.vibrate(200);
+        }
+        setStatus('success');
+        setMessage(msg || 'Discount confirmed ✔️');
+        setTimeout(() => {
+          router.push('/partner');
+        }, 2000);
+      } else {
+        setStatus('error');
+        setMessage(msg || 'Invalid code');
+      }
+    } catch (error) {
+      setStatus('error');
+      setMessage('Failed to confirm code. Please try again.');
+    } finally {
+      isSubmittingRef.current = false;
+    }
+  };
+
+  const handleConfirm = async (rawCode?: string, isQRCode = false) => {
+    const code = (rawCode ?? manualCode).trim().toUpperCase();
     if (!code) return;
 
-    setStatus('loading');
-    const response = await fetch('/api/confirm-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code }),
-    });
-    const payload = await response.json();
-    const success = payload.success ?? false;
-    const msg = payload.data?.message ?? payload.message ?? '';
-
-    if (success) {
-      if (navigator.vibrate) {
-        navigator.vibrate(200);
-      }
-      setStatus('success');
-      setMessage(msg || 'Discount confirmed ✔️');
-      setTimeout(() => {
-        router.push('/partner');
-      }, 2000);
-    } else {
+    // Validate input length (6-8 chars) for manual entry
+    if (!isQRCode && (code.length < 6 || code.length > 8)) {
       setStatus('error');
-      setMessage(msg || 'Invalid code');
+      setMessage('Code must be between 6 and 8 characters');
+      return;
     }
+
+    // QR code confirmation - instant, no debounce
+    if (isQRCode) {
+      await confirmCodeAPI(code);
+      return;
+    }
+
+    // Manual entry - add 800ms debounce
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      confirmCodeAPI(code);
+    }, 800);
   };
 
   return (
@@ -101,6 +148,10 @@ export default function PartnerScanPage() {
             className="flex gap-3"
             onSubmit={(event) => {
               event.preventDefault();
+              // Prevent submission if already loading
+              if (status === 'loading' || isSubmittingRef.current) {
+                return;
+              }
               handleConfirm();
             }}
           >
@@ -109,13 +160,18 @@ export default function PartnerScanPage() {
               maxLength={8}
               placeholder="ABC123"
               value={manualCode}
-              onChange={(event) => setManualCode(event.target.value.toUpperCase())}
+              onChange={(event) => {
+                // Only update state, no API calls
+                setManualCode(event.target.value.toUpperCase());
+              }}
+              disabled={status === 'loading'}
             />
             <button
               type="submit"
-              className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white"
+              disabled={status === 'loading' || isSubmittingRef.current}
+              className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-emerald-300"
             >
-              Confirm
+              {status === 'loading' ? 'Confirming…' : 'Confirm'}
             </button>
           </form>
           {status !== 'idle' && (
