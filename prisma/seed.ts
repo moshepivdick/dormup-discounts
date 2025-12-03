@@ -84,6 +84,30 @@ const venues = [
     latitude: 44.069654,
     longitude: 12.573245,
   },
+  {
+    name: 'Caffè Letterario',
+    city: 'Bologna',
+    category: 'Cafe',
+    discountText: '20% off all coffee drinks and croissants before 11:00 AM.',
+    details: 'Perfect morning spot for students! Show your DormUp code at checkout. Valid Monday to Friday. Address: Via de\' Giudei, 15, 40126 Bologna BO.',
+    openingHours: 'Mon–Fri 07:00–19:00 · Sat–Sun 08:00–20:00',
+    openingHoursShort: 'Daily 07:00–20:00',
+    mapUrl: 'https://maps.app.goo.gl/example1',
+    latitude: 44.4920,
+    longitude: 11.3430,
+  },
+  {
+    name: 'Espresso Bar Marina',
+    city: 'Rimini',
+    category: 'Cafe',
+    discountText: 'Buy 2 coffees, get 1 free. Valid all day.',
+    details: 'Relax by the beach with discounted coffee! Present your DormUp code. Address: Lungomare Augusto Murri, 47, 47921 Rimini RN.',
+    openingHours: 'Daily 06:30–22:00',
+    openingHoursShort: 'Daily 06:30–22:00',
+    mapUrl: 'https://maps.app.goo.gl/example2',
+    latitude: 44.0650,
+    longitude: 12.5750,
+  },
 ];
 
 async function main() {
