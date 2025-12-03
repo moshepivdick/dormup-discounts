@@ -60,14 +60,14 @@ export default function AdminPartnersPage({ partners, venues }: AdminPartnersPro
           <label className="block text-sm font-medium text-white/70">
             Venue
             <select
-              className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-white"
+              className="mt-2 w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-2 text-gray-100"
               value={form.venueId}
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, venueId: Number(event.target.value) }))
               }
             >
               {venues.map((venue) => (
-                <option key={venue.id} value={venue.id}>
+                <option key={venue.id} value={venue.id} className="bg-gray-900 text-gray-100">
                   {venue.name}
                 </option>
               ))}
