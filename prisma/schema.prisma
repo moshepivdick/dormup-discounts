@@ -9,69 +9,67 @@ datasource db {
 }
 
 model Venue {
-  id           Int            @id @default(autoincrement())
-  name         String
-  city         String
-  category     String
-  discountText String
-  details      String?
-  openingHours String?
+  id                Int           @id @default(autoincrement())
+  name              String
+  city              String
+  category          String
+  discountText      String
+  details           String?
+  openingHours      String?
   openingHoursShort String?
-  mapUrl       String?
-  latitude     Float
-  longitude    Float
-  imageUrl     String?
-  thumbnailUrl String?
-  isActive     Boolean        @default(true)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  discountUses DiscountUse[]
-  partner      Partner?
-  views        VenueView[]
+  mapUrl            String?
+  latitude          Float
+  longitude         Float
+  imageUrl          String?
+  thumbnailUrl      String?
+  isActive          Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  discountUses      DiscountUse[]
+  partner           Partner?
+  views             VenueView[]
 
   @@index([city])
   @@index([category])
 }
 
 model DiscountUse {
-  id            Int      @id @default(autoincrement())
-  venue         Venue    @relation(fields: [venueId], references: [id])
+  id            Int       @id @default(autoincrement())
   venueId       Int
-  generatedCode String   @unique
-  status        String   @default("generated")
-  qrSlug        String?  @unique
-  createdAt     DateTime @default(now())
+  generatedCode String    @unique
+  status        String    @default("generated")
+  qrSlug        String?   @unique
+  createdAt     DateTime  @default(now())
   expiresAt     DateTime
   confirmedAt   DateTime?
+  venue         Venue     @relation(fields: [venueId], references: [id])
 }
 
 model Partner {
-  id           String   @id @default(uuid())
-  email        String   @unique
+  id           String    @id @default(uuid())
+  email        String    @unique
   passwordHash String
-  isActive     Boolean  @default(true)
-  venueId      Int      @unique
-  createdAt    DateTime @default(now())
+  venueId      Int       @unique
+  createdAt    DateTime  @default(now())
   lastLoginAt  DateTime?
-
-  venue Venue @relation(fields: [venueId], references: [id])
+  isActive     Boolean   @default(true)
+  venue        Venue     @relation(fields: [venueId], references: [id])
 }
 
 model Admin {
-  id           String   @id @default(uuid())
-  email        String   @unique
+  id           String    @id @default(uuid())
+  email        String    @unique
   passwordHash String
-  role         String   @default("admin")
-  createdAt    DateTime @default(now())
+  role         String    @default("admin")
+  createdAt    DateTime  @default(now())
   lastLoginAt  DateTime?
 }
 
 model VenueView {
   id        Int      @id @default(autoincrement())
-  venue     Venue    @relation(fields: [venueId], references: [id])
   venueId   Int
   city      String
   createdAt DateTime @default(now())
   userAgent String?
+  venue     Venue    @relation(fields: [venueId], references: [id])
 }
-
