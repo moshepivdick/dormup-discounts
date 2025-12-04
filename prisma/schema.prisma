@@ -18,6 +18,7 @@ model Venue {
   openingHours      String?
   openingHoursShort String?
   mapUrl            String?
+  phone             String?
   latitude          Float
   longitude         Float
   imageUrl          String?

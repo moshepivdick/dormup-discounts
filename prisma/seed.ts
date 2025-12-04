@@ -66,6 +66,7 @@ const venues = [
     details: 'Present your DormUp code before ordering. Address: incrocio, Viale Vespucci, Viale Trieste, 63, 47921 Rimini RN.',
     openingHoursShort: 'Every day · 12:00–23:30',
     mapUrl: 'https://maps.app.goo.gl/DDAUAfgQhZxwKajm8',
+    phone: '0541 21528',
     latitude: 44.0680992,
     longitude: 12.5802418,
     imageUrl:
