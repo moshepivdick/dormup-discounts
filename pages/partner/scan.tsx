@@ -15,18 +15,63 @@ export default function PartnerScanPage() {
   const [message, setMessage] = useState('');
   const [showQRConfirmation, setShowQRConfirmation] = useState(false);
   const isSubmittingRef = useRef(false);
+  
+  // SCAN LOCK STATE: Prevents multiple API requests for the same QR code
+  // When true, all scan callback events are ignored until explicitly unlocked by user
+  const [scanLocked, setScanLocked] = useState(false);
+  
+  // SCAN LOCK REF: Synchronous reference for immediate checks in callbacks
+  // React state updates are asynchronous, so we need a ref for instant lock checking
+  // This prevents race conditions where multiple callbacks might execute before state updates
+  const scanLockedRef = useRef(false);
+  
+  // Track the last processed QR code to prevent re-processing the same value
+  // This ensures even if scanLocked is temporarily false, we won't process duplicates
+  const lastScannedCodeRef = useRef<string | null>(null);
+  
+  // Track if scanning is currently active (camera stream running)
+  const isScanningActiveRef = useRef(false);
 
   useEffect(() => {
+    // Only start scanning if not locked
+    if (scanLocked) {
+      return;
+    }
+
     const reader = new BrowserMultiFormatReader();
     readerRef.current = reader;
+    isScanningActiveRef.current = true;
     
     reader
       .decodeFromVideoDevice(
         undefined,
         videoRef.current as HTMLVideoElement,
         async (result, err) => {
+          // CRITICAL: Ignore all scan events while scanLocked is true
+          // Use ref for synchronous check - state updates are async and could cause race conditions
+          // This prevents multiple API requests when the QR code is visible for multiple frames
+          if (scanLockedRef.current) {
+            return;
+          }
+
           if (result) {
-            // Stop scanning when QR code is detected
+            const scannedText = result.getText().trim().toUpperCase();
+            
+            // Prevent re-processing the same QR code value
+            // Even if somehow the lock is temporarily false, we won't process duplicates
+            if (lastScannedCodeRef.current === scannedText) {
+              return;
+            }
+
+            // LOCK SCANNING IMMEDIATELY to prevent any further scan events from processing
+            // Set both ref (synchronous) and state (for UI) BEFORE any async operations
+            // This ensures no race conditions where multiple callbacks execute simultaneously
+            scanLockedRef.current = true;
+            setScanLocked(true);
+            lastScannedCodeRef.current = scannedText;
+            isScanningActiveRef.current = false;
+
+            // Stop the video stream immediately to prevent further frame processing
             try {
               const video = videoRef.current;
               if (video && video.srcObject) {
@@ -37,8 +82,10 @@ export default function PartnerScanPage() {
             } catch (e) {
               // Ignore cleanup errors
             }
-            // QR code confirmation - instant, single API call
-            await handleQRConfirm(result.getText());
+
+            // Process the QR code - this will make the API call
+            // Scanning remains locked until user explicitly resumes
+            await handleQRConfirm(scannedText);
           }
           if (err && err.name === 'NotAllowedError') {
             setPermissionDenied(true);
@@ -46,8 +93,9 @@ export default function PartnerScanPage() {
         },
       )
       .catch(() => setPermissionDenied(true));
+    
     return () => {
-      // Cleanup: stop scanning when component unmounts
+      // Cleanup: stop scanning when component unmounts or dependencies change
       try {
         const video = videoRef.current;
         if (video && video.srcObject) {
@@ -58,9 +106,10 @@ export default function PartnerScanPage() {
       } catch (e) {
         // Ignore cleanup errors
       }
+      isScanningActiveRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [scanLocked]); // Re-run effect when scanLocked changes
 
   const confirmCodeAPI = async (codeToConfirm: string, isQRCode = false) => {
     if (isSubmittingRef.current) return;
@@ -93,19 +142,48 @@ export default function PartnerScanPage() {
         setStatus('error');
         setMessage(msg || 'Invalid code');
       }
+      
+      // NOTE: Scanning remains LOCKED after success or error
+      // User must explicitly click "Scan again" to resume scanning
+      // This prevents automatic re-scanning and ensures only ONE request per QR code
     } catch (error) {
       setStatus('error');
       setMessage('Failed to confirm code. Please try again.');
+      // Scanning remains locked even on error - user must explicitly resume
     } finally {
       isSubmittingRef.current = false;
     }
   };
 
   // QR code confirmation handler - called only when QR is scanned
+  // NOTE: This function is only called when scanLocked is false and a new QR code is detected
   const handleQRConfirm = async (qrCode: string) => {
     const code = qrCode.trim().toUpperCase();
-    if (!code) return;
+    if (!code) {
+      // If code is invalid, unlock scanning to allow retry
+      // Reset both ref and state for immediate unlock
+      scanLockedRef.current = false;
+      setScanLocked(false);
+      lastScannedCodeRef.current = null;
+      return;
+    }
     await confirmCodeAPI(code, true);
+  };
+
+  // Resume scanning: Unlocks scanning and allows the user to scan a new QR code
+  // This must be explicitly called by user interaction (e.g., "Scan again" button)
+  const resumeScanning = () => {
+    // Reset scan lock state (both ref and state) to allow new scans
+    // Ref must be reset synchronously before state for immediate effect
+    scanLockedRef.current = false;
+    setScanLocked(false);
+    // Clear the last scanned code so the same code can be scanned again if needed
+    lastScannedCodeRef.current = null;
+    // Reset status to idle so the UI shows ready state
+    setStatus('idle');
+    setMessage('');
+    setShowQRConfirmation(false);
+    // The useEffect will automatically restart scanning when scanLocked becomes false
   };
 
   // Manual code confirmation handler - called only on form submit
@@ -148,6 +226,18 @@ export default function PartnerScanPage() {
           <div className="pointer-events-none absolute inset-0 border-4 border-white/40"></div>
         </div>
         <div className="space-y-4 bg-white px-6 py-6 text-slate-900">
+          {/* Scan status indicator - shows when scanning is paused/locked */}
+          {scanLocked && status !== 'loading' && (
+            <div className="rounded-2xl bg-slate-100 px-4 py-3 text-center">
+              <p className="text-sm font-semibold text-slate-700">
+                Scanning paused
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Click &quot;Scan again&quot; to resume scanning
+              </p>
+            </div>
+          )}
+          
           <p className="text-sm font-semibold text-slate-700">
             Manual code entry
           </p>
@@ -175,13 +265,26 @@ export default function PartnerScanPage() {
             </button>
           </form>
           {status !== 'idle' && (
-            <p
-              className={`text-center text-sm font-semibold ${
-                status === 'success' ? 'text-emerald-600' : 'text-rose-600'
-              }`}
-            >
-              {message}
-            </p>
+            <div className="space-y-3">
+              <p
+                className={`text-center text-sm font-semibold ${
+                  status === 'success' ? 'text-emerald-600' : 'text-rose-600'
+                }`}
+              >
+                {message}
+              </p>
+              {/* Scan again button - appears after scan result (success or error) */}
+              {/* Only show for QR scans, not manual entry */}
+              {scanLocked && status !== 'loading' && (
+                <button
+                  type="button"
+                  onClick={resumeScanning}
+                  className="w-full rounded-2xl bg-slate-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
+                >
+                  Scan again
+                </button>
+              )}
+            </div>
           )}
         </div>
         {/* QR Code Confirmation Modal */}
@@ -211,16 +314,29 @@ export default function PartnerScanPage() {
               <p className="mb-6 text-sm text-slate-600">
                 The discount code has been successfully confirmed.
               </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowQRConfirmation(false);
-                  router.push('/partner');
-                }}
-                className="w-full rounded-2xl bg-emerald-600 px-6 py-3 text-base font-semibold text-white transition hover:bg-emerald-700"
-              >
-                Advance
-              </button>
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowQRConfirmation(false);
+                    router.push('/partner');
+                  }}
+                  className="w-full rounded-2xl bg-emerald-600 px-6 py-3 text-base font-semibold text-white transition hover:bg-emerald-700"
+                >
+                  Advance
+                </button>
+                {/* Scan again button in modal - allows user to scan another QR code */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowQRConfirmation(false);
+                    resumeScanning();
+                  }}
+                  className="w-full rounded-2xl border-2 border-slate-300 bg-white px-6 py-3 text-base font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Scan again
+                </button>
+              </div>
             </div>
           </div>
         )}
