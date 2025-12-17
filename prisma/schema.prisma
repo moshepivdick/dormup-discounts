@@ -78,8 +78,8 @@ model University {
   id           String   @id @default(uuid())
   name         String   @unique
   city         String
-  emailDomains String[] @default([])
-  createdAt    DateTime @default(now())
+  emailDomains String[] @default([]) @map("email_domains")
+  createdAt    DateTime @default(now()) @map("created_at")
   profiles     Profile[]
   requests     UniversityRequest[]
 
