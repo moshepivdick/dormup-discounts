@@ -382,7 +382,7 @@ export const getServerSideProps: GetServerSideProps<VenuePageProps> = async ({
     openingHours: venue.openingHours,
     openingHoursShort: venue.openingHoursShort,
     mapUrl: venue.mapUrl, // Kept for type compatibility but not used in rendering
-    phone: venue.phone ?? null,
+    phone: null,
     imageUrl: venue.imageUrl,
     thumbnailUrl: venue.thumbnailUrl,
     latitude: venue.latitude,

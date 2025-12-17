@@ -143,12 +143,12 @@ export function UniversitySelect({
               )}
             </div>
           </PopoverTrigger>
-        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-          <Command>
+          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+            <Command>
             <CommandInput
               placeholder="Search universities..."
               value={search}
-              onValueChange={setSearch}
+              onChange={(e) => setSearch(e.target.value)}
             />
             <CommandList>
               {loading ? (
@@ -184,9 +184,10 @@ export function UniversitySelect({
                 </CommandGroup>
               )}
             </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </div>
       {error && <p className="text-sm text-rose-600">{error}</p>}
     </div>
   );
