@@ -32,11 +32,6 @@ export default function PartnerScanPage() {
   // Track if scanning is currently active (camera stream running)
   const isScanningActiveRef = useRef(false);
 
-  // FLASHLIGHT/TORCH STATE: Track torch availability and state
-  const [torchOn, setTorchOn] = useState(false);
-  const [torchAvailable, setTorchAvailable] = useState(false);
-  const cameraTrackRef = useRef<MediaStreamTrack | null>(null);
-
   useEffect(() => {
     // Only start scanning if not locked
     if (scanLocked) {
@@ -81,24 +76,12 @@ export default function PartnerScanPage() {
               const video = videoRef.current;
               if (video && video.srcObject) {
                 const stream = video.srcObject as MediaStream;
-                stream.getTracks().forEach((track) => {
-                  track.stop();
-                  // Turn off torch when stopping stream
-                  if (track === cameraTrackRef.current && torchOn) {
-                    try {
-                      track.applyConstraints({ advanced: [{ torch: false } as any] }).catch(() => {});
-                    } catch (e) {
-                      // Ignore torch errors during cleanup
-                    }
-                  }
-                });
+                stream.getTracks().forEach((track) => track.stop());
                 video.srcObject = null;
               }
             } catch (e) {
               // Ignore cleanup errors
             }
-            cameraTrackRef.current = null;
-            setTorchOn(false);
 
             // Process the QR code - this will make the API call
             // Scanning remains locked until user explicitly resumes
@@ -117,107 +100,16 @@ export default function PartnerScanPage() {
         const video = videoRef.current;
         if (video && video.srcObject) {
           const stream = video.srcObject as MediaStream;
-          stream.getTracks().forEach((track) => {
-            track.stop();
-            // Turn off torch when stopping stream
-            if (track === cameraTrackRef.current && torchOn) {
-              try {
-                track.applyConstraints({ advanced: [{ torch: false } as any] }).catch(() => {});
-              } catch (e) {
-                // Ignore torch errors during cleanup
-              }
-            }
-          });
+          stream.getTracks().forEach((track) => track.stop());
           video.srcObject = null;
         }
       } catch (e) {
         // Ignore cleanup errors
       }
-      cameraTrackRef.current = null;
-      setTorchOn(false);
       isScanningActiveRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanLocked]); // Re-run effect when scanLocked changes
-
-  // Detect torch support after camera stream is initialized
-  useEffect(() => {
-    const checkTorchSupport = () => {
-      const video = videoRef.current;
-      if (!video || !video.srcObject) {
-        return;
-      }
-
-      try {
-        const stream = video.srcObject as MediaStream;
-        const videoTrack = stream.getVideoTracks()[0];
-        
-        if (videoTrack) {
-          cameraTrackRef.current = videoTrack;
-          
-          // Check if torch capability is available
-          const capabilities = videoTrack.getCapabilities();
-          const hasTorch = capabilities && 'torch' in capabilities && capabilities.torch === true;
-          
-          setTorchAvailable(hasTorch);
-          
-          // If torch was on before, restore it (e.g., after resume)
-          if (hasTorch && torchOn) {
-            videoTrack.applyConstraints({ advanced: [{ torch: true } as any] }).catch(() => {
-              // Gracefully handle failure - torch may not be available anymore
-              setTorchOn(false);
-            });
-          }
-        }
-      } catch (e) {
-        // Gracefully handle errors (e.g., iOS Safari doesn't support getCapabilities)
-        setTorchAvailable(false);
-      }
-    };
-
-    // Check torch support when video stream is ready
-    if (!permissionDenied && !scanLocked) {
-      const video = videoRef.current;
-      if (video) {
-        // Wait for video to be ready
-        const handleLoadedMetadata = () => {
-          checkTorchSupport();
-        };
-        
-        video.addEventListener('loadedmetadata', handleLoadedMetadata);
-        
-        // Also check immediately in case metadata is already loaded
-        if (video.readyState >= 1) {
-          checkTorchSupport();
-        }
-        
-        return () => {
-          video.removeEventListener('loadedmetadata', handleLoadedMetadata);
-        };
-      }
-    }
-  }, [permissionDenied, scanLocked, torchOn]);
-
-  // Toggle flashlight/torch on/off
-  const toggleFlash = async () => {
-    const track = cameraTrackRef.current;
-    if (!track || !torchAvailable) {
-      return;
-    }
-
-    try {
-      const newTorchState = !torchOn;
-      await track.applyConstraints({
-        advanced: [{ torch: newTorchState } as any],
-      });
-      setTorchOn(newTorchState);
-    } catch (error) {
-      // Gracefully handle failures (e.g., iOS Safari, permission issues)
-      // Silently fail - don't crash the app
-      console.warn('Failed to toggle torch:', error);
-      setTorchOn(false);
-    }
-  };
 
   const confirmCodeAPI = async (codeToConfirm: string, isQRCode = false) => {
     if (isSubmittingRef.current) return;
@@ -291,7 +183,6 @@ export default function PartnerScanPage() {
     setStatus('idle');
     setMessage('');
     setShowQRConfirmation(false);
-    // Note: torch state is preserved - it will be restored when camera stream restarts
     // The useEffect will automatically restart scanning when scanLocked becomes false
   };
 
@@ -420,55 +311,11 @@ export default function PartnerScanPage() {
                   </div>
                 </div>
               </div>
-              {/* Flashlight toggle button - only show if torch is available */}
-              {torchAvailable && (
-                <button
-                  type="button"
-                  onClick={toggleFlash}
-                  className="absolute right-4 top-4 z-10 flex h-14 w-14 items-center justify-center rounded-full bg-black/60 backdrop-blur-sm transition hover:bg-black/80 active:scale-95"
-                  aria-label={torchOn ? 'Turn off flashlight' : 'Turn on flashlight'}
-                >
-                  {torchOn ? (
-                    <svg
-                      className="h-7 w-7 text-yellow-300"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M13 10V3L4 14h7v7l9-11h-7z"
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      className="h-7 w-7 text-white"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                      />
-                    </svg>
-                  )}
-                </button>
-              )}
               {/* Helper text below scanner */}
               <div className="pointer-events-none absolute bottom-4 left-0 right-0 z-10 px-6 text-center">
                 <p className="text-sm font-medium text-white drop-shadow-lg">
                   Hold the QR code inside the frame
                 </p>
-                {torchAvailable && (
-                  <p className="mt-1 text-xs text-white/80 drop-shadow-lg">
-                    Use Flash if lighting is poor
-                  </p>
-                )}
               </div>
             </>
           ) : (
