@@ -111,7 +111,96 @@ const venues = [
   },
 ];
 
+const italianUniversities = [
+  {
+    name: 'University of Bologna',
+    city: 'Bologna',
+    emailDomains: ['unibo.it', 'studenti.unibo.it'],
+  },
+  {
+    name: 'Politecnico di Milano',
+    city: 'Milan',
+    emailDomains: ['polimi.it', 'mail.polimi.it'],
+  },
+  {
+    name: 'University of Milan',
+    city: 'Milan',
+    emailDomains: ['unimi.it', 'studenti.unimi.it'],
+  },
+  {
+    name: 'Sapienza University of Rome',
+    city: 'Rome',
+    emailDomains: ['uniroma1.it', 'stud.uniroma1.it'],
+  },
+  {
+    name: 'University of Padua',
+    city: 'Padua',
+    emailDomains: ['unipd.it', 'studenti.unipd.it'],
+  },
+  {
+    name: 'University of Turin',
+    city: 'Turin',
+    emailDomains: ['unito.it', 'studenti.unito.it'],
+  },
+  {
+    name: 'Politecnico di Torino',
+    city: 'Turin',
+    emailDomains: ['polito.it', 'studenti.polito.it'],
+  },
+  {
+    name: 'University of Florence',
+    city: 'Florence',
+    emailDomains: ['unifi.it', 'studenti.unifi.it'],
+  },
+  {
+    name: 'University of Pisa',
+    city: 'Pisa',
+    emailDomains: ['unipi.it', 'studenti.unipi.it'],
+  },
+  {
+    name: 'Bocconi University',
+    city: 'Milan',
+    emailDomains: ['unibocconi.it', 'studbocconi.it'],
+  },
+  {
+    name: "Ca' Foscari University of Venice",
+    city: 'Venice',
+    emailDomains: ['unive.it', 'stud.unive.it'],
+  },
+  {
+    name: 'University of Naples Federico II',
+    city: 'Naples',
+    emailDomains: ['unina.it', 'studenti.unina.it'],
+  },
+  {
+    name: 'Roma Tre University',
+    city: 'Rome',
+    emailDomains: ['uniroma3.it', 'studenti.uniroma3.it'],
+  },
+  {
+    name: 'University of Rome Tor Vergata',
+    city: 'Rome',
+    emailDomains: ['uniroma2.it', 'studenti.uniroma2.it'],
+  },
+];
+
 async function main() {
+  // Seed universities (idempotent)
+  for (const uni of italianUniversities) {
+    await prisma.university.upsert({
+      where: { name: uni.name },
+      update: {
+        city: uni.city,
+        emailDomains: uni.emailDomains,
+      },
+      create: {
+        name: uni.name,
+        city: uni.city,
+        emailDomains: uni.emailDomains,
+      },
+    });
+  }
+
   await prisma.discountUse.deleteMany();
   await prisma.venueView.deleteMany();
   await prisma.partner.deleteMany();

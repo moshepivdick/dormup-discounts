@@ -18,7 +18,6 @@ model Venue {
   openingHours      String?
   openingHoursShort String?
   mapUrl            String?
-  phone             String?
   latitude          Float
   longitude         Float
   imageUrl          String?
@@ -73,4 +72,48 @@ model VenueView {
   createdAt DateTime @default(now())
   userAgent String?
   venue     Venue    @relation(fields: [venueId], references: [id])
+}
+
+model University {
+  id           String   @id @default(uuid())
+  name         String
+  city         String
+  emailDomains String[] @default([])
+  createdAt    DateTime @default(now())
+  profiles     Profile[]
+  requests     UniversityRequest[]
+
+  @@index([emailDomains], type: Gin)
+  @@map("universities")
+}
+
+model Profile {
+  id              String    @id // References auth.users(id)
+  email           String
+  universityId    String
+  verifiedStudent Boolean   @default(false)
+  role            String     @default("user")
+  createdAt       DateTime  @default(now())
+  university      University @relation(fields: [universityId], references: [id], onDelete: Restrict)
+
+  @@unique([email])
+  @@index([universityId])
+  @@map("profiles")
+}
+
+model UniversityRequest {
+  id             String      @id @default(uuid())
+  requestedName  String      @map("requested_name")
+  requestedCity  String?     @map("requested_city")
+  requestedDomains String[]  @default([]) @map("requested_domains")
+  requesterEmail String      @map("requester_email")
+  status         String      @default("pending")
+  notes          String?
+  createdAt      DateTime    @default(now())
+  universityId   String?     @map("university_id")
+  university     University? @relation(fields: [universityId], references: [id])
+
+  @@index([status])
+  @@index([requesterEmail])
+  @@map("university_requests")
 }

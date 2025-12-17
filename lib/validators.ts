@@ -34,3 +34,23 @@ export const partnerMutationSchema = z.object({
   venueId: z.number().int(),
 });
 
+// Student auth schemas
+export const studentSignupSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  universityId: z.string().uuid('Please select a valid university'),
+});
+
+export const studentLoginSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+export const universityRequestSchema = z.object({
+  requestedName: z.string().min(3, 'University name must be at least 3 characters'),
+  requestedCity: z.string().optional(),
+  requestedDomains: z.array(z.string()).optional(),
+  requesterEmail: z.string().email('Please enter a valid email address'),
+  notes: z.string().optional(),
+});
+
