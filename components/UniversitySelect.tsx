@@ -74,7 +74,7 @@ export function UniversitySelect({
         University
       </label>
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
+        <PopoverTrigger>
           <div className="relative">
             <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">
               <svg
