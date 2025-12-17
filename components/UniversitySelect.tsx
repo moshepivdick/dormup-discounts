@@ -143,7 +143,7 @@ export function UniversitySelect({
               )}
             </div>
           </PopoverTrigger>
-        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
           <Command>
             <CommandInput
               placeholder="Search universities..."
