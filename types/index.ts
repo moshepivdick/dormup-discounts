@@ -17,6 +17,7 @@ export type VenueDetails = VenueSummary & {
   details?: string | null;
   openingHours?: string | null;
   mapUrl?: string | null;
+  phone?: string | null;
 };
 
 // Discount codes are now generated client-side, no backend types needed
