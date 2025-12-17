@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import type { ReactNode } from 'react';
 import { MobileNav } from '@/components/navigation/MobileNav';
 import { BrandLogo } from '@/components/BrandLogo';
+import { AccountMenu } from '@/components/AccountMenu';
 import DormUpIcon from '@/components/DormUp_App_icon-removebg-preview.png';
 import type { VenueSummary } from '@/types';
 import { SearchBar } from '@/components/SearchBar';
@@ -76,6 +77,7 @@ export function SiteLayout({ children, searchBarVenues }: Props) {
                 onSelectVenue={emitSelectVenue}
               />
             ) : null}
+            <AccountMenu />
           </nav>
         </div>
       </header>

@@ -27,33 +27,62 @@ const Popover: React.FC<PopoverProps> = ({ open, onOpenChange, children }) => {
   return <>{children}</>;
 };
 
+interface PopoverTriggerProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  asChild?: boolean;
+}
+
 const PopoverTrigger = React.forwardRef<
   HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ className, ...props }, ref) => (
-  <button
-    ref={ref}
-    className={cn('outline-none', className)}
-    data-popover
-    {...props}
-  />
-));
+  PopoverTriggerProps
+>(({ className, asChild, children, ...props }, ref) => {
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children as React.ReactElement, {
+      ref,
+      className: cn('outline-none', className, (children as any).props.className),
+      'data-popover': true,
+      ...props,
+    });
+  }
+  return (
+    <button
+      ref={ref}
+      className={cn('outline-none', className)}
+      data-popover
+      {...props}
+    >
+      {children}
+    </button>
+  );
+});
 PopoverTrigger.displayName = 'PopoverTrigger';
 
-const PopoverContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    data-popover
-    className={cn(
-      'absolute z-50 mt-2 w-full rounded-2xl border border-slate-200 bg-white shadow-lg',
-      className,
-    )}
-    {...props}
-  />
-));
+interface PopoverContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  align?: 'start' | 'center' | 'end';
+}
+
+const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
+  ({ className, align = 'start', ...props }, ref) => {
+    const alignClasses = {
+      start: 'left-0',
+      center: 'left-1/2 -translate-x-1/2',
+      end: 'right-0',
+    };
+
+    return (
+      <div
+        ref={ref}
+        data-popover
+        className={cn(
+          'absolute z-50 mt-2 rounded-2xl border border-slate-200 bg-white shadow-lg',
+          alignClasses[align],
+          className,
+        )}
+        {...props}
+      />
+    );
+  },
+);
 PopoverContent.displayName = 'PopoverContent';
 
 export { Popover, PopoverTrigger, PopoverContent };
