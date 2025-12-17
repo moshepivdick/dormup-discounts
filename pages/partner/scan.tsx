@@ -86,7 +86,7 @@ export default function PartnerScanPage() {
                   // Turn off torch when stopping stream
                   if (track === cameraTrackRef.current && torchOn) {
                     try {
-                      track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+                      track.applyConstraints({ advanced: [{ torch: false } as any] }).catch(() => {});
                     } catch (e) {
                       // Ignore torch errors during cleanup
                     }
@@ -122,7 +122,7 @@ export default function PartnerScanPage() {
             // Turn off torch when stopping stream
             if (track === cameraTrackRef.current && torchOn) {
               try {
-                track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+                track.applyConstraints({ advanced: [{ torch: false } as any] }).catch(() => {});
               } catch (e) {
                 // Ignore torch errors during cleanup
               }
@@ -163,7 +163,7 @@ export default function PartnerScanPage() {
           
           // If torch was on before, restore it (e.g., after resume)
           if (hasTorch && torchOn) {
-            videoTrack.applyConstraints({ advanced: [{ torch: true }] }).catch(() => {
+            videoTrack.applyConstraints({ advanced: [{ torch: true } as any] }).catch(() => {
               // Gracefully handle failure - torch may not be available anymore
               setTorchOn(false);
             });
@@ -208,7 +208,7 @@ export default function PartnerScanPage() {
     try {
       const newTorchState = !torchOn;
       await track.applyConstraints({
-        advanced: [{ torch: newTorchState }],
+        advanced: [{ torch: newTorchState } as any],
       });
       setTorchOn(newTorchState);
     } catch (error) {
