@@ -55,10 +55,13 @@ export default function PartnerScanPage() {
     readerRef.current = reader;
     isScanningActiveRef.current = true;
     
+    // Capture video element at the start of the effect for cleanup
+    const videoElement = videoRef.current;
+    
     reader
       .decodeFromVideoDevice(
         undefined,
-        videoRef.current as HTMLVideoElement,
+        videoElement as HTMLVideoElement,
         async (result, err) => {
           // CRITICAL: Ignore all scan events while scanLocked is true
           // Use ref for synchronous check - state updates are async and could cause race conditions
@@ -110,11 +113,11 @@ export default function PartnerScanPage() {
     return () => {
       // Cleanup: stop scanning when component unmounts or dependencies change
       try {
-        const video = videoRef.current;
-        if (video && video.srcObject) {
-          const stream = video.srcObject as MediaStream;
+        // Use the captured video element from the effect start
+        if (videoElement && videoElement.srcObject) {
+          const stream = videoElement.srcObject as MediaStream;
           stream.getTracks().forEach((track) => track.stop());
-          video.srcObject = null;
+          videoElement.srcObject = null;
         }
       } catch (e) {
         // Ignore cleanup errors

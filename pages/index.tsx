@@ -110,7 +110,7 @@ export default function HomePage({ venues, cities, categories }: HomeProps) {
       if (b.distance == null) return -1;
       return a.distance - b.distance;
     });
-  }, [sortedVenues, selectedCity, selectedCategory]);
+  }, [sortedVenues, selectedCity, selectedCategory, searchQuery]);
 
   const heroWordmark = (
     <span className="inline-flex items-center text-[16px] font-bold tracking-tight text-[#d9ead3] sm:text-[18px]">

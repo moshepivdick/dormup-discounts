@@ -61,7 +61,7 @@ export function PartnerLocationCard({ partner }: PartnerLocationCardProps) {
       },
       { enableHighAccuracy: true, timeout: 10000 },
     );
-  }, [partner.latitude, partner.longitude, partner.address]);
+  }, [partner]);
 
   return (
     <VenueMap
