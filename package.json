@@ -11,7 +11,8 @@
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "ts-node --project tsconfig.seed.json prisma/seed.ts"
+    "prisma:seed": "ts-node --project tsconfig.seed.json prisma/seed.ts",
+    "prisma:seed:universities": "ts-node --project tsconfig.seed.json scripts/seed-universities.ts"
   },
   "keywords": [],
   "author": "",
