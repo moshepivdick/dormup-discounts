@@ -73,58 +73,11 @@ export function UniversitySelect({
       >
         University
       </label>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger>
-          <div className="relative">
-            <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">
-              <svg
-                className="h-5 w-5 text-slate-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                />
-              </svg>
-            </div>
-            <Input
-              ref={inputRef}
-              id="university-select"
-              value={selectedUniversity?.name || ''}
-              readOnly
-              placeholder={loading ? 'Loading universities...' : 'Select your university'}
-              onClick={() => !disabled && setOpen(true)}
-              disabled={disabled || loading}
-              className={cn(
-                'pl-12 pr-10 cursor-pointer',
-                error && 'border-rose-300 focus:border-rose-500 focus:ring-rose-200',
-              )}
-            />
-            {selectedUniversity && !disabled && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChange(undefined);
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            )}
-            {!selectedUniversity && (
-              <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
+      <div className="relative">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger className="w-full">
+            <div className="relative">
+              <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">
                 <svg
                   className="h-5 w-5 text-slate-400"
                   fill="none"
@@ -135,13 +88,61 @@ export function UniversitySelect({
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
                   />
                 </svg>
               </div>
-            )}
-          </div>
-        </PopoverTrigger>
+              <Input
+                ref={inputRef}
+                id="university-select"
+                value={selectedUniversity?.name || ''}
+                readOnly
+                placeholder={loading ? 'Loading universities...' : 'Select your university'}
+                onClick={() => !disabled && setOpen(true)}
+                disabled={disabled || loading}
+                className={cn(
+                  'pl-12 pr-10 cursor-pointer',
+                  error && 'border-rose-300 focus:border-rose-500 focus:ring-rose-200',
+                )}
+              />
+              {selectedUniversity && !disabled && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange(undefined);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
+              {!selectedUniversity && (
+                <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
+                  <svg
+                    className="h-5 w-5 text-slate-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              )}
+            </div>
+          </PopoverTrigger>
         <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
           <Command>
             <CommandInput
