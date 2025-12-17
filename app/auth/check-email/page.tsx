@@ -40,9 +40,11 @@ export default function CheckEmailPage() {
               <li>Wait a few minutes and try again</li>
             </ul>
           </div>
-          <Button asChild variant="outline" className="w-full">
-            <Link href="/auth/login">Back to sign in</Link>
-          </Button>
+          <Link href="/auth/login">
+            <Button variant="outline" className="w-full">
+              Back to sign in
+            </Button>
+          </Link>
         </CardContent>
       </Card>
     </div>
