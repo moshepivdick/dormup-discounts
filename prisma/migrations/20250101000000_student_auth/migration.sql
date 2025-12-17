@@ -1,7 +1,7 @@
 -- Create universities table
 CREATE TABLE IF NOT EXISTS universities (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
+  name TEXT NOT NULL UNIQUE,
   city TEXT NOT NULL,
   email_domains TEXT[] NOT NULL DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
