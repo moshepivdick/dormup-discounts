@@ -9,6 +9,7 @@ export default function PartnerScanPage() {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [manualCode, setManualCode] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -31,6 +32,18 @@ export default function PartnerScanPage() {
   
   // Track if scanning is currently active (camera stream running)
   const isScanningActiveRef = useRef(false);
+
+  // Initialize audio for confirmation sound
+  useEffect(() => {
+    audioRef.current = new Audio('/dormup_scan_confirm.wav');
+    audioRef.current.volume = 0.8; // Set volume to 80% for pleasant playback
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     // Only start scanning if not locked
@@ -137,6 +150,15 @@ export default function PartnerScanPage() {
         // Show QR confirmation modal instead of auto-redirect
         if (isQRCode) {
           setShowQRConfirmation(true);
+          // Play confirmation sound for successful QR scan
+          if (audioRef.current) {
+            // Reset audio to beginning in case it was already played
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch((err) => {
+              // Silently handle autoplay restrictions or other errors
+              console.debug('Could not play confirmation sound:', err);
+            });
+          }
         }
       } else {
         setStatus('error');
