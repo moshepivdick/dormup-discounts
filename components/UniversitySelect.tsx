@@ -164,8 +164,12 @@ export function UniversitySelect({
                     <CommandItem
                       key={university.id}
                       selected={value === university.id}
-                      onSelect={() => {
-                        onChange(university.id);
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const universityId = String(university.id);
+                        console.log('University selected:', universityId, university.name);
+                        onChange(universityId);
                         setOpen(false);
                         setSearch('');
                       }}
