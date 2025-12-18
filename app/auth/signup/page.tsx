@@ -30,23 +30,39 @@ export default function SignupPage() {
     setError(null);
     setLoading(true);
 
-    const formDataObj = new FormData();
-    formDataObj.append('email', formData.email);
-    formDataObj.append('password', formData.password);
-    formDataObj.append('universityId', formData.universityId);
+    try {
+      const formDataObj = new FormData();
+      formDataObj.append('email', formData.email);
+      formDataObj.append('password', formData.password);
+      formDataObj.append('universityId', formData.universityId);
 
-    const result = await signup(formDataObj);
+      console.log('[SIGNUP PAGE] Submitting form', { email: formData.email, universityId: formData.universityId });
+      const result = await signup(formDataObj);
+      console.log('[SIGNUP PAGE] Signup result', { success: result.success, error: result.error, requiresEmailConfirmation: result.requiresEmailConfirmation });
 
-    if (result.error) {
-      if (result.code === 'DOMAIN_NOT_SUPPORTED') {
+      if (result.error) {
+        console.error('[SIGNUP PAGE] Signup failed', result.error);
         setError(result.error);
-      } else {
-        setError(result.error);
+        return;
       }
-    } else {
-      router.push('/auth/check-email');
+
+      if (result.success) {
+        if (result.requiresEmailConfirmation) {
+          // Show success message and redirect to check-email page
+          console.log('[SIGNUP PAGE] Email confirmation required, redirecting to check-email');
+          router.push('/auth/check-email');
+        } else {
+          // User is immediately authenticated
+          console.log('[SIGNUP PAGE] User authenticated, redirecting to home');
+          router.push('/');
+        }
+      }
+    } catch (error: any) {
+      console.error('[SIGNUP PAGE] Unexpected error', error);
+      setError(error.message || 'An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleRequestSuccess = () => {
