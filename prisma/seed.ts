@@ -66,7 +66,6 @@ const venues = [
     details: 'Present your DormUp code before ordering. Address: incrocio, Viale Vespucci, Viale Trieste, 63, 47921 Rimini RN.',
     openingHoursShort: 'Every day · 12:00–23:30',
     mapUrl: 'https://maps.app.goo.gl/DDAUAfgQhZxwKajm8',
-    phone: '0541 21528',
     latitude: 44.0680992,
     longitude: 12.5802418,
     imageUrl:
@@ -250,18 +249,27 @@ const italianUniversities = [
 async function main() {
   // Seed universities (idempotent)
   for (const uni of italianUniversities) {
-    await prisma.university.upsert({
+    const existing = await prisma.university.findUnique({
       where: { name: uni.name },
-      update: {
-        city: uni.city,
-        emailDomains: uni.emailDomains,
-      },
-      create: {
-        name: uni.name,
-        city: uni.city,
-        emailDomains: uni.emailDomains,
-      },
     });
+
+    if (existing) {
+      await prisma.university.update({
+        where: { name: uni.name },
+        data: {
+          city: uni.city,
+          emailDomains: uni.emailDomains,
+        },
+      });
+    } else {
+      await prisma.university.create({
+        data: {
+          name: uni.name,
+          city: uni.city,
+          emailDomains: uni.emailDomains,
+        },
+      });
+    }
   }
 
   await prisma.discountUse.deleteMany();
