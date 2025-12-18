@@ -78,6 +78,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
           alignClasses[align],
           className,
         )}
+        onClick={(e) => e.stopPropagation()}
         {...props}
       />
     );

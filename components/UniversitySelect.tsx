@@ -75,7 +75,16 @@ export function UniversitySelect({
       </label>
       <div className="relative">
         <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger className="w-full">
+          <PopoverTrigger
+            type="button"
+            className="w-full"
+            onClick={(e) => {
+              e.preventDefault();
+              if (!disabled && !loading) {
+                setOpen(!open);
+              }
+            }}
+          >
             <div className="relative">
               <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">
                 <svg
@@ -98,10 +107,9 @@ export function UniversitySelect({
                 value={selectedUniversity?.name || ''}
                 readOnly
                 placeholder={loading ? 'Loading universities...' : 'Select your university'}
-                onClick={() => !disabled && setOpen(true)}
                 disabled={disabled || loading}
                 className={cn(
-                  'pl-12 pr-10 cursor-pointer',
+                  'pl-12 pr-10 cursor-pointer pointer-events-none',
                   error && 'border-rose-300 focus:border-rose-500 focus:ring-rose-200',
                 )}
               />
@@ -109,10 +117,12 @@ export function UniversitySelect({
                 <button
                   type="button"
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     onChange(undefined);
+                    setOpen(false);
                   }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 z-10"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path
@@ -143,7 +153,8 @@ export function UniversitySelect({
               )}
             </div>
           </PopoverTrigger>
-          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+          {open && (
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
             <Command>
             <CommandInput
               placeholder="Search universities..."
@@ -168,7 +179,6 @@ export function UniversitySelect({
                         e.preventDefault();
                         e.stopPropagation();
                         const universityId = String(university.id);
-                        console.log('University selected:', universityId, university.name);
                         onChange(universityId);
                         setOpen(false);
                         setSearch('');
@@ -189,7 +199,8 @@ export function UniversitySelect({
               )}
             </CommandList>
             </Command>
-          </PopoverContent>
+            </PopoverContent>
+          )}
         </Popover>
       </div>
       {error && <p className="text-sm text-rose-600">{error}</p>}
