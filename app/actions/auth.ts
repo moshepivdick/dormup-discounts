@@ -62,35 +62,44 @@ export async function signup(formData: FormData) {
 
     // Create user in Supabase Auth
     const supabase = await createClient();
+    
+    // Build redirect URL
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const emailRedirectTo = `${appUrl}/auth/callback`;
+    
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
+        emailRedirectTo,
       },
     });
 
     if (authError) {
+      console.error('Supabase signup error:', authError);
+      
       // Handle specific email sending errors
-      if (authError.message.includes('email') || authError.message.includes('Email')) {
+      if (authError.message.toLowerCase().includes('email') || 
+          authError.message.toLowerCase().includes('sending') ||
+          authError.message.toLowerCase().includes('confirmation')) {
         return { 
-          error: `Email error: ${authError.message}. Please check your email address or contact support if the problem persists.`
+          error: `Email configuration error: ${authError.message}. Please check SMTP settings in Supabase Dashboard. See SUPABASE_SMTP_SETUP_COMPLETE.md for setup instructions.`
         };
       }
+      
+      // Handle other errors
       return { error: authError.message };
     }
 
     if (!authData.user) {
-      return { error: 'Failed to create user' };
+      console.error('No user created in Supabase');
+      return { error: 'Failed to create user. Please try again.' };
     }
 
-    // Check if email was sent successfully
-    // Note: Even if email fails, user is created, but we should warn about it
-    if (authData.user && !authData.user.email_confirmed_at) {
-      // User created but email might not have been sent
-      // This is okay for development, but we'll proceed anyway
-      console.log('User created, email confirmation pending');
-    }
+    // User created successfully
+    // Note: Even if email sending fails, the user is still created
+    // We proceed with profile creation anyway
+    console.log('User created successfully:', authData.user.id);
 
     // Create profile using Supabase service role client (bypasses RLS)
     const serviceSupabase = createServiceRoleClient();
