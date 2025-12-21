@@ -26,13 +26,18 @@ export async function signup(formData: FormData) {
   const { email, password, universityId } = parsed.data;
 
   try {
+    // Validate universityId is provided
+    if (!universityId || universityId.trim() === '') {
+      return { error: 'Please select a university' };
+    }
+
     // Verify university exists
     const university = await prisma.university.findUnique({
       where: { id: universityId },
     });
 
     if (!university) {
-      return { error: 'Invalid university selected' };
+      return { error: 'Invalid university selected. Please refresh the page and try again.' };
     }
 
     // Check email domain matches university
@@ -73,24 +78,79 @@ export async function signup(formData: FormData) {
       return { error: 'Failed to create user' };
     }
 
-    // Create profile using service role (bypasses RLS)
+    // Create profile using Supabase service role client (bypasses RLS)
     const serviceSupabase = createServiceRoleClient();
     try {
-      await prisma.profile.create({
-        data: {
+      // First try to create via Supabase (bypasses RLS)
+      const { error: supabaseError } = await serviceSupabase
+        .from('profiles')
+        .insert({
           id: authData.user.id,
           email: email.toLowerCase(),
-          universityId,
-          verifiedStudent: false, // Will be set to true after email confirmation
+          university_id: universityId,
+          verified_student: false,
           role: 'user',
-        },
-      });
+        });
+
+      if (supabaseError) {
+        // If Supabase insert fails, try Prisma as fallback
+        console.warn('Supabase insert failed, trying Prisma:', supabaseError);
+        
+        // Check if profile already exists
+        const existing = await prisma.profile.findUnique({
+          where: { id: authData.user.id },
+        });
+        
+        if (existing) {
+          // Profile already exists, update it
+          await prisma.profile.update({
+            where: { id: authData.user.id },
+            data: {
+              email: email.toLowerCase(),
+              universityId,
+            },
+          });
+        } else {
+          // Try to create via Prisma (might fail due to RLS, but worth trying)
+          await prisma.profile.create({
+            data: {
+              id: authData.user.id,
+              email: email.toLowerCase(),
+              universityId,
+              verifiedStudent: false,
+              role: 'user',
+            },
+          });
+        }
+      }
     } catch (profileError: any) {
+      console.error('Profile creation error:', profileError);
+      console.error('Error details:', {
+        code: profileError.code,
+        message: profileError.message,
+        meta: profileError.meta,
+      });
+      
       // If profile creation fails, try to clean up auth user
       if (authData.user) {
-        await serviceSupabase.auth.admin.deleteUser(authData.user.id);
+        try {
+          await serviceSupabase.auth.admin.deleteUser(authData.user.id);
+        } catch (deleteError) {
+          console.error('Failed to delete auth user:', deleteError);
+        }
       }
-      return { error: 'Failed to create profile. Please try again.' };
+      
+      // Provide more specific error message
+      if (profileError.code === 'P2002' || profileError.message?.includes('unique constraint')) {
+        return { error: 'This email is already registered. Please sign in instead.' };
+      }
+      if (profileError.code === 'P2003' || profileError.message?.includes('foreign key')) {
+        return { error: 'Invalid university selected. Please refresh the page and try again.' };
+      }
+      
+      return { 
+        error: `Failed to create profile. ${profileError.message || 'Please try again or contact support.'}` 
+      };
     }
 
     // Success - redirect happens via Next.js

@@ -25,16 +25,21 @@ export function UniversitySelect({ value, onValueChange, disabled }: UniversityS
   const [open, setOpen] = useState(false);
   const [universities, setUniversities] = useState<University[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadUniversities() {
       try {
+        setError(null);
         const result = await getUniversities();
         if (result.success && result.data) {
           setUniversities(result.data);
+        } else {
+          setError('Failed to load universities');
         }
       } catch (error) {
         console.error('Failed to load universities:', error);
+        setError('Failed to load universities. Please refresh the page.');
       } finally {
         setLoading(false);
       }
@@ -80,6 +85,14 @@ export function UniversitySelect({ value, onValueChange, disabled }: UniversityS
             {loading ? (
               <div className="flex items-center justify-center p-8">
                 <Loader size="sm" />
+              </div>
+            ) : error ? (
+              <div className="p-4 text-center text-sm text-rose-600">
+                {error}
+              </div>
+            ) : universities.length === 0 ? (
+              <div className="p-4 text-center text-sm text-slate-500">
+                No universities available. Please contact support.
               </div>
             ) : (
               <>

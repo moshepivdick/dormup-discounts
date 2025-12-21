@@ -27,20 +27,46 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
+    
+    // Validate form before submission
+    if (!formData.universityId || formData.universityId.trim() === '') {
+      setError('Please select a university');
+      return;
+    }
+    
+    if (!formData.email || !formData.email.includes('@')) {
+      setError('Please enter a valid email address');
+      return;
+    }
+    
+    if (!formData.password || formData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
+    
     setLoading(true);
 
     const formDataObj = new FormData();
-    formDataObj.append('email', formData.email);
+    formDataObj.append('email', formData.email.trim());
     formDataObj.append('password', formData.password);
-    formDataObj.append('universityId', formData.universityId);
+    formDataObj.append('universityId', formData.universityId.trim());
 
-    const result = await signup(formDataObj);
+    try {
+      const result = await signup(formDataObj);
 
-    if (result?.error) {
-      setError(result.error);
+      if (result?.error) {
+        setError(result.error);
+        setLoading(false);
+      } else if (result?.success) {
+        router.push('/auth/check-email');
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('Signup error:', err);
+      setError('Failed to create account. Please try again.');
       setLoading(false);
-    } else if (result?.success) {
-      router.push('/auth/check-email');
     }
   };
 
@@ -91,13 +117,21 @@ export default function SignupPage() {
 
             <div>
               <label htmlFor="university" className="block text-sm font-medium text-slate-700 mb-2">
-                University
+                University <span className="text-rose-500">*</span>
               </label>
               <UniversitySelect
                 value={formData.universityId}
-                onValueChange={(value) => setFormData({ ...formData, universityId: value })}
+                onValueChange={(value) => {
+                  setFormData({ ...formData, universityId: value });
+                  setError(null); // Clear error when university is selected
+                }}
                 disabled={loading}
               />
+              {!formData.universityId && (
+                <p className="mt-1 text-xs text-rose-500">
+                  Please select your university
+                </p>
+              )}
               <div className="mt-2 text-xs text-slate-500">
                 Don&apos;t see your university?{' '}
                 <button
