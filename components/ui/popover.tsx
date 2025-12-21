@@ -78,8 +78,10 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
     }, [ref]);
 
     React.useEffect(() => {
+      if (!context.open) return;
+
       const handleClickOutside = (e: MouseEvent) => {
-        if (context.open && contentRef.current) {
+        if (contentRef.current) {
           if (!contentRef.current.contains(e.target as Node)) {
             const target = e.target as HTMLElement;
             if (!target.closest('[data-popover-trigger]')) {
@@ -89,11 +91,9 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
         }
       };
 
-      if (context.open) {
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-      }
-    }, [context.open, context.setOpen]);
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [context.open, context]);
 
     if (!context.open) return null;
 

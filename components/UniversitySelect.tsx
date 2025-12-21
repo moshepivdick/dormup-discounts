@@ -88,7 +88,7 @@ export function UniversitySelect({ value, onValueChange, disabled }: UniversityS
                   {universities.map((university) => (
                     <CommandItem
                       key={university.id}
-                      value={university.name}
+                      selected={value === university.id}
                       onSelect={() => {
                         onValueChange(university.id);
                         setOpen(false);
