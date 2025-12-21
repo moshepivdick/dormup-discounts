@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { login } from '@/app/actions/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ import { Loader } from '@/components/ui/loader';
 import Link from 'next/link';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -29,11 +31,12 @@ export default function LoginPage() {
 
     const result = await login(formDataObj);
 
-    if (result.error) {
+    if (result?.error) {
       setError(result.error);
       setLoading(false);
+    } else if (result?.success) {
+      router.push('/');
     }
-    // On success, login action redirects
   };
 
   return (
