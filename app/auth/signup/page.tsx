@@ -170,7 +170,23 @@ export default function SignupPage() {
 
             {error && (
               <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>
+                  {error}
+                  {error.includes('email') && (
+                    <div className="mt-2 text-xs">
+                      <p className="font-semibold">Возможные решения:</p>
+                      <ul className="mt-1 list-disc list-inside space-y-1">
+                        <li>Проверьте правильность email адреса</li>
+                        <li>Проверьте папку спам</li>
+                        <li>Настройте SMTP в Supabase Dashboard</li>
+                        <li>Или временно отключите подтверждение email для разработки</li>
+                      </ul>
+                      <p className="mt-2 text-xs text-slate-600">
+                        См. инструкцию в файле FIX_EMAIL_ERROR.md
+                      </p>
+                    </div>
+                  )}
+                </AlertDescription>
               </Alert>
             )}
 

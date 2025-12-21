@@ -71,11 +71,25 @@ export async function signup(formData: FormData) {
     });
 
     if (authError) {
+      // Handle specific email sending errors
+      if (authError.message.includes('email') || authError.message.includes('Email')) {
+        return { 
+          error: `Email error: ${authError.message}. Please check your email address or contact support if the problem persists.`
+        };
+      }
       return { error: authError.message };
     }
 
     if (!authData.user) {
       return { error: 'Failed to create user' };
+    }
+
+    // Check if email was sent successfully
+    // Note: Even if email fails, user is created, but we should warn about it
+    if (authData.user && !authData.user.email_confirmed_at) {
+      // User created but email might not have been sent
+      // This is okay for development, but we'll proceed anyway
+      console.log('User created, email confirmation pending');
     }
 
     // Create profile using Supabase service role client (bypasses RLS)
