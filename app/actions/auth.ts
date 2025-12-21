@@ -81,37 +81,23 @@ export async function signup(formData: FormData) {
     // Create profile using Supabase service role client (bypasses RLS)
     const serviceSupabase = createServiceRoleClient();
     try {
-      // First try to create via Supabase (bypasses RLS)
+      // First, try to create via Supabase service role (bypasses RLS completely)
       const { error: supabaseError } = await serviceSupabase
         .from('profiles')
         .insert({
           id: authData.user.id,
           email: email.toLowerCase(),
-          university_id: universityId,
+          university_id: universityId, // snake_case for Supabase
           verified_student: false,
           role: 'user',
         });
 
       if (supabaseError) {
-        // If Supabase insert fails, try Prisma as fallback
-        console.warn('Supabase insert failed, trying Prisma:', supabaseError);
+        console.error('Supabase profile creation error:', supabaseError);
         
-        // Check if profile already exists
-        const existing = await prisma.profile.findUnique({
-          where: { id: authData.user.id },
-        });
-        
-        if (existing) {
-          // Profile already exists, update it
-          await prisma.profile.update({
-            where: { id: authData.user.id },
-            data: {
-              email: email.toLowerCase(),
-              universityId,
-            },
-          });
-        } else {
-          // Try to create via Prisma (might fail due to RLS, but worth trying)
+        // If Supabase fails, try Prisma as fallback
+        // Prisma uses DIRECT_URL which might bypass RLS depending on connection
+        try {
           await prisma.profile.create({
             data: {
               id: authData.user.id,
@@ -121,6 +107,9 @@ export async function signup(formData: FormData) {
               role: 'user',
             },
           });
+        } catch (prismaError: any) {
+          // If both fail, throw the original Supabase error
+          throw supabaseError;
         }
       }
     } catch (profileError: any) {
