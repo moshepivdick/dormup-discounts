@@ -73,7 +73,7 @@ export function UniversitySelect({ value, onValueChange, disabled }: UniversityS
           </svg>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent className="p-0" align="start">
         <Command>
           <CommandInput placeholder="Search university..." />
           <CommandList>
@@ -89,7 +89,9 @@ export function UniversitySelect({ value, onValueChange, disabled }: UniversityS
                     <CommandItem
                       key={university.id}
                       selected={value === university.id}
-                      onSelect={() => {
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         onValueChange(university.id);
                         setOpen(false);
                       }}

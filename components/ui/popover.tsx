@@ -80,6 +80,12 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
     React.useEffect(() => {
       if (!context.open) return;
 
+      // Find trigger element
+      const trigger = document.querySelector('[data-popover-trigger]') as HTMLElement;
+      if (trigger) {
+        triggerRef.current = trigger;
+      }
+
       const handleClickOutside = (e: MouseEvent) => {
         if (contentRef.current) {
           if (!contentRef.current.contains(e.target as Node)) {
@@ -91,9 +97,38 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
         }
       };
 
+      // Position content relative to trigger
+      const updatePosition = () => {
+        if (contentRef.current && triggerRef.current) {
+          const triggerRect = triggerRef.current.getBoundingClientRect();
+          const content = contentRef.current;
+          
+          content.style.position = 'fixed';
+          content.style.top = `${triggerRect.bottom + sideOffset}px`;
+          content.style.width = `${triggerRect.width}px`;
+          
+          if (align === 'start') {
+            content.style.left = `${triggerRect.left}px`;
+          } else if (align === 'end') {
+            content.style.left = `${triggerRect.right - content.offsetWidth}px`;
+          } else {
+            content.style.left = `${triggerRect.left + (triggerRect.width - content.offsetWidth) / 2}px`;
+          }
+        }
+      };
+
+      // Update position on mount and resize
+      updatePosition();
+      window.addEventListener('resize', updatePosition);
+      window.addEventListener('scroll', updatePosition, true);
+
       document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [context.open, context]);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        window.removeEventListener('resize', updatePosition);
+        window.removeEventListener('scroll', updatePosition, true);
+      };
+    }, [context.open, context, sideOffset, align]);
 
     if (!context.open) return null;
 
@@ -101,10 +136,10 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
       <div
         ref={contentRef}
         className={cn(
-          'absolute z-50 w-72 rounded-2xl border border-slate-200 bg-white p-1 text-slate-950 shadow-md outline-none',
+          'z-50 rounded-2xl border border-slate-200 bg-white p-1 text-slate-950 shadow-md outline-none',
           className,
         )}
-        style={{ marginTop: `${sideOffset}px` }}
+        onClick={(e) => e.stopPropagation()}
         {...props}
       >
         {children}
