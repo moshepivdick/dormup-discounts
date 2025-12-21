@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { generateDiscountCode, generateSlug } from '@/utils/random';
 import { apiResponse, withMethods } from '@/lib/api';
 import { DISCOUNT_CODE_TTL_MS } from '@/lib/discount-constants';
+import { auth } from '@/lib/auth';
 
 const MAX_ATTEMPTS = 5;
 
@@ -34,6 +35,9 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
       });
     }
     const { venueId } = parsed.data;
+
+    // Get current user (optional - can be null for anonymous users)
+    const currentUser = await auth.getUserFromRequest(req);
 
     const venue = await prisma.venue.findUnique({ where: { id: Number(venueId) } });
     if (!venue || !venue.isActive) {
@@ -68,6 +72,7 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
         discountUse = await prisma.discountUse.create({
           data: {
             venueId: venue.id,
+            userId: currentUser?.id || null,
             generatedCode: code,
             qrSlug: generateSlug(12),
             status: 'generated',

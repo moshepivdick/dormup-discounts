@@ -62,3 +62,5 @@ This opens a GUI to view and edit your database.
 ## Why Manual Migration?
 Supabase uses a separate `auth` schema that Prisma can't easily manage with migrations. Running the SQL manually is the most reliable approach for Supabase projects.
 
+
+

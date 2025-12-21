@@ -99,3 +99,5 @@ npx prisma migrate deploy
 2. Make sure your Supabase project is active
 3. Verify network connectivity
 
+
+

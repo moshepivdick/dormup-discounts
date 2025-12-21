@@ -233,3 +233,5 @@ For issues, check:
 - Next.js logs: Terminal output
 - Prisma logs: `npx prisma studio` to inspect database
 
+
+

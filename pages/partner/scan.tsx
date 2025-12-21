@@ -35,7 +35,7 @@ export default function PartnerScanPage() {
 
   // Initialize audio for confirmation sound
   useEffect(() => {
-    audioRef.current = new Audio('/dormup_scan_confirm.wav');
+    audioRef.current = new Audio('/bell-ring-390294.mp3');
     audioRef.current.volume = 0.8; // Set volume to 80% for pleasant playback
     return () => {
       if (audioRef.current) {
