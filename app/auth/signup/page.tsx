@@ -17,6 +17,7 @@ export default function SignupPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -99,14 +100,18 @@ export default function SignupPage() {
               />
               <div className="mt-2 text-xs text-slate-500">
                 Don&apos;t see your university?{' '}
-                <UniversityRequestDialog>
-                  <button
-                    type="button"
-                    className="font-medium text-[#014D40] hover:underline"
-                  >
-                    Request it
-                  </button>
-                </UniversityRequestDialog>
+                <button
+                  type="button"
+                  onClick={() => setRequestDialogOpen(true)}
+                  className="font-medium text-[#014D40] hover:underline"
+                >
+                  Request it
+                </button>
+                <UniversityRequestDialog
+                  open={requestDialogOpen}
+                  onOpenChange={setRequestDialogOpen}
+                  prefilledEmail={formData.email}
+                />
               </div>
             </div>
 
