@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { login } from '@/app/actions/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,12 +13,29 @@ import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
+
+  useEffect(() => {
+    const verified = searchParams.get('verified');
+    const errorParam = searchParams.get('error');
+    
+    if (verified === 'true') {
+      setSuccess('Email verified successfully! You can now sign in.');
+    } else if (errorParam === 'invalid_token') {
+      setError('Invalid verification token.');
+    } else if (errorParam === 'expired_token') {
+      setError('Verification token has expired. Please request a new one.');
+    } else if (errorParam === 'verification_failed') {
+      setError('Verification failed. Please try again or contact support.');
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -98,6 +115,12 @@ export default function LoginPage() {
                 disabled={loading}
               />
             </div>
+
+            {success && (
+              <Alert>
+                <AlertDescription className="text-emerald-700">{success}</AlertDescription>
+              </Alert>
+            )}
 
             {error && (
               <Alert variant="destructive">

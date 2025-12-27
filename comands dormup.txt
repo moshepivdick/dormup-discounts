@@ -15,7 +15,7 @@ postgresql://postgres.fddskrgoaqiumtrqrtsj:BWVztaoSuVuaJQuB@aws-1-eu-west-1.pool
 postgresql://postgres.fddskrgoaqiumtrqrtsj:BWVztaoSuVuaJQuB@aws-1-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true
 
 
-
+ADMIN
 Email: admin@dormup.it
 Password: admin123
 
@@ -23,3 +23,13 @@ Email: demo@partner.com
 Password: dormup2024
 
 https://dormup-discounts.vercel.app/admin/login
+
+
+
+
+re_P7KQX53U_CFujQc9XqXcmSpvthFPFCc2K
+
+
+
+
+re_QnSLfmfi_681f6qSz5qV2im5jrRo4sZXQ

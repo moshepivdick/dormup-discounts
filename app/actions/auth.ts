@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
 import { studentSignupSchema, studentLoginSchema } from '@/lib/validators';
+import { sendVerificationEmail } from '@/lib/resend';
+import { createVerificationToken } from '@/lib/email-verification';
 
 /**
  * Sign up a new student user
@@ -60,34 +62,20 @@ export async function signup(formData: FormData) {
       };
     }
 
-    // Create user in Supabase Auth
+    // Create user in Supabase Auth (without email confirmation)
     const supabase = await createClient();
-    
-    // Build redirect URL
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const emailRedirectTo = `${appUrl}/auth/callback`;
     
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo,
+        // Don't use emailRedirectTo - we handle email ourselves via Resend
+        emailRedirectTo: undefined,
       },
     });
 
     if (authError) {
       console.error('Supabase signup error:', authError);
-      
-      // Handle specific email sending errors
-      if (authError.message.toLowerCase().includes('email') || 
-          authError.message.toLowerCase().includes('sending') ||
-          authError.message.toLowerCase().includes('confirmation')) {
-        return { 
-          error: `Email configuration error: ${authError.message}. Please check SMTP settings in Supabase Dashboard. See SUPABASE_SMTP_SETUP_COMPLETE.md for setup instructions.`
-        };
-      }
-      
-      // Handle other errors
       return { error: authError.message };
     }
 
@@ -96,9 +84,6 @@ export async function signup(formData: FormData) {
       return { error: 'Failed to create user. Please try again.' };
     }
 
-    // User created successfully
-    // Note: Even if email sending fails, the user is still created
-    // We proceed with profile creation anyway
     console.log('User created successfully:', authData.user.id);
 
     // Create profile using Supabase service role client (bypasses RLS)
@@ -163,6 +148,28 @@ export async function signup(formData: FormData) {
       return { 
         error: `Failed to create profile. ${profileError.message || 'Please try again or contact support.'}` 
       };
+    }
+
+    // Create email verification token and send email via Resend
+    try {
+      const verificationToken = await createVerificationToken(authData.user.id);
+      
+      const emailResult = await sendVerificationEmail({
+        to: email.toLowerCase(),
+        token: verificationToken,
+        name: email.split('@')[0], // Use part before @ as name
+      });
+
+      if (!emailResult.success) {
+        console.error('Failed to send verification email:', emailResult.error);
+        // Don't fail registration if email fails - user can request resend later
+        // But log it for monitoring
+      } else {
+        console.log('Verification email sent successfully');
+      }
+    } catch (emailError: any) {
+      console.error('Error sending verification email:', emailError);
+      // Don't fail registration if email fails - user can request resend later
     }
 
     // Success - redirect happens via Next.js

@@ -99,17 +99,18 @@ model University {
 }
 
 model Profile {
-  id              String        @id // References auth.users(id)
+  id              String                @id // References auth.users(id)
   email           String
   universityId    String
-  verifiedStudent Boolean       @default(false)
-  role            String        @default("user")
-  createdAt       DateTime      @default(now())
-  lastActivityAt  DateTime?     @map("last_activity_at")
-  university      University    @relation(fields: [universityId], references: [id], onDelete: Restrict)
+  verifiedStudent Boolean               @default(false)
+  role            String                @default("user")
+  createdAt       DateTime              @default(now())
+  lastActivityAt  DateTime?             @map("last_activity_at")
+  university      University            @relation(fields: [universityId], references: [id], onDelete: Restrict)
   discountUses    DiscountUse[]
   venueViews      VenueView[]
   stats           UserStats?
+  emailVerificationToken EmailVerificationToken?
 
   @@unique([email])
   @@index([universityId])
@@ -146,4 +147,17 @@ model UserStats {
   user                   Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_stats")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([expiresAt])
+  @@map("email_verification_tokens")
 }
