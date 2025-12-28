@@ -23,6 +23,8 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
+    if (!searchParams) return;
+    
     const verified = searchParams.get('verified');
     const errorParam = searchParams.get('error');
     
