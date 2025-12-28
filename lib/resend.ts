@@ -25,60 +25,60 @@ export async function sendVerificationEmail({ to, token, name }: SendVerificatio
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Подтвердите ваш email</title>
+        <title>Verify your email</title>
       </head>
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background-color: #014D40; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
           <h1 style="color: white; margin: 0; font-size: 28px;">DormUp</h1>
         </div>
         <div style="background-color: #f9fafb; padding: 40px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
-          <h2 style="color: #1f2937; margin-top: 0;">Подтвердите ваш email адрес</h2>
+          <h2 style="color: #1f2937; margin-top: 0;">Verify your email address</h2>
           <p style="color: #4b5563; font-size: 16px;">
-            ${name ? `Привет, ${name}!` : 'Привет!'}
+            ${name ? `Hi ${name},` : 'Hi there,'}
           </p>
           <p style="color: #4b5563; font-size: 16px;">
-            Спасибо за регистрацию в DormUp! Пожалуйста, подтвердите ваш email адрес, нажав на кнопку ниже:
+            Thanks for signing up for DormUp! Please verify your email address by clicking the button below:
           </p>
           <div style="text-align: center; margin: 30px 0;">
             <a href="${verificationUrl}" 
                style="display: inline-block; background-color: #014D40; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
-              Подтвердить email
+              Verify Email Address
             </a>
           </div>
           <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
-            Или скопируйте и вставьте эту ссылку в браузер:
+            Or copy and paste this link into your browser:
           </p>
           <p style="color: #014D40; font-size: 14px; word-break: break-all; background-color: #f3f4f6; padding: 10px; border-radius: 4px;">
             ${verificationUrl}
           </p>
           <p style="color: #6b7280; font-size: 14px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-            Эта ссылка действительна в течение 24 часов. Если вы не создавали аккаунт, просто проигнорируйте это письмо.
+            This link will expire in 24 hours. If you didn't create an account, you can safely ignore this email.
           </p>
         </div>
         <div style="text-align: center; margin-top: 20px; color: #9ca3af; font-size: 12px;">
-          <p>© ${new Date().getFullYear()} DormUp. Все права защищены.</p>
+          <p>© ${new Date().getFullYear()} DormUp. All rights reserved.</p>
         </div>
       </body>
     </html>
   `;
 
   const emailText = `
-Привет${name ? `, ${name}` : ''}!
+Hi${name ? ` ${name}` : ''},
 
-Спасибо за регистрацию в DormUp! Пожалуйста, подтвердите ваш email адрес, перейдя по ссылке ниже:
+Thanks for signing up for DormUp! Please verify your email address by clicking the link below:
 
 ${verificationUrl}
 
-Эта ссылка действительна в течение 24 часов. Если вы не создавали аккаунт, просто проигнорируйте это письмо.
+This link will expire in 24 hours. If you didn't create an account, you can safely ignore this email.
 
-© ${new Date().getFullYear()} DormUp. Все права защищены.
+© ${new Date().getFullYear()} DormUp. All rights reserved.
   `.trim();
 
   try {
     const result = await resend.emails.send({
       from: `${FROM_NAME} <${FROM_EMAIL}>`,
       to: [to],
-      subject: 'Подтвердите ваш email адрес DormUp',
+      subject: 'Verify your DormUp email address',
       html: emailHtml,
       text: emailText,
     });
