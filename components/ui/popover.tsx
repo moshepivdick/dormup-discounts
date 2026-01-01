@@ -97,7 +97,7 @@ interface PopoverContentProps extends React.HTMLAttributes<HTMLDivElement> {
 const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
   ({ className, align = 'center', sideOffset = 4, children, ...props }, ref) => {
     const { open, onOpenChange } = React.useContext(PopoverContext);
-    const [position, setPosition] = React.useState<{ top: number; left: number } | null>(null);
+    const [position, setPosition] = React.useState<{ top: number; left: number; width?: number } | null>(null);
     const contentRef = React.useRef<HTMLDivElement>(null);
     const triggerRef = React.useRef<HTMLElement | null>(null);
 
@@ -105,15 +105,20 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
 
     React.useEffect(() => {
       if (open) {
-        const trigger = document.querySelector('[data-popover-trigger]') as HTMLElement;
-        if (trigger) {
-          triggerRef.current = trigger;
-          const rect = trigger.getBoundingClientRect();
-          setPosition({
-            top: rect.bottom + sideOffset + window.scrollY,
-            left: rect.left + window.scrollX,
-          });
-        }
+        // Use a small delay to ensure the trigger is rendered
+        const timer = setTimeout(() => {
+          const trigger = document.querySelector('[data-popover-trigger]') as HTMLElement;
+          if (trigger) {
+            triggerRef.current = trigger;
+            const rect = trigger.getBoundingClientRect();
+            const width = rect.width;
+            setPosition({
+              top: rect.bottom + sideOffset + window.scrollY,
+              left: rect.left + window.scrollX,
+              width,
+            });
+          }
+        }, 0);
 
         const handleClickOutside = (event: MouseEvent) => {
           const target = event.target as HTMLElement;
@@ -126,9 +131,20 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
             onOpenChange(false);
           }
         };
+        
+        const handleEscape = (event: KeyboardEvent) => {
+          if (event.key === 'Escape') {
+            onOpenChange(false);
+          }
+        };
+
         document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleEscape);
+        
         return () => {
+          clearTimeout(timer);
           document.removeEventListener('mousedown', handleClickOutside);
+          document.removeEventListener('keydown', handleEscape);
         };
       } else {
         setPosition(null);
@@ -148,6 +164,8 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
         style={{
           top: `${position.top}px`,
           left: `${position.left}px`,
+          width: position.width ? `${position.width}px` : undefined,
+          minWidth: position.width ? `${position.width}px` : undefined,
         }}
         {...props}
       >
