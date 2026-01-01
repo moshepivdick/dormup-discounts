@@ -4,7 +4,6 @@ import jwt from 'jsonwebtoken';
 import { serialize, parse } from 'cookie';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/env';
-import { createClientFromRequest } from '@/lib/supabase/pages-router';
 
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
@@ -93,34 +92,11 @@ const unsetSessionCookie = (res: NextApiResponse, type: SessionType) => {
   res.setHeader('Set-Cookie', clearSessionCookie(type));
 };
 
-const getUserFromRequest = async (req?: IncomingMessage) => {
-  if (!req) return null;
-  try {
-    const supabase = createClientFromRequest(req);
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-
-    if (error || !user) return null;
-
-    // Verify profile exists
-    const profile = await prisma.profile.findUnique({
-      where: { id: user.id },
-    });
-
-    return profile ? { id: user.id, email: user.email || '' } : null;
-  } catch {
-    return null;
-  }
-};
-
 export const auth = {
   signPartner: (partnerId: string) => signToken('partner', partnerId),
   signAdmin: (adminId: string) => signToken('admin', adminId),
   getPartnerFromRequest,
   getAdminFromRequest,
-  getUserFromRequest,
   setPartnerCookie: (res: NextApiResponse, token: string) =>
     setSessionCookie(res, 'partner', token),
   setAdminCookie: (res: NextApiResponse, token: string) =>

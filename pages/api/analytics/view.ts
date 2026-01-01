@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '@/lib/prisma';
 import { apiResponse, withMethods } from '@/lib/api';
 import { venueViewSchema } from '@/lib/validators';
-import { auth } from '@/lib/auth';
 
 export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiResponse) => {
   const parsed = venueViewSchema.safeParse({
@@ -16,16 +15,8 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
 
   const { venueId, city, userAgent } = parsed.data;
 
-  // Get current user (optional - can be null for anonymous users)
-  const currentUser = await auth.getUserFromRequest(req);
-
   await prisma.venueView.create({
-    data: { 
-      venueId, 
-      city, 
-      userAgent,
-      userId: currentUser?.id || null,
-    },
+    data: { venueId, city, userAgent },
   });
 
   return apiResponse.success(res, { ok: true });

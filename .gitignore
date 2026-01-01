@@ -1,11 +1,2 @@
 node_modules
 .next
-.env
-.env.local
-.env*.local
-.env.backup
-.env.migrate
-.env.supabase-backup
-*.env
-*.env.*
-!.env.example

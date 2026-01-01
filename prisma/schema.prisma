@@ -36,7 +36,6 @@ model Venue {
 model DiscountUse {
   id            Int       @id @default(autoincrement())
   venueId       Int
-  userId        String?   @map("user_id")
   generatedCode String    @unique
   status        String    @default("generated")
   qrSlug        String?   @unique
@@ -44,10 +43,6 @@ model DiscountUse {
   expiresAt     DateTime
   confirmedAt   DateTime?
   venue         Venue     @relation(fields: [venueId], references: [id])
-  user          Profile?  @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@index([userId])
-  @@index([venueId, userId])
 }
 
 model Partner {
@@ -73,16 +68,10 @@ model Admin {
 model VenueView {
   id        Int      @id @default(autoincrement())
   venueId   Int
-  userId    String?  @map("user_id")
   city      String
   createdAt DateTime @default(now())
   userAgent String?
   venue     Venue    @relation(fields: [venueId], references: [id])
-  user      Profile? @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@index([userId])
-  @@index([venueId, userId])
-  @@index([createdAt])
 }
 
 model University {
@@ -99,22 +88,16 @@ model University {
 }
 
 model Profile {
-  id              String                @id // References auth.users(id)
+  id              String    @id // References auth.users(id)
   email           String
   universityId    String
-  verifiedStudent Boolean               @default(false)
-  role            String                @default("user")
-  createdAt       DateTime              @default(now())
-  lastActivityAt  DateTime?             @map("last_activity_at")
-  university      University            @relation(fields: [universityId], references: [id], onDelete: Restrict)
-  discountUses    DiscountUse[]
-  venueViews      VenueView[]
-  stats           UserStats?
-  emailVerificationToken EmailVerificationToken?
+  verifiedStudent Boolean   @default(false)
+  role            String     @default("user")
+  createdAt       DateTime  @default(now())
+  university      University @relation(fields: [universityId], references: [id], onDelete: Restrict)
 
   @@unique([email])
   @@index([universityId])
-  @@index([lastActivityAt])
   @@map("profiles")
 }
 
@@ -133,31 +116,4 @@ model UniversityRequest {
   @@index([status])
   @@index([requesterEmail])
   @@map("university_requests")
-}
-
-model UserStats {
-  userId                String   @id @map("user_id")
-  totalDiscountsGenerated Int     @default(0) @map("total_discounts_generated")
-  totalDiscountsUsed     Int     @default(0) @map("total_discounts_used")
-  totalVenueViews        Int     @default(0) @map("total_venue_views")
-  lastDiscountGeneratedAt DateTime? @map("last_discount_generated_at")
-  lastDiscountUsedAt     DateTime? @map("last_discount_used_at")
-  lastVenueViewAt        DateTime? @map("last_venue_view_at")
-  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at")
-  user                   Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_stats")
-}
-
-model EmailVerificationToken {
-  id        String   @id @default(uuid())
-  userId    String   @unique @map("user_id") @db.Uuid
-  token     String   @unique
-  expiresAt DateTime @map("expires_at")
-  createdAt DateTime @default(now()) @map("created_at")
-  user      Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([token])
-  @@index([expiresAt])
-  @@map("email_verification_tokens")
 }
