@@ -229,23 +229,6 @@ export function UniversitySelect({
                             {university.city && (
                               <span className="text-xs text-slate-500">{university.city}</span>
                             )}
-                            {university.emailDomains.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {university.emailDomains.slice(0, 2).map((domain, idx) => (
-                                  <span
-                                    key={idx}
-                                    className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
-                                  >
-                                    {domain}
-                                  </span>
-                                ))}
-                                {university.emailDomains.length > 2 && (
-                                  <span className="text-xs text-slate-400">
-                                    +{university.emailDomains.length - 2} more
-                                  </span>
-                                )}
-                              </div>
-                            )}
                           </div>
                         </CommandItem>
                       );
