@@ -45,32 +45,38 @@ const PopoverTrigger = React.forwardRef<HTMLButtonElement, PopoverTriggerProps>(
       onClick?.();
     };
 
+    const setRef = (node: HTMLButtonElement | null) => {
+      triggerRef.current = node;
+      if (typeof ref === 'function') {
+        ref(node);
+      } else if (ref && 'current' in ref) {
+        (ref as React.MutableRefObject<HTMLButtonElement | null>).current = node;
+      }
+    };
+
     if (asChild && React.isValidElement(children)) {
-      return React.cloneElement(children, {
+      const childElement = children as React.ReactElement<any>;
+      // Extract ref safely using type assertion
+      const elementWithRef = childElement as unknown as { ref?: React.Ref<HTMLButtonElement> };
+      const originalRef = elementWithRef.ref;
+      return React.cloneElement(childElement, {
         ...props,
-        ref: (node: HTMLButtonElement) => {
-          triggerRef.current = node;
-          if (typeof children.ref === 'function') {
-            children.ref(node);
-          } else if (children.ref) {
-            (children.ref as React.MutableRefObject<HTMLButtonElement | null>).current = node;
+        ref: (node: HTMLButtonElement | null) => {
+          setRef(node);
+          if (typeof originalRef === 'function') {
+            originalRef(node);
+          } else if (originalRef && typeof originalRef === 'object' && 'current' in originalRef) {
+            (originalRef as React.MutableRefObject<HTMLButtonElement | null>).current = node;
           }
         },
         onClick: handleClick,
         'data-popover-trigger': true,
-        className: cn(className, children.props.className),
+        className: cn(className, childElement.props.className),
       } as any);
     }
     return (
       <button
-        ref={(node) => {
-          triggerRef.current = node;
-          if (typeof ref === 'function') {
-            ref(node);
-          } else if (ref) {
-            (ref as React.MutableRefObject<HTMLButtonElement | null>).current = node;
-          }
-        }}
+        ref={setRef}
         data-popover-trigger
         onClick={handleClick}
         className={cn(className)}
