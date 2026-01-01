@@ -83,24 +83,63 @@ export async function signup(formData: FormData) {
       };
     }
 
-    // Create profile using service role (bypasses RLS)
+    // Create profile using Supabase service role client (bypasses RLS)
     const serviceClient = createServiceRoleClient();
     try {
-      await prisma.profile.create({
-        data: {
+      // Insert profile using Supabase service role (bypasses RLS)
+      const { error: profileError } = await serviceClient
+        .from('profiles')
+        .insert({
           id: authData.user.id,
           email: email.toLowerCase(),
-          universityId,
-          verifiedStudent: false,
+          university_id: universityId,
+          verified_student: false,
           role: 'user',
-        },
-      });
+        });
+
+      if (profileError) {
+        console.error('Profile creation error:', {
+          message: profileError.message,
+          details: profileError.details,
+          hint: profileError.hint,
+          code: profileError.code,
+        });
+        // Try to delete the auth user if profile creation fails
+        try {
+          await serviceClient.auth.admin.deleteUser(authData.user.id);
+        } catch (deleteError) {
+          console.error('Failed to cleanup auth user:', deleteError);
+        }
+        return {
+          error: profileError.message || profileError.details || 'Failed to create profile. Please try again.',
+        };
+      }
     } catch (profileError: any) {
-      // If profile creation fails, try to clean up the auth user
       console.error('Profile creation error:', profileError);
-      return {
-        error: 'Failed to create profile. Please try again.',
-      };
+      
+      // Fallback: Try using Prisma (might work if RLS allows service role)
+      try {
+        await prisma.profile.create({
+          data: {
+            id: authData.user.id,
+            email: email.toLowerCase(),
+            universityId,
+            verifiedStudent: false,
+            role: 'user',
+          },
+        });
+      } catch (prismaError: any) {
+        console.error('Prisma profile creation error:', prismaError);
+        // Try to delete the auth user if profile creation fails
+        try {
+          await serviceClient.auth.admin.deleteUser(authData.user.id);
+        } catch (deleteError) {
+          console.error('Failed to cleanup auth user:', deleteError);
+        }
+        return {
+          error: prismaError.message || profileError.message || 'Failed to create profile. Please check your database configuration and RLS policies.',
+        };
+      }
     }
 
     return {
