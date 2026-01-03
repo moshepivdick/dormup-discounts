@@ -134,7 +134,7 @@ function VerifyEmailForm() {
       }
 
       // Wait a bit for session to be fully established
-      await new Promise(resolve => setTimeout(resolve, 100);
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Extract first name from email (local part before first dot)
       const localPart = email.split('@')[0];
