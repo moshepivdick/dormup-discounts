@@ -184,7 +184,7 @@ function VerifyEmailForm() {
           </div>
           <CardTitle className="text-2xl">Enter verification code</CardTitle>
           <CardDescription>
-            We've sent a 6-digit code to <strong>{email}</strong>
+            We&apos;ve sent a 6-digit code to <strong>{email}</strong>
           </CardDescription>
         </CardHeader>
         <CardContent>

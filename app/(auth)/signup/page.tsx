@@ -243,7 +243,7 @@ function SignupForm() {
                 Change university
               </button>
             </form>
-          )}
+          ) : null}
         </CardContent>
       </Card>
     </div>
