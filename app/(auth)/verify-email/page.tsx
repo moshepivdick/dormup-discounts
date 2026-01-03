@@ -17,8 +17,8 @@ function VerifyEmailForm() {
   const searchParams = useSearchParams();
   const supabase = createClient();
   
-  const email = searchParams.get('email') || '';
-  const universityId = searchParams.get('universityId') || '';
+  const email = searchParams?.get('email') || '';
+  const universityId = searchParams?.get('universityId') || '';
   
   const [otpCode, setOtpCode] = useState('');
   const [loading, setLoading] = useState(false);
