@@ -24,6 +24,7 @@ function SignupForm() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch universities
@@ -41,6 +42,21 @@ function SignupForm() {
     };
     fetchUniversities();
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.university-dropdown')) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isDropdownOpen]);
 
   const validateEmailDomain = (emailToCheck: string, university: University): boolean => {
     const domain = emailToCheck.split('@')[1]?.toLowerCase();
@@ -134,115 +150,103 @@ function SignupForm() {
             }}
             className="space-y-6"
           >
-            {/* University Selection */}
-            <div>
-              <label htmlFor="university-search" className="block text-sm font-semibold text-slate-800 mb-3">
+            {/* University Selection Dropdown */}
+            <div className="university-dropdown">
+              <label htmlFor="university" className="block text-sm font-semibold text-slate-800 mb-3">
                 University
               </label>
               
-              {/* Search input for universities */}
-              <div className="relative mb-3">
-                <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDropdownOpen(!isDropdownOpen);
+                    setSearchQuery('');
+                  }}
+                  className={`w-full h-11 px-4 text-left rounded-xl border-2 transition-all flex items-center justify-between ${
+                    selectedUniversity
+                      ? 'border-emerald-500 bg-emerald-50'
+                      : 'border-slate-200 bg-white hover:border-slate-300'
+                  } ${isDropdownOpen ? 'border-emerald-500 ring-2 ring-emerald-500/20' : ''}`}
+                >
+                  <span className={selectedUniversity ? 'text-slate-900 font-medium' : 'text-slate-500'}>
+                    {selectedUniversity ? selectedUniversity.name : 'Select a university...'}
+                  </span>
                   <svg
-                    className="h-5 w-5 text-slate-400"
+                    className={`w-5 h-5 text-slate-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
-                </div>
-                <Input
-                  id="university-search"
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search universities..."
-                  className="pl-11 h-11 rounded-xl border-2 border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                />
-              </div>
+                </button>
 
-              {/* University List */}
-              <div className="max-h-72 overflow-y-auto rounded-xl border-2 border-slate-200 bg-white shadow-sm">
-                {filteredUniversities.length === 0 ? (
-                  <div className="p-6 text-center">
-                    <svg
-                      className="mx-auto h-12 w-12 text-slate-300 mb-3"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <p className="text-sm font-medium text-slate-500">
-                      {searchQuery ? 'No universities found' : 'Loading universities...'}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-100">
-                    {filteredUniversities.map((uni) => {
-                      const isSelected = selectedUniversity?.id === uni.id;
-                      return (
-                        <button
-                          key={uni.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedUniversity(uni);
-                            setError(null);
-                            // Auto-fill email domain hint if email is empty
-                            if (!email && uni.emailDomains.length > 0) {
-                              setEmail(`@${uni.emailDomains[0]}`);
-                            }
-                          }}
-                          className={`w-full px-5 py-4 text-left transition-all duration-200 ${
-                            isSelected
-                              ? 'bg-gradient-to-r from-emerald-50 to-emerald-100/50 border-l-4 border-emerald-500 shadow-sm'
-                              : 'hover:bg-slate-50 active:bg-slate-100'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-start gap-3 flex-1 min-w-0">
-                              {/* University Icon */}
-                              <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
+                {/* Dropdown Menu */}
+                {isDropdownOpen && (
+                  <div className="absolute z-50 w-full mt-2 bg-white border-2 border-slate-200 rounded-xl shadow-lg max-h-64 overflow-hidden">
+                    {/* Search Input */}
+                    <div className="p-3 border-b border-slate-200">
+                      <div className="relative">
+                        <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
+                          <svg
+                            className="h-4 w-4 text-slate-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                            />
+                          </svg>
+                        </div>
+                        <Input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Search..."
+                          className="pl-9 h-9 text-sm border-slate-200 focus:border-emerald-500"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    </div>
+
+                    {/* University List */}
+                    <div className="overflow-y-auto max-h-48">
+                      {filteredUniversities.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-slate-500">
+                          {searchQuery ? 'No universities found' : 'Loading universities...'}
+                        </div>
+                      ) : (
+                        filteredUniversities.map((uni) => {
+                          const isSelected = selectedUniversity?.id === uni.id;
+                          return (
+                            <button
+                              key={uni.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedUniversity(uni);
+                                setIsDropdownOpen(false);
+                                setSearchQuery('');
+                                setError(null);
+                              }}
+                              className={`w-full px-4 py-3 text-left transition-colors ${
                                 isSelected
-                                  ? 'bg-emerald-500 text-white'
-                                  : 'bg-slate-100 text-slate-600'
-                              } transition-colors`}>
-                                <svg
-                                  className="w-5 h-5"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                                  />
-                                </svg>
-                              </div>
-                              
-                              {/* University Info */}
-                              <div className="flex-1 min-w-0">
-                                <div className={`font-semibold text-base mb-1 ${
-                                  isSelected ? 'text-emerald-900' : 'text-slate-900'
+                                  ? 'bg-emerald-50 text-emerald-900 font-medium'
+                                  : 'hover:bg-slate-50 text-slate-900'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
+                                  isSelected
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-slate-100 text-slate-600'
                                 }`}>
-                                  {uni.name}
-                                </div>
-                                <div className="flex items-center gap-1.5 text-xs text-slate-500">
                                   <svg
-                                    className="w-3.5 h-3.5 flex-shrink-0"
+                                    className="w-4 h-4"
                                     fill="none"
                                     viewBox="0 0 24 24"
                                     stroke="currentColor"
@@ -251,20 +255,14 @@ function SignupForm() {
                                       strokeLinecap="round"
                                       strokeLinejoin="round"
                                       strokeWidth={2}
-                                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
                                     />
                                   </svg>
-                                  <span className="truncate">{uni.emailDomains.join(', ')}</span>
                                 </div>
-                              </div>
-                            </div>
-                            
-                            {/* Check Icon */}
-                            {isSelected && (
-                              <div className="flex-shrink-0">
-                                <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                                <span className="flex-1">{uni.name}</span>
+                                {isSelected && (
                                   <svg
-                                    className="w-4 h-4 text-white"
+                                    className="w-5 h-5 text-emerald-600"
                                     fill="none"
                                     viewBox="0 0 24 24"
                                     stroke="currentColor"
@@ -272,31 +270,20 @@ function SignupForm() {
                                     <path
                                       strokeLinecap="round"
                                       strokeLinejoin="round"
-                                      strokeWidth={3}
+                                      strokeWidth={2}
                                       d="M5 13l4 4L19 7"
                                     />
                                   </svg>
-                                </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
-              
-              {selectedUniversity && (
-                <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
-                  <svg className="h-4 w-4 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-sm font-medium text-emerald-700">
-                    Selected: <span className="font-semibold">{selectedUniversity.name}</span>
-                  </span>
-                </div>
-              )}
             </div>
 
             {/* Email Input */}
@@ -331,14 +318,6 @@ function SignupForm() {
                   className="pl-12 h-11 rounded-xl border-2 border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                 />
               </div>
-              {selectedUniversity && (
-                <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Must be from: <span className="font-medium">{selectedUniversity.emailDomains.join(', ')}</span></span>
-                </div>
-              )}
             </div>
 
             {error && (
