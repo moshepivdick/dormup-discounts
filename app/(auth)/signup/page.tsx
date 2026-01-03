@@ -116,9 +116,8 @@ function SignupForm() {
       // Store cooldown timestamp
       localStorage.setItem(`otp_cooldown_${email}`, Date.now().toString());
       
-      // Redirect to verify email page (no query params needed, using localStorage)
-      router.push('/(auth)/verify-email');
-      setLoading(false);
+      // Immediately redirect to verify email page
+      window.location.href = '/(auth)/verify-email';
     } catch (err: any) {
       setError(err.message || 'Failed to send code');
       setLoading(false);
