@@ -123,8 +123,8 @@ export async function signup(formData: FormData) {
           data: {
             id: authData.user.id,
             email: email.toLowerCase(),
-            universityId,
-            verifiedStudent: false,
+            university_id: universityId,
+            verified_student: false,
             role: 'user',
           },
         });
@@ -207,7 +207,7 @@ export async function syncProfileAfterConfirm(userId: string) {
     // Update verified_student to true when email is confirmed
     await prisma.profile.update({
       where: { id: userId },
-      data: { verifiedStudent: true },
+      data: { verified_student: true },
     });
   } catch (error: any) {
     console.error('Profile sync error:', error);

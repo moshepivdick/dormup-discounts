@@ -12,10 +12,12 @@ export function createClientFromRequest(req: IncomingMessage) {
     {
       cookies: {
         getAll() {
-          return Object.entries(cookies).map(([name, value]) => ({
-            name,
-            value,
-          }));
+          return Object.entries(cookies)
+            .filter(([, value]) => value !== undefined)
+            .map(([name, value]) => ({
+              name,
+              value: value as string,
+            }));
         },
         setAll() {
           // In API routes, we can't set cookies directly

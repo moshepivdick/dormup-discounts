@@ -160,13 +160,13 @@ async function main() {
 
   for (const uni of italianUniversities) {
     try {
-      const existing = await prisma.university.findUnique({
+      const existing = await prisma.university.findFirst({
         where: { name: uni.name },
       });
 
       if (existing) {
         await prisma.university.update({
-          where: { name: uni.name },
+          where: { id: existing.id },
           data: {
             city: uni.city,
             emailDomains: uni.emailDomains,

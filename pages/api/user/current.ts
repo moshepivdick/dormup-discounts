@@ -26,7 +26,7 @@ export default async function handler(
     const profile = await prisma.profile.findUnique({
       where: { id: user.id },
       include: {
-        university: {
+        universities: {
           select: {
             id: true,
             name: true,
@@ -40,12 +40,12 @@ export default async function handler(
       user: {
         id: user.id,
         email: user.email || '',
-        verifiedStudent: profile?.verifiedStudent || false,
-        university: profile?.university
+        verifiedStudent: profile?.verified_student || false,
+        university: profile?.universities
           ? {
-              id: profile.university.id,
-              name: profile.university.name,
-              city: profile.university.city,
+              id: profile.universities.id,
+              name: profile.universities.name,
+              city: profile.universities.city,
             }
           : null,
       },
