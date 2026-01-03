@@ -93,8 +93,28 @@ function VerifyEmailForm() {
     });
 
     if (error) {
-      console.error('verifyOtp error:', error);
-      throw new Error(error.message);
+      // FULL ERROR EXPOSURE - log everything
+      console.error('=== OTP VERIFICATION ERROR ===');
+      console.error('Error message:', error.message);
+      console.error('Error status:', error.status);
+      console.error('Full error object:', JSON.stringify(error, null, 2));
+      console.error('Error name:', error.name);
+      console.error('Error code:', (error as any).code);
+      console.error('Error details:', (error as any).details);
+      console.error('Error hint:', (error as any).hint);
+      console.error('================================');
+      
+      // Throw with full error details
+      const errorDetails = {
+        message: error.message,
+        status: error.status,
+        name: error.name,
+        code: (error as any).code,
+        details: (error as any).details,
+        hint: (error as any).hint,
+      };
+      
+      throw new Error(JSON.stringify(errorDetails, null, 2));
     }
 
     return data;
@@ -122,8 +142,10 @@ function VerifyEmailForm() {
     setError(null);
 
     try {
-      // VERIFY OTP CODE - This confirms email, creates session, removes "Waiting for verification"
+      // ISOLATION MODE - Only verify OTP, no side effects
+      console.log('=== ISOLATION MODE: Starting OTP verification ===');
       const data = await verifyOtpCode(email, cleanCode);
+      console.log('OTP verification succeeded, data:', data);
 
       // Verify we have user and session
       if (!data.user) {
@@ -134,62 +156,53 @@ function VerifyEmailForm() {
         throw new Error('Session not created in verification response');
       }
 
-      // Verify email_confirmed_at is set (should be set by verifyOtp)
-      if (!data.user.email_confirmed_at) {
-        console.warn('email_confirmed_at not set, but verification succeeded');
-      }
-
-      // POST-VERIFY PROFILE UPSERT (DormUp logic)
-      // Upsert profile directly using Supabase client (session is now active)
-      const cleanEmail = email.trim().toLowerCase();
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: data.user.id,
-          email: cleanEmail,
-          university_id: universityId,
-          verified_student: true,
-        }, {
-          onConflict: 'id',
-        });
-
-      if (profileError) {
-        console.error('Profile upsert error:', profileError);
-        // Try fallback via API if direct upsert fails
-        const response = await fetch('/api/profile/upsert', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            universityId: universityId,
-          }),
-          credentials: 'include',
-        });
-
-        if (!response.ok) {
-          const result = await response.json();
-          throw new Error(result.error || 'Failed to create profile');
-        }
-      }
-
-      // Clear auth data from localStorage
-      localStorage.removeItem('dormup_auth_email');
-      localStorage.removeItem('dormup_auth_universityId');
-      localStorage.removeItem(`otp_cooldown_${cleanEmail}`);
+      // ISOLATION MODE - Only call getUser to check email_confirmed_at
+      console.log('=== ISOLATION MODE: Calling getUser ===');
+      const { data: userData, error: getUserError } = await supabase.auth.getUser();
       
-      // Account is now activated and verified in Supabase
-      // email_confirmed_at is set, user is verified
-      // Redirect to app
-      window.location.href = '/app';
+      if (getUserError) {
+        console.error('getUser error:', getUserError);
+        throw new Error(`getUser failed: ${getUserError.message}`);
+      }
+
+      if (!userData.user) {
+        throw new Error('getUser returned no user');
+      }
+
+      // Log email_confirmed_at
+      console.log('=== ISOLATION MODE: User verification status ===');
+      console.log('User ID:', userData.user.id);
+      console.log('Email:', userData.user.email);
+      console.log('email_confirmed_at:', userData.user.email_confirmed_at);
+      console.log('Email confirmed:', !!userData.user.email_confirmed_at);
+      console.log('Session exists:', !!data.session);
+      console.log('===============================================');
+
+      // ISOLATION MODE - DO NOT do profile upsert or redirect
+      // This is to isolate whether the 500 error is from database triggers
+      // or from our post-verification code
+      
+      setError(null);
+      alert(`ISOLATION MODE: OTP verified successfully!\n\nUser ID: ${userData.user.id}\nEmail: ${userData.user.email}\nemail_confirmed_at: ${userData.user.email_confirmed_at || 'NULL'}\n\nCheck console for full details.`);
+      setLoading(false);
+      
+      // DO NOT redirect or upsert profile in isolation mode
+      return;
     } catch (err: any) {
       // STRICT ERROR VISIBILITY - NO GENERIC ERRORS
-      console.error('Verification error:', err);
+      console.error('=== VERIFICATION EXCEPTION ===');
+      console.error('Error:', err);
+      console.error('Error message:', err.message);
+      console.error('Error stack:', err.stack);
+      console.error('Full error:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
+      console.error('==============================');
+      
       const errorMessage = err.message || 'Failed to verify code. Please try again.';
       setError(errorMessage);
-      // TEMP: Show real Supabase error (can be removed in production if using proper error UI)
-      if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-        alert(errorMessage);
+      
+      // ALWAYS show error in alert for debugging (temporary)
+      if (typeof window !== 'undefined') {
+        alert(`OTP Verification Error:\n\n${errorMessage}\n\nCheck console for full details.`);
       }
       setLoading(false);
     }
