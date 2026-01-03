@@ -154,53 +154,8 @@ export async function signup(formData: FormData) {
   }
 }
 
-export async function login(formData: FormData) {
-  const rawData = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
-  };
-
-  const parsed = studentLoginSchema.safeParse(rawData);
-
-  if (!parsed.success) {
-    return {
-      error: 'Invalid form data',
-      details: parsed.error.flatten().fieldErrors,
-    };
-  }
-
-  const { email, password } = parsed.data;
-
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.toLowerCase(),
-      password,
-    });
-
-    if (error) {
-      return {
-        error: error.message || 'Invalid credentials',
-      };
-    }
-
-    if (!data.user) {
-      return {
-        error: 'Login failed',
-      };
-    }
-
-    return {
-      success: true,
-      message: 'Signed in successfully',
-    };
-  } catch (error: any) {
-    console.error('Login error:', error);
-    return {
-      error: error.message || 'Failed to sign in',
-    };
-  }
-}
+// Password-based login removed - using OTP-only authentication
+// See /app/(auth)/signup for passwordless OTP flow
 
 export async function syncProfileAfterConfirm(userId: string) {
   try {

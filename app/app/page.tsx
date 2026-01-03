@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/browser';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BrandLogo } from '@/components/BrandLogo';
@@ -19,7 +19,7 @@ export default function AppPage() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.user) {
-        router.push('/login');
+        router.push('/(auth)/signup');
         return;
       }
 
@@ -28,11 +28,21 @@ export default function AppPage() {
       // Load profile
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, email, university_id, verified_student')
         .eq('id', session.user.id)
         .single();
 
-      setProfile(profileData);
+      // Extract first name from email if not in profile
+      if (profileData && session.user.email) {
+        const localPart = session.user.email.split('@')[0];
+        const firstPart = localPart.split('.')[0];
+        const firstName = firstPart
+          ? firstPart.charAt(0).toUpperCase() + firstPart.slice(1).toLowerCase()
+          : null;
+        setProfile({ ...profileData, first_name: firstName });
+      } else {
+        setProfile(profileData);
+      }
       setLoading(false);
     };
 
@@ -42,7 +52,7 @@ export default function AppPage() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     localStorage.removeItem('lastActivityAt');
-    router.push('/login');
+    router.push('/(auth)/signup');
   };
 
   if (loading) {
@@ -71,14 +81,27 @@ export default function AppPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            {profile?.first_name && (
+              <div className="mb-4">
+                <h2 className="text-2xl font-semibold text-slate-900">
+                  Welcome, {profile.first_name}!
+                </h2>
+              </div>
+            )}
             <div>
               <p className="text-sm text-slate-600">Email</p>
               <p className="text-base font-medium text-slate-900">{user?.email}</p>
             </div>
-            {profile?.full_name && (
+            {profile?.first_name && (
               <div>
                 <p className="text-sm text-slate-600">Name</p>
-                <p className="text-base font-medium text-slate-900">{profile.full_name}</p>
+                <p className="text-base font-medium text-slate-900">{profile.first_name}</p>
+              </div>
+            )}
+            {profile?.verified_student && (
+              <div>
+                <p className="text-sm text-slate-600">Status</p>
+                <p className="text-base font-medium text-emerald-600">Verified Student</p>
               </div>
             )}
             <div>

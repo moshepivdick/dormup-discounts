@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/browser';
-import { isUniversityEmail } from '@/lib/universityDomains';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,19 +11,43 @@ import { BrandLogo } from '@/components/BrandLogo';
 import { Loader } from '@/components/ui/loader';
 import { OtpInput } from '@/components/auth/OtpInput';
 
-type Step = 'EMAIL' | 'CODE';
+type Step = 'UNIVERSITY' | 'EMAIL' | 'CODE';
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
-function LoginForm() {
+interface University {
+  id: string;
+  name: string;
+  emailDomains: string[];
+}
+
+function SignupForm() {
   const router = useRouter();
   const supabase = createClient();
-  const [step, setStep] = useState<Step>('EMAIL');
+  const [step, setStep] = useState<Step>('UNIVERSITY');
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [selectedUniversity, setSelectedUniversity] = useState<University | null>(null);
   const [email, setEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Fetch universities
+  useEffect(() => {
+    const fetchUniversities = async () => {
+      try {
+        const response = await fetch('/api/universities');
+        if (response.ok) {
+          const data = await response.json();
+          setUniversities(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch universities:', err);
+      }
+    };
+    fetchUniversities();
+  }, []);
 
   // Resend cooldown timer
   useEffect(() => {
@@ -49,15 +72,36 @@ function LoginForm() {
     }
   }, [step, email]);
 
+  const validateEmailDomain = (emailToCheck: string, university: University): boolean => {
+    const domain = emailToCheck.split('@')[1]?.toLowerCase();
+    if (!domain) return false;
+
+    return university.emailDomains.some((allowedDomain) => {
+      const normalizedDomain = allowedDomain.toLowerCase();
+      const normalizedEmailDomain = domain.toLowerCase();
+      
+      // Exact match or subdomain match
+      return (
+        normalizedEmailDomain === normalizedDomain ||
+        normalizedEmailDomain.endsWith('.' + normalizedDomain)
+      );
+    });
+  };
+
   const sendOtp = async () => {
     if (!email || !email.includes('@')) {
       setError('Please enter a valid email address');
       return;
     }
 
-    // Validate university email
-    if (!isUniversityEmail(email)) {
-      setError('Use your university email');
+    if (!selectedUniversity) {
+      setError('Please select a university first');
+      return;
+    }
+
+    // Validate email domain matches selected university
+    if (!validateEmailDomain(email, selectedUniversity)) {
+      setError(`This email doesn't match ${selectedUniversity.name}. Use your university email.`);
       return;
     }
 
@@ -95,6 +139,11 @@ function LoginForm() {
       return;
     }
 
+    if (!selectedUniversity) {
+      setError('University selection is missing');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -112,14 +161,27 @@ function LoginForm() {
       }
 
       if (data.user && data.session) {
-        // Create/update profile
-        await createProfile(data.user.id, email);
+        // Upsert profile with university info
+        const response = await fetch('/api/profile/upsert', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            universityId: selectedUniversity.id,
+          }),
+        });
+
+        const result = await response.json();
         
-        // Update last activity
-        updateLastActivity();
-        
-        // Redirect to account page
-        router.push('/app');
+        if (!response.ok) {
+          setError(result.error || 'Failed to create profile');
+          setLoading(false);
+          return;
+        }
+
+        // Redirect to app
+        window.location.href = '/app';
       } else {
         setError('Verification failed. Please try again.');
         setLoading(false);
@@ -128,36 +190,6 @@ function LoginForm() {
       setError(err.message || 'Failed to verify code');
       setLoading(false);
     }
-  };
-
-  const createProfile = async (userId: string, userEmail: string) => {
-    try {
-      const { extractFirstName } = await import('@/lib/universityDomains');
-      const fullName = extractFirstName(userEmail);
-
-      // Upsert profile using Supabase client (RLS will allow if user is authenticated)
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: userId,
-          email: userEmail.toLowerCase(),
-          full_name: fullName || null,
-        }, {
-          onConflict: 'id',
-        });
-
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        // Non-blocking - user is still authenticated
-      }
-    } catch (err) {
-      console.error('Profile creation error:', err);
-      // Non-blocking
-    }
-  };
-
-  const updateLastActivity = () => {
-    localStorage.setItem('lastActivityAt', Date.now().toString());
   };
 
   const handleResend = async () => {
@@ -173,16 +205,63 @@ function LoginForm() {
             <BrandLogo className="text-2xl" />
           </div>
           <CardTitle className="text-2xl">
-            {step === 'EMAIL' ? 'Sign in to your account' : 'Enter verification code'}
+            {step === 'UNIVERSITY' && 'Choose your university'}
+            {step === 'EMAIL' && 'Enter your email'}
+            {step === 'CODE' && 'Enter the 6-digit code'}
           </CardTitle>
           <CardDescription>
-            {step === 'EMAIL'
-              ? 'Welcome back to DormUp'
-              : `Enter the 6-digit code sent to ${email}`}
+            {step === 'UNIVERSITY' && 'Select your university to continue'}
+            {step === 'EMAIL' && `We'll send a code to verify your ${selectedUniversity?.name} email`}
+            {step === 'CODE' && `Enter the code sent to ${email}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {step === 'EMAIL' ? (
+          {step === 'UNIVERSITY' ? (
+            <div className="space-y-5">
+              <div>
+                <label htmlFor="university" className="block text-sm font-medium text-slate-700 mb-2">
+                  University
+                </label>
+                <select
+                  id="university"
+                  value={selectedUniversity?.id || ''}
+                  onChange={(e) => {
+                    const uni = universities.find((u) => u.id === e.target.value);
+                    setSelectedUniversity(uni || null);
+                    setError(null);
+                  }}
+                  disabled={loading}
+                  className="flex h-10 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 transition-all focus:border-[#014D40] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#014D40]/20 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="">Select a university...</option>
+                  {universities.map((uni) => (
+                    <option key={uni.id} value={uni.id}>
+                      {uni.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button
+                onClick={() => {
+                  if (selectedUniversity) {
+                    setStep('EMAIL');
+                    setError(null);
+                  }
+                }}
+                disabled={!selectedUniversity || loading}
+                className="w-full"
+              >
+                Next
+              </Button>
+            </div>
+          ) : step === 'EMAIL' ? (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -221,6 +300,11 @@ function LoginForm() {
                     className="pl-12"
                   />
                 </div>
+                {selectedUniversity && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    Must be from: {selectedUniversity.emailDomains.join(', ')}
+                  </p>
+                )}
               </div>
 
               {error && (
@@ -239,6 +323,16 @@ function LoginForm() {
                   'Send code'
                 )}
               </Button>
+
+              <button
+                onClick={() => {
+                  setStep('UNIVERSITY');
+                  setError(null);
+                }}
+                className="w-full text-sm text-slate-600 hover:text-[#014D40] transition font-medium"
+              >
+                Change university
+              </button>
             </form>
           ) : (
             <form
@@ -297,7 +391,7 @@ function LoginForm() {
                   }}
                   className="w-full text-sm text-slate-600 hover:text-[#014D40] transition font-medium"
                 >
-                  Change email address
+                  Change email
                 </button>
               </div>
             </form>
@@ -308,7 +402,7 @@ function LoginForm() {
   );
 }
 
-export default function LoginPage() {
+export default function SignupPage() {
   return (
     <Suspense
       fallback={
@@ -318,14 +412,14 @@ export default function LoginPage() {
               <div className="flex justify-center">
                 <BrandLogo className="text-2xl" />
               </div>
-              <CardTitle className="text-2xl">Sign in to your account</CardTitle>
+              <CardTitle className="text-2xl">Choose your university</CardTitle>
               <CardDescription>Loading...</CardDescription>
             </CardHeader>
           </Card>
         </div>
       }
     >
-      <LoginForm />
+      <SignupForm />
     </Suspense>
   );
 }
