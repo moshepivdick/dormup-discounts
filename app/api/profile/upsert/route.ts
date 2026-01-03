@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
@@ -13,8 +13,14 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
+      console.error('Profile upsert - Auth error:', {
+        userError,
+        hasUser: !!user,
+        errorMessage: userError?.message,
+        errorCode: userError?.status,
+      });
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: userError?.message || 'Unauthorized. Please verify your email first.' },
         { status: 401 }
       );
     }
@@ -58,34 +64,78 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (supabaseError || !profileData) {
-      // Fallback to Prisma if Supabase fails
+      console.error('Supabase profile upsert error:', {
+        supabaseError,
+        hasProfileData: !!profileData,
+        userId: user.id,
+        email: user.email,
+        universityId,
+        errorMessage: supabaseError?.message,
+        errorCode: supabaseError?.code,
+        errorDetails: supabaseError?.details,
+        errorHint: supabaseError?.hint,
+      });
+      
+      // Try using service role client to bypass RLS (for first-time profile creation)
       try {
-        const profile = await prisma.profile.upsert({
-          where: { id: user.id },
-          create: {
+        const serviceClient = createServiceRoleClient();
+        const { data: serviceProfileData, error: serviceError } = await serviceClient
+          .from('profiles')
+          .upsert({
             id: user.id,
             email: user.email.toLowerCase(),
             university_id: universityId,
             verified_student: true,
-          },
-          update: {
-            email: user.email.toLowerCase(),
-            university_id: universityId,
-            verified_student: true,
-          },
-        });
+          }, {
+            onConflict: 'id',
+          })
+          .select()
+          .single();
+
+        if (serviceError || !serviceProfileData) {
+          console.error('Service role profile upsert error:', serviceError);
+          // Fallback to Prisma
+          const profile = await prisma.profile.upsert({
+            where: { id: user.id },
+            create: {
+              id: user.id,
+              email: user.email.toLowerCase(),
+              university_id: universityId,
+              verified_student: true,
+            },
+            update: {
+              email: user.email.toLowerCase(),
+              university_id: universityId,
+              verified_student: true,
+            },
+          });
+          console.log('Profile created via Prisma fallback:', profile.id);
+          return NextResponse.json({
+            success: true,
+            profile: {
+              id: profile.id,
+              email: profile.email,
+              first_name: firstName,
+              university_id: profile.university_id || universityId,
+              is_student_verified: profile.verified_student || true,
+            },
+          });
+        }
+
+        console.log('Profile created via service role client:', serviceProfileData.id);
         return NextResponse.json({
           success: true,
           profile: {
-            id: profile.id,
-            email: profile.email,
+            id: serviceProfileData.id,
+            email: serviceProfileData.email,
             first_name: firstName,
-            university_id: profile.university_id || universityId,
-            is_student_verified: profile.verified_student || true,
+            university_id: serviceProfileData.university_id || universityId,
+            is_student_verified: serviceProfileData.verified_student || true,
           },
         });
-      } catch (prismaError: any) {
-        throw new Error(supabaseError?.message || prismaError?.message || 'Failed to upsert profile');
+      } catch (fallbackError: any) {
+        console.error('All profile creation methods failed:', fallbackError);
+        throw new Error(supabaseError?.message || fallbackError?.message || 'Failed to upsert profile');
       }
     }
 

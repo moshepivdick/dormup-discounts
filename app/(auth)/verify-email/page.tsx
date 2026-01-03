@@ -118,21 +118,23 @@ function VerifyEmailForm() {
         return;
       }
 
-      // Ensure session exists
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !sessionData.session) {
-        console.error('Session error:', sessionError);
+      // Check if we have user and session from verifyOtp response
+      if (!data.user) {
+        console.error('No user in verifyOtp response');
+        setError('User not found. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      if (!data.session) {
+        console.error('No session in verifyOtp response');
         setError('Failed to create session. Please try again.');
         setLoading(false);
         return;
       }
 
-      if (!data.user) {
-        setError('User not found. Please try again.');
-        setLoading(false);
-        return;
-      }
+      // Wait a bit for session to be fully established
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Extract first name from email (local part before first dot)
       const localPart = email.split('@')[0];
@@ -140,6 +142,9 @@ function VerifyEmailForm() {
       const firstName = firstPart
         ? firstPart.charAt(0).toUpperCase() + firstPart.slice(1).toLowerCase()
         : null;
+
+      // Wait a bit more to ensure session cookies are set
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       // Upsert profile with university info
       const response = await fetch('/api/profile/upsert', {
@@ -150,13 +155,20 @@ function VerifyEmailForm() {
         body: JSON.stringify({
           universityId: universityId,
         }),
+        credentials: 'include', // Ensure cookies are sent
       });
 
       const result = await response.json();
       
       if (!response.ok) {
-        console.error('Profile upsert error:', result);
-        setError(result.error || 'Failed to create profile. Please try again.');
+        console.error('Profile upsert error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: result,
+          userId: data.user.id,
+          email: data.user.email,
+        });
+        setError(result.error || `Failed to create profile: ${result.error || 'Unknown error'}. Please try again.`);
         setLoading(false);
         return;
       }
