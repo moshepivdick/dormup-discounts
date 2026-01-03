@@ -4,29 +4,41 @@
 
 Если вы получаете ошибку "Error confirming user" с кодом 500 от Supabase, выполните следующие шаги:
 
-## 1. Применить миграцию с триггером
+## 1. Применить миграции
 
-Выполните миграцию в Supabase SQL Editor или через Prisma:
+Выполните миграции в Supabase SQL Editor или через Prisma:
 
+### Вариант A: Через Prisma (рекомендуется)
 ```bash
 npx prisma migrate deploy
 ```
 
-Или вручную выполните SQL из файла:
-`prisma/migrations/20250121000000_add_profile_trigger/migration.sql`
+### Вариант B: Вручную в Supabase SQL Editor
+
+1. Откройте **Supabase Dashboard** → ваш проект → **SQL Editor**
+2. Выполните миграции в следующем порядке:
+   - `prisma/migrations/20250121000000_add_profile_trigger/migration.sql`
+   - `prisma/migrations/20250121000001_fix_profile_issues/migration.sql`
+
+**Важно:** Выполняйте миграции в указанном порядке!
 
 ## 2. Настройки Email в Supabase Dashboard
 
 1. Откройте **Supabase Dashboard** → ваш проект
 2. Перейдите в **Authentication** → **Settings** → **Email Auth**
-3. Убедитесь, что:
-   - ✅ **Enable email confirmations** - ВКЛЮЧЕНО (для безопасности)
+3. **ВАЖНО для OTP flow:**
    - ✅ **Enable email signups** - ВКЛЮЧЕНО
+   - ⚠️ **Enable email confirmations** - ОТКЛЮЧИТЕ (для OTP это не нужно, так как OTP сам подтверждает email)
    - ✅ **Secure email change** - ВКЛЮЧЕНО (опционально)
 
 4. В разделе **Email Templates**:
    - Проверьте шаблон **Magic Link** или **OTP**
    - Убедитесь, что шаблон настроен правильно
+   - Код должен быть в формате: `Your code is: {{ .Token }}`
+
+5. **Проверьте настройки Site URL:**
+   - Перейдите в **Settings** → **API**
+   - Убедитесь, что **Site URL** указан правильно (ваш домен или localhost для разработки)
 
 ## 3. Проверка RLS политик
 
