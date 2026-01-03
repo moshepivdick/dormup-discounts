@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BrandLogo } from '@/components/BrandLogo';
 import { Loader } from '@/components/ui/loader';
 import { OtpInput } from '@/components/auth/OtpInput';
+import Link from 'next/link';
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
@@ -17,13 +18,45 @@ function VerifyEmailForm() {
   const searchParams = useSearchParams();
   const supabase = createClient();
   
-  const email = searchParams?.get('email') || '';
-  const universityId = searchParams?.get('universityId') || '';
-  
+  // Load email and universityId from localStorage (primary) or searchParams (fallback)
+  const [email, setEmail] = useState<string>('');
+  const [universityId, setUniversityId] = useState<string>('');
   const [otpCode, setOtpCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+
+  // Load email and universityId from localStorage first, then searchParams
+  useEffect(() => {
+    // Try localStorage first (primary source)
+    const storedEmail = localStorage.getItem('dormup_auth_email');
+    const storedUniversityId = localStorage.getItem('dormup_auth_universityId');
+    
+    if (storedEmail && storedUniversityId) {
+      setEmail(storedEmail);
+      setUniversityId(storedUniversityId);
+      setIsLoadingData(false);
+      return;
+    }
+    
+    // Fallback to searchParams
+    const paramEmail = searchParams?.get('email') || '';
+    const paramUniversityId = searchParams?.get('universityId') || '';
+    
+    if (paramEmail && paramUniversityId) {
+      setEmail(paramEmail);
+      setUniversityId(paramUniversityId);
+      // Also store in localStorage for consistency
+      localStorage.setItem('dormup_auth_email', paramEmail);
+      localStorage.setItem('dormup_auth_universityId', paramUniversityId);
+      setIsLoadingData(false);
+      return;
+    }
+    
+    // If still missing, show error state
+    setIsLoadingData(false);
+  }, [searchParams]);
 
   // Resend cooldown timer
   useEffect(() => {
@@ -48,26 +81,21 @@ function VerifyEmailForm() {
     }
   }, [email]);
 
-  // Redirect if email is missing
-  useEffect(() => {
-    if (!email) {
-      router.push('/(auth)/signup');
-    }
-  }, [email, router]);
-
   const verifyOtp = async () => {
-    if (otpCode.length !== 6) {
-      setError('Please enter the 6-digit code');
+    // Strict OTP input handling
+    const cleanCode = otpCode.replace(/\D/g, ''); // Remove non-digits
+    if (cleanCode.length !== 6) {
+      setError('Please enter a complete 6-digit code');
       return;
     }
 
     if (!email) {
-      setError('Email is missing');
+      setError('Email is missing. Please go back and try again.');
       return;
     }
 
     if (!universityId) {
-      setError('University selection is missing');
+      setError('University selection is missing. Please go back and try again.');
       return;
     }
 
@@ -75,53 +103,75 @@ function VerifyEmailForm() {
     setError(null);
 
     try {
+      // Verify OTP with correct parameters
       const { data, error: authError } = await supabase.auth.verifyOtp({
         email: email.toLowerCase(),
-        token: otpCode,
+        token: cleanCode, // Use cleaned code (6 digits only)
         type: 'email',
       });
 
       if (authError) {
-        setError(authError.message || 'Invalid or expired code');
+        // Show real Supabase error message
+        console.error('OTP verification error:', authError);
+        setError(authError.message || 'Invalid or expired code. Please try again.');
         setLoading(false);
         return;
       }
 
-      if (data.user && data.session) {
-        // Email is automatically confirmed by Supabase after OTP verification
-        // user.email_confirmed_at and user.confirmed_at are set automatically
-        
-        // Upsert profile with university info
-        const response = await fetch('/api/profile/upsert', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            universityId: universityId,
-          }),
-        });
-
-        const result = await response.json();
-        
-        if (!response.ok) {
-          setError(result.error || 'Failed to create profile');
-          setLoading(false);
-          return;
-        }
-
-        // Clear OTP cooldown
-        localStorage.removeItem(`otp_cooldown_${email}`);
-        
-        // Account is now activated and verified in Supabase
-        // Redirect to app
-        window.location.href = '/app';
-      } else {
-        setError('Verification failed. Please try again.');
+      // Ensure session exists
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !sessionData.session) {
+        console.error('Session error:', sessionError);
+        setError('Failed to create session. Please try again.');
         setLoading(false);
+        return;
       }
+
+      if (!data.user) {
+        setError('User not found. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      // Extract first name from email (local part before first dot)
+      const localPart = email.split('@')[0];
+      const firstPart = localPart.split('.')[0];
+      const firstName = firstPart
+        ? firstPart.charAt(0).toUpperCase() + firstPart.slice(1).toLowerCase()
+        : null;
+
+      // Upsert profile with university info
+      const response = await fetch('/api/profile/upsert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          universityId: universityId,
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        console.error('Profile upsert error:', result);
+        setError(result.error || 'Failed to create profile. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      // Clear auth data from localStorage
+      localStorage.removeItem('dormup_auth_email');
+      localStorage.removeItem('dormup_auth_universityId');
+      localStorage.removeItem(`otp_cooldown_${email}`);
+      
+      // Account is now activated and verified in Supabase
+      // Redirect to app
+      window.location.href = '/app';
     } catch (err: any) {
-      setError(err.message || 'Failed to verify code');
+      console.error('Verification error:', err);
+      setError(err.message || 'Failed to verify code. Please try again.');
       setLoading(false);
     }
   };
@@ -133,6 +183,7 @@ function VerifyEmailForm() {
     setError(null);
 
     try {
+      // Send OTP - do NOT set emailRedirectTo for OTP-code flow
       const { error: authError } = await supabase.auth.signInWithOtp({
         email: email.toLowerCase(),
         options: {
@@ -141,6 +192,7 @@ function VerifyEmailForm() {
       });
 
       if (authError) {
+        console.error('Resend OTP error:', authError);
         setError(authError.message || 'Failed to send code');
         setLoading(false);
         return;
@@ -151,13 +203,51 @@ function VerifyEmailForm() {
       setResendCooldown(RESEND_COOLDOWN_SECONDS);
       setLoading(false);
     } catch (err: any) {
+      console.error('Resend error:', err);
       setError(err.message || 'Failed to send code');
       setLoading(false);
     }
   };
 
-  if (!email) {
-    return null;
+  // Show loading state while loading data
+  if (isLoadingData) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-4 text-center">
+            <div className="flex justify-center">
+              <BrandLogo className="text-2xl" />
+            </div>
+            <CardTitle className="text-2xl">Enter verification code</CardTitle>
+            <CardDescription>Loading...</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show error if email or universityId is missing
+  if (!email || !universityId) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-4 text-center">
+            <div className="flex justify-center">
+              <BrandLogo className="text-2xl" />
+            </div>
+            <CardTitle className="text-2xl">Missing Information</CardTitle>
+            <CardDescription>
+              We couldn&apos;t find your registration information. Please start over.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/(auth)/signup">
+              <Button className="w-full">Go back to registration</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -213,7 +303,7 @@ function VerifyEmailForm() {
               </Alert>
             )}
 
-            <Button type="submit" disabled={loading || otpCode.length !== 6} className="w-full">
+            <Button type="submit" disabled={loading || otpCode.replace(/\D/g, '').length !== 6} className="w-full">
               {loading ? (
                 <>
                   <Loader size="sm" className="mr-2" />
@@ -236,14 +326,12 @@ function VerifyEmailForm() {
                   : 'Resend code'}
               </Button>
 
-              <button
-                onClick={() => {
-                  router.push('/(auth)/signup');
-                }}
-                className="w-full text-sm text-slate-600 hover:text-[#014D40] transition font-medium"
+              <Link
+                href="/(auth)/signup"
+                className="block w-full text-center text-sm text-slate-600 hover:text-[#014D40] transition font-medium"
               >
                 Change email address
-              </button>
+              </Link>
             </div>
           </form>
         </CardContent>
@@ -273,4 +361,3 @@ export default function VerifyEmailPage() {
     </Suspense>
   );
 }
-

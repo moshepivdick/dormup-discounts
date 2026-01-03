@@ -95,11 +95,15 @@ function SignupForm() {
         return;
       }
 
+      // Store email and universityId in localStorage (primary source)
+      localStorage.setItem('dormup_auth_email', email.toLowerCase());
+      localStorage.setItem('dormup_auth_universityId', selectedUniversity.id);
+      
       // Store cooldown timestamp
       localStorage.setItem(`otp_cooldown_${email}`, Date.now().toString());
       
-      // Redirect to verify email page
-      router.push(`/auth/verify-email?email=${encodeURIComponent(email)}&universityId=${encodeURIComponent(selectedUniversity.id)}`);
+      // Redirect to verify email page (no query params needed, using localStorage)
+      router.push('/auth/verify-email');
       setLoading(false);
     } catch (err: any) {
       setError(err.message || 'Failed to send code');
