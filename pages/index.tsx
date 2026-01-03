@@ -110,16 +110,7 @@ export default function HomePage({ venues, cities, categories }: HomeProps) {
       if (b.distance == null) return -1;
       return a.distance - b.distance;
     });
-  }, [sortedVenues, selectedCity, selectedCategory, searchQuery]);
-
-  const heroWordmark = (
-    <span className="inline-flex items-center text-[16px] font-bold tracking-tight text-[#d9ead3] sm:text-[18px]">
-      <span>Dorm</span>
-      <span className="ml-1 font-semibold text-[#CC2A32] drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]">
-        Up
-      </span>
-    </span>
-  );
+  }, [sortedVenues, selectedCity, selectedCategory]);
 
   return (
     <>
@@ -133,15 +124,14 @@ export default function HomePage({ venues, cities, categories }: HomeProps) {
       <section className="bg-gradient-to-br from-slate-900 via-emerald-900 to-emerald-600 pb-16 pt-24 text-white">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6">
           <div className="space-y-4 text-center sm:text-left">
-            <p className="text-sm uppercase tracking-[0.5em] text-emerald-200">
-              {heroWordmark}
+            <p className="text-sm uppercase tracking-[0.3em] text-emerald-200 sm:tracking-[0.5em]">
+              DormUp Discounts
             </p>
-            <h1 className="text-4xl font-bold sm:text-5xl">
-              Student discounts in Rimini &amp; Bologna
+            <h1 className="text-3xl font-bold sm:text-5xl">
+              Student discounts, made simple.
             </h1>
-            <p className="text-lg text-emerald-50 sm:w-2/3">
-              Browse curated cafes, street food, and late-night venues that reward{' '}
-              {heroWordmark} members every day.
+            <p className="text-base text-emerald-50 sm:text-lg sm:w-2/3">
+              We&apos;re starting in Rimini.
             </p>
           </div>
           {/* Desktop filters - hidden on mobile */}
@@ -202,62 +192,37 @@ export default function HomePage({ venues, cities, categories }: HomeProps) {
 
 
 export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
-  try {
-    const venues = await prisma.venue.findMany({
-      where: { isActive: true },
-      orderBy: [{ city: 'asc' }, { name: 'asc' }],
-      select: {
-        id: true,
-        name: true,
-        city: true,
-        category: true,
-        discountText: true,
-        isActive: true,
-        imageUrl: true,
-        thumbnailUrl: true,
-        openingHoursShort: true,
-        latitude: true,
-        longitude: true,
-      },
-    });
+  const venues = await prisma.venue.findMany({
+    where: { isActive: true },
+    orderBy: [{ city: 'asc' }, { name: 'asc' }],
+  });
 
-    const payload: VenueSummary[] = venues.map((venue) => ({
-      id: venue.id,
-      name: venue.name,
-      city: venue.city,
-      category: venue.category,
-      discountText: venue.discountText,
-      isActive: venue.isActive,
-      imageUrl: venue.imageUrl,
-      thumbnailUrl: venue.thumbnailUrl,
-      openingHoursShort: venue.openingHoursShort,
-      latitude: venue.latitude,
-      longitude: venue.longitude,
-    }));
+  const payload: VenueSummary[] = venues.map((venue) => ({
+    id: venue.id,
+    name: venue.name,
+    city: venue.city,
+    category: venue.category,
+    discountText: venue.discountText,
+    isActive: venue.isActive,
+    imageUrl: venue.imageUrl,
+    thumbnailUrl: venue.thumbnailUrl,
+    openingHoursShort: venue.openingHoursShort,
+    latitude: venue.latitude,
+    longitude: venue.longitude,
+  }));
 
-    const cities = Array.from(new Set(payload.map((venue) => venue.city))).sort();
-    const categories = Array.from(
-      new Set(payload.map((venue) => venue.category)),
-    ).sort();
+  const cities = Array.from(new Set(payload.map((venue) => venue.city))).sort();
+  const categories = Array.from(
+    new Set(payload.map((venue) => venue.category)),
+  ).sort();
 
-    return {
-      props: {
-        venues: payload,
-        cities,
-        categories,
-      },
-    };
-  } catch (error) {
-    console.error('Error fetching venues:', error);
-    // Return empty arrays on error to prevent page crash
-    return {
-      props: {
-        venues: [],
-        cities: [],
-        categories: [],
-      },
-    };
-  }
+  return {
+    props: {
+      venues: payload,
+      cities,
+      categories,
+    },
+  };
 };
 
 HomePage.getLayout = function getLayout(page: ReactElement, pageProps: HomeProps) {

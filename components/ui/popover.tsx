@@ -105,20 +105,58 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
 
     React.useEffect(() => {
       if (open) {
-        // Use a small delay to ensure the trigger is rendered
-        const timer = setTimeout(() => {
+        const updatePosition = () => {
           const trigger = document.querySelector('[data-popover-trigger]') as HTMLElement;
-          if (trigger) {
-            triggerRef.current = trigger;
-            const rect = trigger.getBoundingClientRect();
-            const width = rect.width;
-            setPosition({
-              top: rect.bottom + sideOffset + window.scrollY,
-              left: rect.left + window.scrollX,
-              width,
-            });
+          if (!trigger) return;
+          
+          triggerRef.current = trigger;
+          const rect = trigger.getBoundingClientRect();
+          const viewportWidth = window.innerWidth;
+          const viewportHeight = window.innerHeight;
+          const padding = 8;
+          
+          // Get actual popover width after render, or use default
+          const popoverElement = contentRef.current;
+          const popoverWidth = popoverElement ? Math.min(popoverElement.offsetWidth, viewportWidth - padding * 2) : 224;
+          
+          let left = rect.left + window.scrollX;
+          
+          // Handle alignment
+          if (align === 'end') {
+            left = rect.right + window.scrollX - popoverWidth;
+          } else if (align === 'start') {
+            left = rect.left + window.scrollX;
+          } else {
+            left = rect.left + window.scrollX + (rect.width / 2) - (popoverWidth / 2);
           }
-        }, 0);
+          
+          // Collision detection: prevent overflow
+          if (left + popoverWidth > viewportWidth - padding) {
+            left = viewportWidth - popoverWidth - padding;
+          }
+          if (left < padding) {
+            left = padding;
+          }
+          
+          // Position below trigger
+          let top = rect.bottom + sideOffset + window.scrollY;
+          const popoverHeight = popoverElement ? popoverElement.offsetHeight : 200;
+          
+          if (top + popoverHeight > viewportHeight + window.scrollY - padding) {
+            top = rect.top + window.scrollY - popoverHeight - sideOffset;
+            if (top < window.scrollY + padding) {
+              top = window.scrollY + padding;
+            }
+          }
+          
+          setPosition({ top, left });
+        };
+        
+        // Initial position
+        const timer = setTimeout(updatePosition, 0);
+        
+        // Update position after content renders
+        const resizeTimer = setTimeout(updatePosition, 10);
 
         const handleClickOutside = (event: MouseEvent) => {
           const target = event.target as HTMLElement;
@@ -143,6 +181,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
         
         return () => {
           clearTimeout(timer);
+          clearTimeout(resizeTimer);
           document.removeEventListener('mousedown', handleClickOutside);
           document.removeEventListener('keydown', handleEscape);
         };
@@ -158,14 +197,12 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
         ref={contentRef}
         data-popover-content
         className={cn(
-          'fixed z-50 w-72 rounded-2xl border border-slate-200 bg-white p-1 text-slate-950 shadow-md outline-none',
+          'fixed z-50 rounded-xl border border-slate-200 bg-white text-slate-950 shadow-lg outline-none overflow-hidden',
           className,
         )}
         style={{
           top: `${position.top}px`,
           left: `${position.left}px`,
-          width: position.width ? `${position.width}px` : undefined,
-          minWidth: position.width ? `${position.width}px` : undefined,
         }}
         {...props}
       >

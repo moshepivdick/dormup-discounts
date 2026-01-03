@@ -46,7 +46,7 @@ export function SearchBar({
   };
 
   return (
-    <div className="relative w-full max-w-sm">
+    <div className="relative w-full min-w-0 sm:max-w-sm">
       <input
         type="text"
         value={query}
@@ -57,8 +57,8 @@ export function SearchBar({
         }}
         onFocus={() => setIsFocused(true)}
         onBlur={handleBlur}
-        placeholder="Search venues"
-        className="w-full rounded-full border border-slate-200 bg-white/90 px-4 py-2 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+        placeholder="Search"
+        className="w-full min-w-0 h-9 rounded-full border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200 sm:px-4 sm:py-2 sm:h-auto"
       />
       {isFocused && query.trim() && suggestions.length > 0 && (
         <div className="absolute left-0 right-0 top-11 z-50 max-h-72 overflow-auto rounded-xl border border-slate-100 bg-white shadow-xl">

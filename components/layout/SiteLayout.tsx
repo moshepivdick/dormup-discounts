@@ -4,10 +4,10 @@ import { useRouter } from 'next/router';
 import type { ReactNode } from 'react';
 import { MobileNav } from '@/components/navigation/MobileNav';
 import { BrandLogo } from '@/components/BrandLogo';
-import { AccountMenu } from '@/components/AccountMenu';
 import DormUpIcon from '@/components/DormUp_App_icon-removebg-preview.png';
 import type { VenueSummary } from '@/types';
 import { SearchBar } from '@/components/SearchBar';
+import { AccountMenu } from '@/components/AccountMenu';
 
 type Props = {
   children: ReactNode;
@@ -38,10 +38,11 @@ export function SiteLayout({ children, searchBarVenues }: Props) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-4">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-2 px-3 py-3 sm:px-6 sm:py-4">
+          {/* Left: Brand */}
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-lg font-semibold text-emerald-700"
+            className="flex items-center gap-2 flex-shrink-0"
             aria-label="DormUp Discounts home"
           >
             <Image
@@ -49,35 +50,33 @@ export function SiteLayout({ children, searchBarVenues }: Props) {
               alt="DormUp logo"
               width={32}
               height={32}
-              className="h-8 w-8 object-contain"
+              className="h-6 w-6 flex-shrink-0 object-contain sm:h-8 sm:w-8"
               priority
             />
-            <span>Dorm
-            <span className="text-[#990000]">Up </span>
-            Discounts</span>
+            <span className="text-xs font-semibold text-emerald-700 sm:text-sm md:text-lg">
+              Dorm<span className="text-[#990000]">Up </span>Discounts
+            </span>
           </Link>
-          <nav className="flex flex-1 items-center justify-end gap-4 text-sm font-medium text-slate-600">
-            <div className="hidden items-center gap-6 md:flex">
-              {links.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`transition hover:text-emerald-600 ${
-                    router.pathname === link.href ? 'text-emerald-600' : ''
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-            {searchBarVenues ? (
+          {/* Middle: Search */}
+          {searchBarVenues ? (
+            <div className="flex-1 min-w-0">
               <SearchBar
                 venues={searchBarVenues}
                 onSearchChange={emitSearchChange}
                 onSelectVenue={emitSelectVenue}
               />
-            ) : null}
-            <AccountMenu />
+            </div>
+          ) : null}
+          {/* Right: Auth actions */}
+          <nav className="flex items-center justify-end gap-3 whitespace-nowrap flex-shrink-0">
+            {/* Desktop: Log in + Sign up buttons (for logged-out users) */}
+            <div className="hidden sm:flex items-center gap-3">
+              <AccountMenu showDesktopButtons={true} />
+            </div>
+            {/* Mobile: Account icon button */}
+            <div className="flex sm:hidden">
+              <AccountMenu showDesktopButtons={false} />
+            </div>
           </nav>
         </div>
       </header>
