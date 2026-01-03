@@ -95,30 +95,34 @@ function SignupForm() {
     setError(null);
 
     try {
-      // Send OTP - do NOT set emailRedirectTo for OTP-code flow
-      const { error: authError } = await supabase.auth.signInWithOtp({
-        email: email.toLowerCase(),
+      // SEND OTP CODE - Supabase-generated token ONLY
+      const cleanEmail = email.trim().toLowerCase();
+      
+      const { error } = await supabase.auth.signInWithOtp({
+        email: cleanEmail,
         options: {
           shouldCreateUser: true,
         },
       });
 
-      if (authError) {
-        setError(authError.message || 'Failed to send code');
+      if (error) {
+        console.error('sendOtp error:', error);
+        setError(error.message);
         setLoading(false);
         return;
       }
 
       // Store email and universityId in localStorage (primary source)
-      localStorage.setItem('dormup_auth_email', email.toLowerCase());
+      localStorage.setItem('dormup_auth_email', cleanEmail);
       localStorage.setItem('dormup_auth_universityId', selectedUniversity.id);
       
       // Store cooldown timestamp
-      localStorage.setItem(`otp_cooldown_${email}`, Date.now().toString());
+      localStorage.setItem(`otp_cooldown_${cleanEmail}`, Date.now().toString());
       
       // Immediately redirect to verify email page
       window.location.href = '/auth/verify-email';
     } catch (err: any) {
+      console.error('sendOtp error:', err);
       setError(err.message || 'Failed to send code');
       setLoading(false);
     }

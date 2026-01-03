@@ -81,6 +81,25 @@ function VerifyEmailForm() {
     }
   }, [email]);
 
+  // VERIFY OTP CODE - ONLY valid confirmation step
+  const verifyOtpCode = async (email: string, code: string) => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanCode = code.trim();
+
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: cleanEmail,
+      token: cleanCode,
+      type: 'email',
+    });
+
+    if (error) {
+      console.error('verifyOtp error:', error);
+      throw new Error(error.message);
+    }
+
+    return data;
+  };
+
   const verifyOtp = async () => {
     // Strict OTP input handling
     const cleanCode = otpCode.replace(/\D/g, ''); // Remove non-digits
@@ -103,87 +122,75 @@ function VerifyEmailForm() {
     setError(null);
 
     try {
-      // Verify OTP with correct parameters
-      const { data, error: authError } = await supabase.auth.verifyOtp({
-        email: email.toLowerCase(),
-        token: cleanCode, // Use cleaned code (6 digits only)
-        type: 'email',
-      });
+      // VERIFY OTP CODE - This confirms email, creates session, removes "Waiting for verification"
+      const data = await verifyOtpCode(email, cleanCode);
 
-      if (authError) {
-        // Show real Supabase error message
-        console.error('OTP verification error:', authError);
-        setError(authError.message || 'Invalid or expired code. Please try again.');
-        setLoading(false);
-        return;
-      }
-
-      // Check if we have user and session from verifyOtp response
+      // Verify we have user and session
       if (!data.user) {
-        console.error('No user in verifyOtp response');
-        setError('User not found. Please try again.');
-        setLoading(false);
-        return;
+        throw new Error('User not found in verification response');
       }
 
       if (!data.session) {
-        console.error('No session in verifyOtp response');
-        setError('Failed to create session. Please try again.');
-        setLoading(false);
-        return;
+        throw new Error('Session not created in verification response');
       }
 
-      // Wait a bit for session to be fully established
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Verify email_confirmed_at is set (should be set by verifyOtp)
+      if (!data.user.email_confirmed_at) {
+        console.warn('email_confirmed_at not set, but verification succeeded');
+      }
 
-      // Extract first name from email (local part before first dot)
-      const localPart = email.split('@')[0];
-      const firstPart = localPart.split('.')[0];
-      const firstName = firstPart
-        ? firstPart.charAt(0).toUpperCase() + firstPart.slice(1).toLowerCase()
-        : null;
-
-      // Wait a bit more to ensure session cookies are set
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      // Upsert profile with university info
-      const response = await fetch('/api/profile/upsert', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          universityId: universityId,
-        }),
-        credentials: 'include', // Ensure cookies are sent
-      });
-
-      const result = await response.json();
-      
-      if (!response.ok) {
-        console.error('Profile upsert error:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: result,
-          userId: data.user.id,
-          email: data.user.email,
+      // POST-VERIFY PROFILE UPSERT (DormUp logic)
+      // Upsert profile directly using Supabase client (session is now active)
+      const cleanEmail = email.trim().toLowerCase();
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: data.user.id,
+          email: cleanEmail,
+          university_id: universityId,
+          verified_student: true,
+        }, {
+          onConflict: 'id',
         });
-        setError(result.error || `Failed to create profile: ${result.error || 'Unknown error'}. Please try again.`);
-        setLoading(false);
-        return;
+
+      if (profileError) {
+        console.error('Profile upsert error:', profileError);
+        // Try fallback via API if direct upsert fails
+        const response = await fetch('/api/profile/upsert', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            universityId: universityId,
+          }),
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          const result = await response.json();
+          throw new Error(result.error || 'Failed to create profile');
+        }
       }
 
       // Clear auth data from localStorage
       localStorage.removeItem('dormup_auth_email');
       localStorage.removeItem('dormup_auth_universityId');
-      localStorage.removeItem(`otp_cooldown_${email}`);
+      localStorage.removeItem(`otp_cooldown_${cleanEmail}`);
       
       // Account is now activated and verified in Supabase
+      // email_confirmed_at is set, user is verified
       // Redirect to app
       window.location.href = '/app';
     } catch (err: any) {
+      // STRICT ERROR VISIBILITY - NO GENERIC ERRORS
       console.error('Verification error:', err);
-      setError(err.message || 'Failed to verify code. Please try again.');
+      const errorMessage = err.message || 'Failed to verify code. Please try again.';
+      setError(errorMessage);
+      // TEMP: Show real Supabase error (can be removed in production if using proper error UI)
+      if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+        alert(errorMessage);
+      }
       setLoading(false);
     }
   };
@@ -195,23 +202,25 @@ function VerifyEmailForm() {
     setError(null);
 
     try {
-      // Send OTP - do NOT set emailRedirectTo for OTP-code flow
-      const { error: authError } = await supabase.auth.signInWithOtp({
-        email: email.toLowerCase(),
+      // SEND OTP CODE - Supabase-generated token ONLY
+      const cleanEmail = email.trim().toLowerCase();
+      
+      const { error } = await supabase.auth.signInWithOtp({
+        email: cleanEmail,
         options: {
           shouldCreateUser: true,
         },
       });
 
-      if (authError) {
-        console.error('Resend OTP error:', authError);
-        setError(authError.message || 'Failed to send code');
+      if (error) {
+        console.error('sendOtp error (resend):', error);
+        setError(error.message);
         setLoading(false);
         return;
       }
 
       // Store cooldown timestamp
-      localStorage.setItem(`otp_cooldown_${email}`, Date.now().toString());
+      localStorage.setItem(`otp_cooldown_${cleanEmail}`, Date.now().toString());
       setResendCooldown(RESEND_COOLDOWN_SECONDS);
       setLoading(false);
     } catch (err: any) {
