@@ -9,11 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BrandLogo } from '@/components/BrandLogo';
 import { Loader } from '@/components/ui/loader';
-import { OtpInput } from '@/components/auth/OtpInput';
 
-type Step = 'UNIVERSITY' | 'EMAIL' | 'CODE';
-
-const RESEND_COOLDOWN_SECONDS = 30;
+type Step = 'UNIVERSITY' | 'EMAIL';
 
 interface University {
   id: string;
@@ -28,10 +25,8 @@ function SignupForm() {
   const [universities, setUniversities] = useState<University[]>([]);
   const [selectedUniversity, setSelectedUniversity] = useState<University | null>(null);
   const [email, setEmail] = useState('');
-  const [otpCode, setOtpCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resendCooldown, setResendCooldown] = useState(0);
 
   // Fetch universities
   useEffect(() => {
@@ -49,28 +44,6 @@ function SignupForm() {
     fetchUniversities();
   }, []);
 
-  // Resend cooldown timer
-  useEffect(() => {
-    if (resendCooldown > 0) {
-      const timer = setTimeout(() => {
-        setResendCooldown(resendCooldown - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [resendCooldown]);
-
-  // Restore cooldown from localStorage
-  useEffect(() => {
-    if (step === 'CODE' && email) {
-      const stored = localStorage.getItem(`otp_cooldown_${email}`);
-      if (stored) {
-        const elapsed = Math.floor((Date.now() - parseInt(stored)) / 1000);
-        if (elapsed < RESEND_COOLDOWN_SECONDS) {
-          setResendCooldown(RESEND_COOLDOWN_SECONDS - elapsed);
-        }
-      }
-    }
-  }, [step, email]);
 
   const validateEmailDomain = (emailToCheck: string, university: University): boolean => {
     const domain = emailToCheck.split('@')[1]?.toLowerCase();
@@ -124,8 +97,9 @@ function SignupForm() {
 
       // Store cooldown timestamp
       localStorage.setItem(`otp_cooldown_${email}`, Date.now().toString());
-      setResendCooldown(RESEND_COOLDOWN_SECONDS);
-      setStep('CODE');
+      
+      // Redirect to verify email page
+      router.push(`/(auth)/verify-email?email=${encodeURIComponent(email)}&universityId=${encodeURIComponent(selectedUniversity.id)}`);
       setLoading(false);
     } catch (err: any) {
       setError(err.message || 'Failed to send code');
@@ -133,69 +107,6 @@ function SignupForm() {
     }
   };
 
-  const verifyOtp = async () => {
-    if (otpCode.length !== 6) {
-      setError('Please enter the 6-digit code');
-      return;
-    }
-
-    if (!selectedUniversity) {
-      setError('University selection is missing');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data, error: authError } = await supabase.auth.verifyOtp({
-        email: email.toLowerCase(),
-        token: otpCode,
-        type: 'email',
-      });
-
-      if (authError) {
-        setError(authError.message || 'Invalid or expired code');
-        setLoading(false);
-        return;
-      }
-
-      if (data.user && data.session) {
-        // Upsert profile with university info
-        const response = await fetch('/api/profile/upsert', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            universityId: selectedUniversity.id,
-          }),
-        });
-
-        const result = await response.json();
-        
-        if (!response.ok) {
-          setError(result.error || 'Failed to create profile');
-          setLoading(false);
-          return;
-        }
-
-        // Redirect to app
-        window.location.href = '/app';
-      } else {
-        setError('Verification failed. Please try again.');
-        setLoading(false);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to verify code');
-      setLoading(false);
-    }
-  };
-
-  const handleResend = async () => {
-    if (resendCooldown > 0) return;
-    await sendOtp();
-  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
@@ -207,12 +118,10 @@ function SignupForm() {
           <CardTitle className="text-2xl">
             {step === 'UNIVERSITY' && 'Choose your university'}
             {step === 'EMAIL' && 'Enter your email'}
-            {step === 'CODE' && 'Enter the 6-digit code'}
           </CardTitle>
           <CardDescription>
             {step === 'UNIVERSITY' && 'Select your university to continue'}
             {step === 'EMAIL' && `We'll send a code to verify your ${selectedUniversity?.name} email`}
-            {step === 'CODE' && `Enter the code sent to ${email}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -333,67 +242,6 @@ function SignupForm() {
               >
                 Change university
               </button>
-            </form>
-          ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                verifyOtp();
-              }}
-              className="space-y-5"
-            >
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-4 text-center">
-                  Enter the 6-digit code
-                </label>
-                <OtpInput
-                  value={otpCode}
-                  onChange={setOtpCode}
-                  disabled={loading}
-                  autoFocus
-                />
-              </div>
-
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <Button type="submit" disabled={loading || otpCode.length !== 6} className="w-full">
-                {loading ? (
-                  <>
-                    <Loader size="sm" className="mr-2" />
-                    Verifying...
-                  </>
-                ) : (
-                  'Verify'
-                )}
-              </Button>
-
-              <div className="space-y-2">
-                <Button
-                  onClick={handleResend}
-                  disabled={resendCooldown > 0 || loading}
-                  variant="ghost"
-                  className="w-full"
-                >
-                  {resendCooldown > 0
-                    ? `Resend code (${resendCooldown}s)`
-                    : 'Resend code'}
-                </Button>
-
-                <button
-                  onClick={() => {
-                    setStep('EMAIL');
-                    setOtpCode('');
-                    setError(null);
-                  }}
-                  className="w-full text-sm text-slate-600 hover:text-[#014D40] transition font-medium"
-                >
-                  Change email
-                </button>
-              </div>
             </form>
           )}
         </CardContent>
