@@ -39,7 +39,7 @@ export default function AccountPage() {
         // Load profile
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('id, email, university_id, verified_student, first_name, last_name')
+          .select('id, email, university_id, verified_student, first_name, last_name, is_admin')
           .eq('id', session.user.id)
           .single();
 
@@ -98,6 +98,21 @@ export default function AccountPage() {
       router.push('/login');
     } catch (error) {
       console.error('Sign out error:', error);
+    }
+  };
+
+  const handleAdminPanel = async () => {
+    try {
+      const response = await fetch('/api/admin-link');
+      const data = await response.json();
+      
+      if (data.success && data.url) {
+        router.push(data.url);
+      } else {
+        console.error('Failed to get admin link:', data.error);
+      }
+    } catch (error) {
+      console.error('Error getting admin link:', error);
     }
   };
 
@@ -310,6 +325,30 @@ export default function AccountPage() {
 
             {/* Actions */}
             <div className="mt-8 space-y-4 border-t border-slate-100 pt-8">
+              {profile?.is_admin && (
+                <div className="text-center">
+                  <Button
+                    onClick={handleAdminPanel}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-lg font-semibold py-6 px-8 shadow-lg hover:shadow-xl transition-all"
+                    size="lg"
+                  >
+                    <svg
+                      className="mr-3 h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                      />
+                    </svg>
+                    Admin Panel
+                  </Button>
+                </div>
+              )}
               <div className="text-center">
                 <Button
                   onClick={() => router.push('/')}

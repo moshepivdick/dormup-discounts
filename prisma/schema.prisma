@@ -115,6 +115,7 @@ model Profile {
   university_id             String                     @db.Uuid
   verified_student          Boolean                    @default(false)
   role                      String                     @default("user")
+  is_admin                  Boolean                    @default(false) @map("is_admin")
   createdAt                 DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
   last_activity_at          DateTime?                  @db.Timestamptz(6)
   DiscountUse               DiscountUse[]
