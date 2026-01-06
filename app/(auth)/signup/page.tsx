@@ -133,16 +133,15 @@ function SignupForm() {
         return;
       }
 
+      // Store user in a const to help TypeScript narrow the type correctly
+      const user = data?.user ?? null;
+      const session = data?.session ?? null;
+
       console.log('=== OTP SENT SUCCESSFULLY ===');
-      console.log('User created:', !!data?.user);
-      if (data?.user) {
-        console.log('User ID (if created):', data.user.id);
-        console.log('Full user object:', JSON.stringify(data.user, null, 2));
-      } else {
-        console.log('User ID (if created):', 'null');
-        console.log('Full user object:', 'null');
-      }
-      console.log('Session created:', !!data?.session);
+      console.log('User created:', !!user);
+      console.log('User ID (if created):', user?.id ?? null);
+      console.log('Full user object:', user ? JSON.stringify(user, null, 2) : 'null');
+      console.log('Session created:', !!session);
       console.log('=============================');
 
       // Store email and universityId in localStorage (primary source)
