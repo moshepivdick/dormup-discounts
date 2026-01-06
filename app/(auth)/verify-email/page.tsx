@@ -91,37 +91,62 @@ function VerifyEmailForm() {
     console.log('Code length:', cleanCode.length);
     console.log('Code (masked):', cleanCode.substring(0, 2) + '****');
     console.log('Verification type: email');
+    console.log('Auth method used: signInWithOtp (OTP-based, not password signup)');
+    console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+
+    // Log the exact parameters being sent to verifyOtp
+    const verifyParams = {
+      email: cleanEmail,
+      token: cleanCode.substring(0, 2) + '****',
+      type: 'email',
+    };
+    console.log('verifyOtp parameters:', JSON.stringify(verifyParams, null, 2));
 
     const { data, error } = await supabase.auth.verifyOtp({
       email: cleanEmail,
       token: cleanCode,
-      type: 'email', // Use 'email' for OTP verification (not 'signup' or 'magiclink')
+      type: 'email', // Use 'email' for OTP verification (signInWithOtp flow)
     });
 
     console.log('=== OTP VERIFICATION RESPONSE ===');
     console.log('Has data:', !!data);
     console.log('Has error:', !!error);
+    console.log('Full response data:', JSON.stringify(data, null, 2));
     
     if (error) {
       // FULL ERROR EXPOSURE - log everything
       console.error('=== OTP VERIFICATION ERROR ===');
       console.error('Error message:', error.message);
       console.error('Error status:', error.status);
+      console.error('Error status code:', (error as any).statusCode);
       console.error('Full error object:', JSON.stringify(error, null, 2));
       console.error('Error name:', error.name);
       console.error('Error code:', (error as any).code);
       console.error('Error details:', (error as any).details);
       console.error('Error hint:', (error as any).hint);
+      console.error('Error stack:', (error as any).stack);
       console.error('================================');
       
       throw error; // Throw the error object directly for better handling
     }
 
+    console.log('=== VERIFICATION SUCCESS - DETAILED DATA ===');
     console.log('User ID:', data?.user?.id);
     console.log('User email:', data?.user?.email);
     console.log('Email confirmed at:', data?.user?.email_confirmed_at);
+    console.log('User created at:', data?.user?.created_at);
+    console.log('User last sign in:', data?.user?.last_sign_in_at);
     console.log('Has session:', !!data?.session);
     console.log('Session access token (first 20 chars):', data?.session?.access_token?.substring(0, 20));
+    console.log('Session expires at:', data?.session?.expires_at);
+    console.log('Full user object:', JSON.stringify(data?.user, null, 2));
+    console.log('Full session object (masked):', data?.session ? {
+      access_token: data.session.access_token.substring(0, 20) + '...',
+      refresh_token: data.session.refresh_token ? '***' : null,
+      expires_at: data.session.expires_at,
+      expires_in: data.session.expires_in,
+      token_type: data.session.token_type,
+    } : null);
     console.log('================================');
 
     return data;
@@ -159,18 +184,32 @@ function VerifyEmailForm() {
         throw new Error('User not found in verification response');
       }
 
-      if (!data.session) {
-        console.warn('No session in verifyOtp response, attempting to get session...');
-        // If session is missing, try to get it explicitly
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError || !sessionData.session) {
-          console.error('Failed to get session:', sessionError);
-          throw new Error('Session not created. Please try again.');
-        }
-        
-        console.log('Session retrieved successfully via getSession()');
+      // Step 2.1: Always call getSession() after verifyOtp to ensure session is persisted
+      console.log('=== CALLING getSession() AFTER verifyOtp ===');
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('getSession() error:', sessionError);
+        console.error('Session error details:', JSON.stringify(sessionError, null, 2));
       }
+      
+      if (sessionData?.session) {
+        console.log('✅ Session confirmed via getSession()');
+        console.log('Session user ID:', sessionData.session.user.id);
+        console.log('Session expires at:', sessionData.session.expires_at);
+      } else {
+        console.warn('⚠️ No session in getSession() response');
+      }
+
+      // Check if we have session from verifyOtp or getSession
+      const finalSession = data.session || sessionData?.session;
+      
+      if (!finalSession) {
+        console.error('❌ No session found in verifyOtp response or getSession()');
+        throw new Error('Session not created. Please try again.');
+      }
+      
+      console.log('✅ Session verified and persisted');
 
       // Step 3: Verify session is persisted by checking getUser
       console.log('=== VERIFYING SESSION PERSISTENCE ===');

@@ -102,6 +102,9 @@ function SignupForm() {
       console.log('Email:', cleanEmail);
       console.log('University ID:', selectedUniversity.id);
       console.log('University Name:', selectedUniversity.name);
+      console.log('Auth method: signInWithOtp (OTP-based, passwordless)');
+      console.log('shouldCreateUser: true');
+      console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
       
       const { data, error } = await supabase.auth.signInWithOtp({
         email: cleanEmail,
@@ -110,11 +113,20 @@ function SignupForm() {
         },
       });
 
+      console.log('=== signInWithOtp RESPONSE ===');
+      console.log('Has data:', !!data);
+      console.log('Has error:', !!error);
+      console.log('Full response data:', JSON.stringify(data, null, 2));
+
       if (error) {
         console.error('=== OTP SEND ERROR ===');
         console.error('Error message:', error.message);
         console.error('Error status:', error.status);
+        console.error('Error status code:', (error as any).statusCode);
         console.error('Error code:', (error as any).code);
+        console.error('Error details:', (error as any).details);
+        console.error('Error hint:', (error as any).hint);
+        console.error('Full error object:', JSON.stringify(error, null, 2));
         console.error('========================');
         setError(error.message);
         setLoading(false);
@@ -122,8 +134,10 @@ function SignupForm() {
       }
 
       console.log('=== OTP SENT SUCCESSFULLY ===');
-      console.log('User created:', !!data.user);
-      console.log('Session created:', !!data.session);
+      console.log('User created:', !!data?.user);
+      console.log('User ID (if created):', data?.user?.id);
+      console.log('Session created:', !!data?.session);
+      console.log('Full user object:', data?.user ? JSON.stringify(data.user, null, 2) : 'null');
       console.log('=============================');
 
       // Store email and universityId in localStorage (primary source)
