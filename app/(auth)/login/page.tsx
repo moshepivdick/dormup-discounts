@@ -119,7 +119,7 @@ function LoginForm() {
         updateLastActivity();
         
         // Redirect to account page
-        router.push('/app');
+        router.push('/account');
       } else {
         setError('Verification failed. Please try again.');
         setLoading(false);

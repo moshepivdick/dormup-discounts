@@ -120,8 +120,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user && !isAuthRoute) {
       router.push('/login');
     } else if (user && isAuthRoute && pathname === '/login') {
-      // Already logged in, redirect to app
-      router.push('/app');
+      // Already logged in, redirect to account
+      router.push('/account');
     }
   }, [user, loading, pathname, router]);
 
