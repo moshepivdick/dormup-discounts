@@ -135,9 +135,14 @@ function SignupForm() {
 
       console.log('=== OTP SENT SUCCESSFULLY ===');
       console.log('User created:', !!data?.user);
-      console.log('User ID (if created):', data?.user?.id);
+      if (data?.user) {
+        console.log('User ID (if created):', data.user.id);
+        console.log('Full user object:', JSON.stringify(data.user, null, 2));
+      } else {
+        console.log('User ID (if created):', 'null');
+        console.log('Full user object:', 'null');
+      }
       console.log('Session created:', !!data?.session);
-      console.log('Full user object:', data?.user ? JSON.stringify(data.user, null, 2) : 'null');
       console.log('=============================');
 
       // Store email and universityId in localStorage (primary source)
