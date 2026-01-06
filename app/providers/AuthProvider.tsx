@@ -115,11 +115,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (loading) return;
 
-    const isAuthRoute = pathname === '/login' || pathname?.startsWith('/auth');
+    const isAuthRoute = pathname === '/login' || pathname === '/signup' || pathname?.startsWith('/auth');
     
     if (!user && !isAuthRoute) {
       router.push('/login');
-    } else if (user && isAuthRoute && pathname === '/login') {
+    } else if (user && isAuthRoute && (pathname === '/login' || pathname === '/signup')) {
       // Already logged in, redirect to account
       router.push('/account');
     }
