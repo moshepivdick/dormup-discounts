@@ -4,11 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/browser';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { BrandLogo } from '@/components/BrandLogo';
-import { Loader } from '@/components/ui/loader';
 
 export default function AccountPage() {
   const router = useRouter();
@@ -25,13 +24,13 @@ export default function AccountPage() {
         
         if (sessionError) {
           console.error('Session error:', sessionError);
-          router.push('/(auth)/login');
+          router.push('/login');
           return;
         }
         
         if (!session?.user) {
           console.log('No active session, redirecting to login');
-          router.push('/(auth)/login');
+          router.push('/login');
           return;
         }
 
@@ -61,7 +60,7 @@ export default function AccountPage() {
         }
       } catch (error) {
         console.error('Error loading user:', error);
-        router.push('/(auth)/login');
+        router.push('/login');
       } finally {
         setLoading(false);
       }
@@ -74,7 +73,7 @@ export default function AccountPage() {
     try {
       await supabase.auth.signOut();
       localStorage.removeItem('lastActivityAt');
-      router.push('/(auth)/login');
+      router.push('/login');
     } catch (error) {
       console.error('Sign out error:', error);
     }
@@ -95,12 +94,55 @@ export default function AccountPage() {
     return 'User';
   };
 
+  // Get user initial for avatar
+  const getUserInitial = () => {
+    const name = getDisplayName();
+    return name.charAt(0).toUpperCase();
+  };
+
+  const displayName = getDisplayName();
+  const isVerified = profile?.verified_student === true;
+
+  // Loading skeleton
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <Loader size="lg" className="mx-auto mb-4" />
-          <p className="text-slate-600">Loading your account...</p>
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+        <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+          {/* Header skeleton */}
+          <div className="mb-8 flex items-center justify-between">
+            <div className="h-8 w-32 animate-pulse rounded bg-slate-200" />
+            <div className="h-9 w-24 animate-pulse rounded bg-slate-200" />
+          </div>
+
+          {/* Title skeleton */}
+          <div className="mb-8">
+            <div className="mb-2 h-10 w-48 animate-pulse rounded bg-slate-200" />
+            <div className="h-6 w-80 animate-pulse rounded bg-slate-200" />
+          </div>
+
+          {/* Card skeleton */}
+          <Card className="shadow-sm">
+            <CardHeader className="pb-6">
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-16 animate-pulse rounded-full bg-slate-200" />
+                <div className="flex-1">
+                  <div className="mb-2 h-6 w-48 animate-pulse rounded bg-slate-200" />
+                  <div className="h-5 w-32 animate-pulse rounded bg-slate-200" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="h-4 w-20 animate-pulse rounded bg-slate-200" />
+                    <div className="h-5 w-40 animate-pulse rounded bg-slate-200" />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 h-12 w-full animate-pulse rounded-lg bg-slate-200" />
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
@@ -110,16 +152,14 @@ export default function AccountPage() {
     return null; // Will redirect
   }
 
-  const displayName = getDisplayName();
-  const isVerified = profile?.verified_student === true;
-
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
-        {/* Top Header Row */}
+        {/* Header Row */}
         <div className="mb-8 flex items-center justify-between">
-          <Link href="/" className="flex items-center">
+          <Link href="/" className="flex flex-col">
             <BrandLogo className="text-2xl" />
+            <span className="mt-0.5 text-xs text-slate-500">Student discounts</span>
           </Link>
           <Button onClick={handleSignOut} variant="outline" size="sm">
             <svg
@@ -139,41 +179,37 @@ export default function AccountPage() {
           </Button>
         </div>
 
-        {/* Page Title and Subtitle */}
+        {/* Hero / Title Section */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             Your Account
           </h1>
           <p className="mt-2 text-base text-slate-600 sm:text-lg">
-            Manage your DormUp profile
+            Manage your DormUp profile and verification status.
           </p>
         </div>
 
         {/* Main Card */}
-        <Card className="shadow-lg">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-xl">Welcome, {displayName}!</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* User Info Grid */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <p className="text-sm font-medium text-slate-600">Email</p>
-                <p className="text-base font-semibold text-slate-900">{user?.email || 'N/A'}</p>
+        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <CardHeader className="border-b border-slate-100 pb-6">
+            <div className="flex items-center gap-4">
+              {/* Avatar */}
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#014D40] text-xl font-semibold text-white">
+                {getUserInitial()}
               </div>
-              <div className="space-y-1.5">
-                <p className="text-sm font-medium text-slate-600">Name</p>
-                <p className="text-base font-semibold text-slate-900">
-                  {profile?.first_name || displayName}
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <p className="text-sm font-medium text-slate-600">Status</p>
+              {/* Greeting and Status */}
+              <div className="flex flex-1 items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900">
+                    Welcome, {displayName}!
+                  </h2>
+                </div>
+                {/* Status Badge */}
                 <div>
                   {isVerified ? (
-                    <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+                    <Badge className="bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-800 hover:bg-emerald-100">
                       <svg
-                        className="mr-1 h-3 w-3"
+                        className="mr-1.5 h-3.5 w-3.5"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -188,6 +224,36 @@ export default function AccountPage() {
                       Verified Student
                     </Badge>
                   ) : (
+                    <Badge className="bg-amber-100 px-3 py-1 text-sm font-medium text-amber-800 hover:bg-amber-100">
+                      Not verified
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="pt-6">
+            {/* Info Grid */}
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <p className="text-sm text-slate-500">Email</p>
+                <p className="text-base font-medium text-slate-900">{user?.email || 'N/A'}</p>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-sm text-slate-500">Name</p>
+                <p className="text-base font-medium text-slate-900">
+                  {profile?.first_name || displayName}
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-sm text-slate-500">Status</p>
+                <div>
+                  {isVerified ? (
+                    <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+                      Verified Student
+                    </Badge>
+                  ) : (
                     <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
                       Not verified
                     </Badge>
@@ -195,8 +261,8 @@ export default function AccountPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <p className="text-sm font-medium text-slate-600">Account created</p>
-                <p className="text-base font-semibold text-slate-900">
+                <p className="text-sm text-slate-500">Account created</p>
+                <p className="text-base font-medium text-slate-900">
                   {user?.created_at
                     ? new Date(user.created_at).toLocaleDateString('en-US', {
                         year: 'numeric',
@@ -208,11 +274,11 @@ export default function AccountPage() {
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-col gap-3 pt-4 sm:flex-row">
+            {/* Actions */}
+            <div className="mt-8 space-y-3 border-t border-slate-100 pt-6">
               <Button
                 onClick={() => router.push('/')}
-                className="flex-1 bg-[#014D40] hover:bg-[#013a30]"
+                className="w-full bg-[#014D40] hover:bg-[#013a30] sm:w-auto sm:min-w-[200px]"
                 size="lg"
               >
                 <svg
@@ -228,8 +294,11 @@ export default function AccountPage() {
                     d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                   />
                 </svg>
-                Explore discounts
+                Go to places search
               </Button>
+              <p className="text-sm text-slate-500">
+                Start exploring student discounts around you.
+              </p>
             </div>
           </CardContent>
         </Card>
