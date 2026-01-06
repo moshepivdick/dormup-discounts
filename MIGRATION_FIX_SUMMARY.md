@@ -70,3 +70,4 @@ npx prisma migrate deploy
 - Empty migrations were created as placeholders for already-applied migrations
 - The duplicate RLS migration was safely removed (RLS setup is in the profiles table creation migration)
 
+

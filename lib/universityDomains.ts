@@ -42,3 +42,4 @@ export function extractFirstName(email: string): string {
   return firstPart.charAt(0).toUpperCase() + firstPart.slice(1).toLowerCase();
 }
 
+

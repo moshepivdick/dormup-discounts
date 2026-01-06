@@ -154,6 +154,10 @@ export default function AccountPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      {/* DEBUG BANNER - REMOVE AFTER CONFIRMING */}
+      <div className="bg-red-500 px-4 py-2 text-center text-sm font-bold text-white">
+        🚨 DEBUG: app/account/page.tsx IS RENDERING - NEW DESIGN ACTIVE 🚨
+      </div>
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
         {/* Header Row */}
         <div className="mb-8 flex items-center justify-between">

@@ -122,3 +122,4 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 - Activity tracking uses localStorage (survives page refreshes)
 - Profile upsert happens client-side using authenticated Supabase client (RLS allows it)
 
+

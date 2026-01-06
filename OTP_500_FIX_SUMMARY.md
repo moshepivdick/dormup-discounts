@@ -135,3 +135,4 @@ SELECT * FROM pg_policies WHERE tablename = 'profiles';
 - **Test thoroughly** after applying fix
 - **Monitor Supabase logs** for any remaining errors
 
+

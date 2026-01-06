@@ -114,3 +114,4 @@ ALTER TABLE auth.users ENABLE TRIGGER on_auth_user_created;
 5. ✅ User status is "Confirmed" (not "Waiting for verification")
 6. ✅ Profile can be updated later with university_id via API
 
+

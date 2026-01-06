@@ -144,3 +144,4 @@ The migration:
 3. Update any remaining references to old login/signup pages
 4. Remove old password-based signup page if exists
 
+
