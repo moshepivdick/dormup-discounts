@@ -105,7 +105,6 @@ export const getServerSideProps = (async (ctx) => {
     select: {
       id: true,
       email: true,
-      first_name: true,
       verified_student: true,
     },
     orderBy: { createdAt: 'desc' },
@@ -124,7 +123,7 @@ export const getServerSideProps = (async (ctx) => {
         return {
           userId: profile.id,
           email: profile.email,
-          firstName: profile.first_name || undefined,
+          firstName: undefined,
           verified: profile.verified_student,
           totalViews: stats.totalViews,
           totalQrCodes: stats.totalQrCodes,
@@ -136,7 +135,7 @@ export const getServerSideProps = (async (ctx) => {
         return {
           userId: profile.id,
           email: profile.email,
-          firstName: profile.first_name || undefined,
+          firstName: undefined,
           verified: profile.verified_student,
           totalViews: 0,
           totalQrCodes: 0,

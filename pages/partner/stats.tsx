@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import { useState, useEffect } from 'react';
-import type { GetServerSideProps } from 'next';
+import type { GetServerSideProps, GetServerSidePropsContext } from 'next';
 import { auth } from '@/lib/auth';
 import { requirePartner } from '@/lib/guards';
 import Link from 'next/link';
@@ -221,7 +221,7 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
   );
 }
 
-export const getServerSideProps: GetServerSideProps<PartnerStatsProps> = async (ctx) => {
+export const getServerSideProps = async (ctx: GetServerSidePropsContext) => {
   const guard = await requirePartner(ctx);
   if ('redirect' in guard) {
     return guard;

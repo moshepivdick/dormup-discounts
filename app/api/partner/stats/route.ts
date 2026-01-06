@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     const stats = await getPartnerVenueStats(partner.venueId);
 
-    return NextResponse.json({ stats });
+    return NextResponse.json({ success: true, data: { stats } });
   } catch (error) {
     console.error('Error fetching partner stats:', error);
     return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 });

@@ -201,7 +201,6 @@ export const getServerSideProps = (async (ctx) => {
     select: {
       id: true,
       email: true,
-      first_name: true,
       verified_student: true,
       createdAt: true,
     },
@@ -218,7 +217,7 @@ export const getServerSideProps = (async (ctx) => {
       user: {
         id: profile.id,
         email: profile.email,
-        firstName: profile.first_name || undefined,
+        firstName: undefined,
         verified: profile.verified_student,
         createdAt: profile.createdAt.toISOString(),
       },

@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Invalid payload', details: parsed.error.errors },
+        { error: 'Invalid payload', details: parsed.error.flatten() },
         { status: 400 }
       );
     }
