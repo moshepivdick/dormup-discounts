@@ -188,10 +188,34 @@ export function AccountMenu({ showDesktopButtons = false }: AccountMenuProps) {
     );
   }
 
-  const initials = user.email
-    .split('@')[0]
-    .slice(0, 2)
-    .toUpperCase();
+  // Get initials: first letter of name, second letter is first letter after dot in email
+  const getInitials = () => {
+    const emailLocal = user.email.split('@')[0];
+    let firstLetter = '';
+    let secondLetter = '';
+
+    // First letter: from name if available, otherwise first letter of email before dot
+    if (user.firstName) {
+      firstLetter = user.firstName.charAt(0).toUpperCase();
+    } else {
+      const beforeDot = emailLocal.split('.')[0];
+      firstLetter = beforeDot.charAt(0).toUpperCase();
+    }
+
+    // Second letter: first letter after dot in email
+    const dotIndex = emailLocal.indexOf('.');
+    if (dotIndex !== -1 && dotIndex < emailLocal.length - 1) {
+      secondLetter = emailLocal.charAt(dotIndex + 1).toUpperCase();
+    } else {
+      // If no dot, use second letter of first part
+      const beforeDot = emailLocal.split('.')[0];
+      secondLetter = beforeDot.length > 1 ? beforeDot.charAt(1).toUpperCase() : firstLetter;
+    }
+
+    return firstLetter + secondLetter;
+  };
+
+  const initials = getInitials();
 
   return (
     <div className="relative">
@@ -201,9 +225,9 @@ export function AccountMenu({ showDesktopButtons = false }: AccountMenuProps) {
             className="flex items-center gap-2 rounded-full p-1.5 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
             aria-label="Account menu"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-sm font-semibold text-white">
-              {initials}
-            </div>
+             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-sm font-semibold text-white ring-2 ring-emerald-500 ring-offset-1">
+               {initials}
+             </div>
             <svg
               className={`h-4 w-4 text-slate-600 transition-transform ${
                 open ? 'rotate-180' : ''

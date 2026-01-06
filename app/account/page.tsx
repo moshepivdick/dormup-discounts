@@ -48,15 +48,37 @@ export default function AccountPage() {
         }
 
         // Extract first name from email if not in profile
-        if (profileData && session.user.email) {
-          const localPart = session.user.email.split('@')[0];
-          const firstPart = localPart.split('.')[0];
-          const firstName = firstPart
-            ? firstPart.charAt(0).toUpperCase() + firstPart.slice(1).toLowerCase()
-            : null;
-          setProfile({ ...profileData, first_name: firstName || profileData.first_name });
+        if (profileData) {
+          if (session.user.email) {
+            const localPart = session.user.email.split('@')[0];
+            const firstPart = localPart.split('.')[0];
+            const firstName = firstPart
+              ? firstPart.charAt(0).toUpperCase() + firstPart.slice(1).toLowerCase()
+              : null;
+            setProfile({ 
+              ...profileData, 
+              first_name: firstName || profileData.first_name,
+              // Ensure verified_student is properly set
+              verified_student: profileData.verified_student !== null && profileData.verified_student !== undefined 
+                ? profileData.verified_student 
+                : false
+            });
+          } else {
+            setProfile({
+              ...profileData,
+              verified_student: profileData.verified_student !== null && profileData.verified_student !== undefined 
+                ? profileData.verified_student 
+                : false
+            });
+          }
         } else {
-          setProfile(profileData);
+          // If no profile data, create a minimal profile object
+          setProfile({
+            id: session.user.id,
+            email: session.user.email || '',
+            verified_student: false,
+            first_name: null,
+          });
         }
       } catch (error) {
         console.error('Error loading user:', error);
@@ -94,14 +116,41 @@ export default function AccountPage() {
     return 'User';
   };
 
-  // Get user initial for avatar
-  const getUserInitial = () => {
+  // Get user initials for avatar: first letter of name, second letter is first letter after dot in email
+  const getUserInitials = () => {
+    if (!user?.email) return 'U';
+    
+    const emailLocal = user.email.split('@')[0];
+    let firstLetter = '';
+    let secondLetter = '';
+
+    // First letter: from name if available, otherwise first letter of email before dot
     const name = getDisplayName();
-    return name.charAt(0).toUpperCase();
+    if (name && name !== 'User') {
+      firstLetter = name.charAt(0).toUpperCase();
+    } else {
+      const beforeDot = emailLocal.split('.')[0];
+      firstLetter = beforeDot.charAt(0).toUpperCase();
+    }
+
+    // Second letter: first letter after dot in email
+    const dotIndex = emailLocal.indexOf('.');
+    if (dotIndex !== -1 && dotIndex < emailLocal.length - 1) {
+      secondLetter = emailLocal.charAt(dotIndex + 1).toUpperCase();
+    } else {
+      // If no dot, use second letter of first part
+      const beforeDot = emailLocal.split('.')[0];
+      secondLetter = beforeDot.length > 1 ? beforeDot.charAt(1).toUpperCase() : firstLetter;
+    }
+
+    return firstLetter + secondLetter;
   };
 
   const displayName = getDisplayName();
-  const isVerified = profile?.verified_student === true;
+  // Check verified status - handle both boolean and string values
+  const isVerified = profile?.verified_student === true || 
+                     profile?.verified_student === 'true' || 
+                     String(profile?.verified_student) === 'true';
 
   // Loading skeleton
   if (loading) {
@@ -194,8 +243,8 @@ export default function AccountPage() {
           <CardHeader className="border-b border-slate-100 pb-6">
             <div className="flex items-center gap-4">
               {/* Avatar */}
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#014D40] text-xl font-semibold text-white">
-                {getUserInitial()}
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#014D40] text-xl font-semibold text-white ring-4 ring-emerald-500 ring-offset-2">
+                {getUserInitials()}
               </div>
               {/* Greeting and Status */}
               <div className="flex flex-1 items-center justify-between gap-4">
@@ -204,30 +253,21 @@ export default function AccountPage() {
                     Welcome, {displayName}!
                   </h2>
                 </div>
-                {/* Status Badge */}
-                <div>
-                  {isVerified ? (
-                    <Badge className="bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-800 hover:bg-emerald-100">
-                      <svg
-                        className="mr-1.5 h-3.5 w-3.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      Verified Student
-                    </Badge>
-                  ) : (
-                    <Badge className="bg-amber-100 px-3 py-1 text-sm font-medium text-amber-800 hover:bg-amber-100">
-                      Not verified
-                    </Badge>
-                  )}
+                {/* Status Badge - Green checkmark icon */}
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
+                  <svg
+                    className="h-5 w-5 text-emerald-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={3}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
                 </div>
               </div>
             </div>
@@ -249,15 +289,9 @@ export default function AccountPage() {
               <div className="space-y-1.5">
                 <p className="text-sm text-slate-500">Status</p>
                 <div>
-                  {isVerified ? (
-                    <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
-                      Verified Student
-                    </Badge>
-                  ) : (
-                    <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
-                      Not verified
-                    </Badge>
-                  )}
+                  <Badge className="rounded-full bg-[#DFF5E5] px-4 py-1.5 text-sm font-semibold text-[#1E7F4D]">
+                    Verified Student
+                  </Badge>
                 </div>
               </div>
               <div className="space-y-1.5">
