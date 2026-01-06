@@ -134,12 +134,14 @@ function SignupForm() {
       }
 
       // Store user in a const to help TypeScript narrow the type correctly
-      const user = data?.user ?? null;
-      const session = data?.session ?? null;
+      const user = data?.user;
+      const session = data?.session;
 
       console.log('=== OTP SENT SUCCESSFULLY ===');
       console.log('User created:', !!user);
-      console.log('User ID (if created):', user?.id ?? null);
+      // Use type assertion for logging only (safe since this is just for debugging)
+      const userId = user ? (user as any).id ?? null : null;
+      console.log('User ID (if created):', userId);
       console.log('Full user object:', user ? JSON.stringify(user, null, 2) : 'null');
       console.log('Session created:', !!session);
       console.log('=============================');
