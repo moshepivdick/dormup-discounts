@@ -154,7 +154,7 @@ function SignupForm() {
       localStorage.setItem(`otp_cooldown_${cleanEmail}`, Date.now().toString());
       
       // Immediately redirect to verify email page
-      router.push('/(auth)/verify-email');
+      router.push('/verify-email');
     } catch (err: any) {
       console.error('=== OTP SEND EXCEPTION ===');
       console.error('Error:', err);

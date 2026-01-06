@@ -428,7 +428,7 @@ function VerifyEmailForm() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/(auth)/signup">
+            <Link href="/signup">
               <Button className="w-full">Go back to registration</Button>
             </Link>
           </CardContent>
@@ -514,7 +514,7 @@ function VerifyEmailForm() {
               </Button>
 
               <Link
-                href="/(auth)/signup"
+                href="/signup"
                 className="block w-full text-center text-sm text-slate-600 hover:text-[#014D40] transition font-medium"
               >
                 Change email address
