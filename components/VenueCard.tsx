@@ -1,3 +1,5 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -27,10 +29,21 @@ export function VenueCard({ venue }: Props) {
     }
   }, [venue.openingHoursShort]);
 
+  // Track venue card click/view
+  const handleClick = () => {
+    // Track click asynchronously (don't block navigation)
+    fetch('/api/analytics/view', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ venueId: venue.id, city: venue.city }),
+    }).catch(() => null);
+  };
+
   return (
     <Link
       id={`venue-${venue.id}`}
       href={`/venues/${venue.id}`}
+      onClick={handleClick}
       className="flex flex-col gap-1.5 rounded-xl border border-slate-100 bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:shadow-lg sm:p-4 md:gap-4 md:rounded-3xl"
     >
       {imageSrc && (

@@ -5,6 +5,7 @@ import { BrandLogo } from '@/components/BrandLogo';
 
 const navLinks = [
   { href: '/admin/dashboard', label: 'Dashboard' },
+  { href: '/admin/users', label: 'Users' },
   { href: '/admin/venues', label: 'Venues' },
   { href: '/admin/partners', label: 'Partners' },
   { href: '/admin/discount-uses', label: 'Discounts' },

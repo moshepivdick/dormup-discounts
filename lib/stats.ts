@@ -55,3 +55,159 @@ export const getDiscountsByDay = async (days = 7) => {
     .map(([date, total]) => ({ date, total }));
 };
 
+// User activity statistics
+export const getUserActivityStats = async (userId: string) => {
+  // Get venue views
+  const views = await prisma.venueView.findMany({
+    where: { user_id: userId },
+    include: {
+      venue: {
+        select: {
+          id: true,
+          name: true,
+          city: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // Get QR codes generated and verified
+  const discountUses = await prisma.discountUse.findMany({
+    where: { user_id: userId },
+    include: {
+      venue: {
+        select: {
+          id: true,
+          name: true,
+          city: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // Count views per venue
+  const venueViewCounts = views.reduce<Record<number, number>>((acc, view) => {
+    acc[view.venueId] = (acc[view.venueId] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Count QR codes per venue
+  const venueQrCounts = discountUses.reduce<Record<number, { generated: number; verified: number }>>(
+    (acc, use) => {
+      if (!acc[use.venueId]) {
+        acc[use.venueId] = { generated: 0, verified: 0 };
+      }
+      acc[use.venueId].generated++;
+      if (use.status === 'confirmed') {
+        acc[use.venueId].verified++;
+      }
+      return acc;
+    },
+    {}
+  );
+
+  // Get first and return visits
+  const firstVisits = new Set<number>();
+  const returnVisits: Array<{ venueId: number; venueName: string; date: Date }> = [];
+
+  views.forEach((view, index) => {
+    const previousViews = views.slice(0, index).filter((v) => v.venueId === view.venueId);
+    if (previousViews.length === 0) {
+      firstVisits.add(view.venueId);
+    } else {
+      returnVisits.push({
+        venueId: view.venueId,
+        venueName: view.venue.name,
+        date: view.createdAt,
+      });
+    }
+  });
+
+  return {
+    totalViews: views.length,
+    totalQrCodes: discountUses.length,
+    totalVerified: discountUses.filter((d) => d.status === 'confirmed').length,
+    venueViewCounts,
+    venueQrCounts,
+    firstVisits: Array.from(firstVisits),
+    returnVisits,
+    recentViews: views.slice(0, 10),
+    recentQrCodes: discountUses.slice(0, 10),
+  };
+};
+
+// Partner venue statistics (only their venue)
+export const getPartnerVenueStats = async (venueId: number) => {
+  // Get all views for this venue
+  const views = await prisma.venueView.findMany({
+    where: { venueId },
+    include: {
+      profiles: {
+        select: {
+          id: true,
+          email: true,
+          first_name: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // Get all QR codes for this venue
+  const discountUses = await prisma.discountUse.findMany({
+    where: { venueId },
+    include: {
+      profiles: {
+        select: {
+          id: true,
+          email: true,
+          first_name: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // Count views per user
+  const userViewCounts = views.reduce<Record<string, number>>((acc, view) => {
+    if (view.user_id) {
+      acc[view.user_id] = (acc[view.user_id] || 0) + 1;
+    }
+    return acc;
+  }, {});
+
+  // Count QR codes per user
+  const userQrCounts = discountUses.reduce<
+    Record<string, { generated: number; verified: number; email?: string; name?: string }>
+  >((acc, use) => {
+    if (use.user_id) {
+      if (!acc[use.user_id]) {
+        acc[use.user_id] = {
+          generated: 0,
+          verified: 0,
+          email: use.profiles?.email,
+          name: use.profiles?.first_name || undefined,
+        };
+      }
+      acc[use.user_id].generated++;
+      if (use.status === 'confirmed') {
+        acc[use.user_id].verified++;
+      }
+    }
+    return acc;
+  }, {});
+
+  return {
+    totalViews: views.length,
+    totalQrCodes: discountUses.length,
+    totalVerified: discountUses.filter((d) => d.status === 'confirmed').length,
+    uniqueUsers: new Set(views.map((v) => v.user_id).filter(Boolean)).size,
+    userViewCounts,
+    userQrCounts,
+    recentViews: views.slice(0, 20),
+    recentQrCodes: discountUses.slice(0, 20),
+  };
+};
+
