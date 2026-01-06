@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Session expired due to inactivity
             await supabase.auth.signOut();
             localStorage.removeItem('lastActivityAt');
-            if (pathname !== '/login') {
+            if (pathname !== '/login' && pathname !== '/signup') {
               router.push('/login');
             }
             setUser(null);
@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (elapsed > INACTIVITY_MS) {
           supabase.auth.signOut();
           localStorage.removeItem('lastActivityAt');
-          if (pathname !== '/login') {
+          if (pathname !== '/login' && pathname !== '/signup') {
             router.push('/login');
           }
         }
@@ -114,14 +114,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Protect routes
   useEffect(() => {
     if (loading) return;
+    if (!pathname) return; // Wait for pathname to be set
 
-    const isAuthRoute = pathname === '/login' || pathname === '/signup' || pathname?.startsWith('/auth');
+    const isAuthRoute = 
+      pathname === '/login' || 
+      pathname === '/signup' || 
+      pathname === '/verify-email' ||
+      pathname?.startsWith('/auth') ||
+      pathname?.startsWith('/(auth)');
     
+    // Don't redirect if we're already on an auth route
+    if (isAuthRoute) {
+      // If user is logged in and on login/signup, redirect to account
+      if (user && (pathname === '/login' || pathname === '/signup')) {
+        router.push('/account');
+      }
+      return; // Allow access to auth routes
+    }
+    
+    // Only redirect to login if user is not logged in and not on an auth route
     if (!user && !isAuthRoute) {
       router.push('/login');
-    } else if (user && isAuthRoute && (pathname === '/login' || pathname === '/signup')) {
-      // Already logged in, redirect to account
-      router.push('/account');
     }
   }, [user, loading, pathname, router]);
 
