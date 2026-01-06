@@ -105,7 +105,7 @@ export function AccountMenu({ showDesktopButtons = false }: AccountMenuProps) {
             Log in
           </Link>
           <Link
-            href="/(auth)/signup"
+            href="/signup"
             className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
           >
             Sign up
@@ -162,7 +162,7 @@ export function AccountMenu({ showDesktopButtons = false }: AccountMenuProps) {
                 <span className="break-words">Log in</span>
               </Link>
               <Link
-                href="/(auth)/signup"
+                href="/signup"
                 onClick={() => setOpen(false)}
                 className="flex w-full items-center justify-start gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold leading-tight text-slate-700 transition hover:bg-slate-50 whitespace-normal"
               >
