@@ -279,29 +279,31 @@ export default function AccountPage() {
             </div>
 
             {/* Actions */}
-            <div className="mt-8 space-y-3 border-t border-slate-100 pt-6">
-              <Button
-                onClick={() => router.push('/')}
-                className="w-full bg-[#014D40] hover:bg-[#013a30] sm:w-auto sm:min-w-[200px]"
-                size="lg"
-              >
-                <svg
-                  className="mr-2 h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+            <div className="mt-8 space-y-4 border-t border-slate-100 pt-8">
+              <div className="text-center">
+                <Button
+                  onClick={() => router.push('/')}
+                  className="w-full bg-[#014D40] hover:bg-[#013a30] text-lg font-semibold py-6 px-8 shadow-lg hover:shadow-xl transition-all"
+                  size="lg"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-                Go to places search
-              </Button>
-              <p className="text-sm text-slate-500">
-                Start exploring student discounts around you.
+                  <svg
+                    className="mr-3 h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                    />
+                  </svg>
+                  Перейти в главное меню
+                </Button>
+              </div>
+              <p className="text-center text-sm text-slate-500">
+                Начните использовать сервис и ищите скидки для студентов
               </p>
             </div>
           </CardContent>
