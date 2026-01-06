@@ -15,7 +15,7 @@ const getEnv = (key: EnvVar, fallback?: string) => {
   return value;
 };
 
-const getEnvOptional = (key: string, fallback?: string) => {
+const getEnvOptional = (key: string, fallback?: string): string | undefined => {
   return process.env[key] ?? fallback;
 };
 
@@ -27,8 +27,9 @@ export const env = {
   adminPanelSlug: () => getEnv('ADMIN_PANEL_SLUG'),
   adminPanelPasswordHash: () => getEnv('ADMIN_PANEL_PASSWORD_HASH'),
   adminGateCookieTtlMinutes: () => {
-    const ttl = getEnvOptional('ADMIN_GATE_COOKIE_TTL_MINUTES', '120');
-    return parseInt(ttl, 10);
+    const raw = getEnvOptional('ADMIN_GATE_COOKIE_TTL_MINUTES') ?? '120';
+    const ttl = Number(raw);
+    return Number.isFinite(ttl) ? ttl : 120;
   },
 };
 
