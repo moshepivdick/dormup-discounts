@@ -98,7 +98,12 @@ function SignupForm() {
       // SEND OTP CODE - Supabase-generated token ONLY
       const cleanEmail = email.trim().toLowerCase();
       
-      const { error } = await supabase.auth.signInWithOtp({
+      console.log('=== SENDING OTP CODE ===');
+      console.log('Email:', cleanEmail);
+      console.log('University ID:', selectedUniversity.id);
+      console.log('University Name:', selectedUniversity.name);
+      
+      const { data, error } = await supabase.auth.signInWithOtp({
         email: cleanEmail,
         options: {
           shouldCreateUser: true,
@@ -106,11 +111,20 @@ function SignupForm() {
       });
 
       if (error) {
-        console.error('sendOtp error:', error);
+        console.error('=== OTP SEND ERROR ===');
+        console.error('Error message:', error.message);
+        console.error('Error status:', error.status);
+        console.error('Error code:', (error as any).code);
+        console.error('========================');
         setError(error.message);
         setLoading(false);
         return;
       }
+
+      console.log('=== OTP SENT SUCCESSFULLY ===');
+      console.log('User created:', !!data.user);
+      console.log('Session created:', !!data.session);
+      console.log('=============================');
 
       // Store email and universityId in localStorage (primary source)
       localStorage.setItem('dormup_auth_email', cleanEmail);
@@ -120,9 +134,12 @@ function SignupForm() {
       localStorage.setItem(`otp_cooldown_${cleanEmail}`, Date.now().toString());
       
       // Immediately redirect to verify email page
-      window.location.href = '/(auth)/verify-email';
+      router.push('/(auth)/verify-email');
     } catch (err: any) {
-      console.error('sendOtp error:', err);
+      console.error('=== OTP SEND EXCEPTION ===');
+      console.error('Error:', err);
+      console.error('Error message:', err.message);
+      console.error('==========================');
       setError(err.message || 'Failed to send code');
       setLoading(false);
     }

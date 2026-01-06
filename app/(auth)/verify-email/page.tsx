@@ -11,7 +11,7 @@ import { Loader } from '@/components/ui/loader';
 import { OtpInput } from '@/components/auth/OtpInput';
 import Link from 'next/link';
 
-const RESEND_COOLDOWN_SECONDS = 30;
+const RESEND_COOLDOWN_SECONDS = 60; // Increased to 60 seconds for better UX
 
 function VerifyEmailForm() {
   const router = useRouter();
@@ -86,12 +86,22 @@ function VerifyEmailForm() {
     const cleanEmail = email.trim().toLowerCase();
     const cleanCode = code.trim();
 
+    console.log('=== OTP VERIFICATION START ===');
+    console.log('Email:', cleanEmail);
+    console.log('Code length:', cleanCode.length);
+    console.log('Code (masked):', cleanCode.substring(0, 2) + '****');
+    console.log('Verification type: email');
+
     const { data, error } = await supabase.auth.verifyOtp({
       email: cleanEmail,
       token: cleanCode,
-      type: 'email',
+      type: 'email', // Use 'email' for OTP verification (not 'signup' or 'magiclink')
     });
 
+    console.log('=== OTP VERIFICATION RESPONSE ===');
+    console.log('Has data:', !!data);
+    console.log('Has error:', !!error);
+    
     if (error) {
       // FULL ERROR EXPOSURE - log everything
       console.error('=== OTP VERIFICATION ERROR ===');
@@ -104,18 +114,15 @@ function VerifyEmailForm() {
       console.error('Error hint:', (error as any).hint);
       console.error('================================');
       
-      // Throw with full error details
-      const errorDetails = {
-        message: error.message,
-        status: error.status,
-        name: error.name,
-        code: (error as any).code,
-        details: (error as any).details,
-        hint: (error as any).hint,
-      };
-      
-      throw new Error(JSON.stringify(errorDetails, null, 2));
+      throw error; // Throw the error object directly for better handling
     }
+
+    console.log('User ID:', data?.user?.id);
+    console.log('User email:', data?.user?.email);
+    console.log('Email confirmed at:', data?.user?.email_confirmed_at);
+    console.log('Has session:', !!data?.session);
+    console.log('Session access token (first 20 chars):', data?.session?.access_token?.substring(0, 20));
+    console.log('================================');
 
     return data;
   };
@@ -142,83 +149,157 @@ function VerifyEmailForm() {
     setError(null);
 
     try {
-      // ISOLATION MODE - Only verify OTP, no side effects
-      console.log('=== ISOLATION MODE: Starting OTP verification ===');
+      console.log('=== STARTING OTP VERIFICATION FLOW ===');
+      
+      // Step 1: Verify OTP code
       const data = await verifyOtpCode(email, cleanCode);
-      console.log('OTP verification succeeded, data:', data);
-
-      // Verify we have user and session
+      
+      // Step 2: Verify we have user and session
       if (!data.user) {
         throw new Error('User not found in verification response');
       }
 
       if (!data.session) {
-        throw new Error('Session not created in verification response');
+        console.warn('No session in verifyOtp response, attempting to get session...');
+        // If session is missing, try to get it explicitly
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !sessionData.session) {
+          console.error('Failed to get session:', sessionError);
+          throw new Error('Session not created. Please try again.');
+        }
+        
+        console.log('Session retrieved successfully via getSession()');
       }
 
-      // ISOLATION MODE - Only call getUser to check email_confirmed_at
-      console.log('=== ISOLATION MODE: Calling getUser ===');
+      // Step 3: Verify session is persisted by checking getUser
+      console.log('=== VERIFYING SESSION PERSISTENCE ===');
       const { data: userData, error: getUserError } = await supabase.auth.getUser();
       
       if (getUserError) {
         console.error('getUser error:', getUserError);
-        throw new Error(`getUser failed: ${getUserError.message}`);
+        throw new Error(`Session verification failed: ${getUserError.message}`);
       }
 
       if (!userData.user) {
-        throw new Error('getUser returned no user');
+        throw new Error('Session verification failed: No user found');
       }
 
-      // Log email_confirmed_at
-      console.log('=== ISOLATION MODE: User verification status ===');
+      console.log('=== SESSION VERIFICATION SUCCESS ===');
       console.log('User ID:', userData.user.id);
       console.log('Email:', userData.user.email);
-      console.log('email_confirmed_at:', userData.user.email_confirmed_at);
+      console.log('Email confirmed at:', userData.user.email_confirmed_at);
       console.log('Email confirmed:', !!userData.user.email_confirmed_at);
-      console.log('Session exists:', !!data.session);
-      console.log('===============================================');
+      console.log('=====================================');
 
-      // ISOLATION MODE - DO NOT do profile upsert or redirect
-      // This is to isolate whether the 500 error is from database triggers
-      // or from our post-verification code
+      // Step 4: Create/update profile with university information
+      console.log('=== CREATING/UPDATING PROFILE ===');
+      const cleanEmail = email.trim().toLowerCase();
       
-      setError(null);
-      alert(`ISOLATION MODE: OTP verified successfully!\n\nUser ID: ${userData.user.id}\nEmail: ${userData.user.email}\nemail_confirmed_at: ${userData.user.email_confirmed_at || 'NULL'}\n\nCheck console for full details.`);
-      setLoading(false);
+      try {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: userData.user.id,
+            email: cleanEmail,
+            university_id: universityId,
+            verified_student: true,
+          }, {
+            onConflict: 'id',
+          });
+
+        if (profileError) {
+          console.error('Profile upsert error (direct):', profileError);
+          
+          // Fallback: Try via API route
+          console.log('Attempting profile upsert via API route...');
+          const response = await fetch('/api/profile/upsert', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              universityId: universityId,
+            }),
+            credentials: 'include',
+          });
+
+          if (!response.ok) {
+            const result = await response.json();
+            console.error('Profile upsert error (API):', result);
+            // Don't throw - profile can be updated later, user is verified
+            console.warn('Profile upsert failed, but user is verified. Continuing...');
+          } else {
+            console.log('Profile upsert successful via API route');
+          }
+        } else {
+          console.log('Profile upsert successful (direct)');
+        }
+      } catch (profileErr: any) {
+        console.error('Profile upsert exception:', profileErr);
+        // Don't block the flow - user is verified, profile can be fixed later
+        console.warn('Profile upsert failed, but user is verified. Continuing...');
+      }
+
+      // Step 5: Clear auth data from localStorage
+      localStorage.removeItem('dormup_auth_email');
+      localStorage.removeItem('dormup_auth_universityId');
+      localStorage.removeItem(`otp_cooldown_${cleanEmail}`);
       
-      // DO NOT redirect or upsert profile in isolation mode
-      return;
+      console.log('=== VERIFICATION COMPLETE - REDIRECTING ===');
+      
+      // Step 6: Redirect to account page
+      // Use router.push for client-side navigation (preserves session)
+      router.push('/account');
     } catch (err: any) {
       // STRICT ERROR VISIBILITY - NO GENERIC ERRORS
       console.error('=== VERIFICATION EXCEPTION ===');
       console.error('Error:', err);
       console.error('Error message:', err.message);
+      console.error('Error status:', err.status);
+      console.error('Error code:', err.code);
       console.error('Error stack:', err.stack);
       console.error('Full error:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
       console.error('==============================');
       
-      const errorMessage = err.message || 'Failed to verify code. Please try again.';
-      setError(errorMessage);
+      // Parse error message for better UX
+      let errorMessage = 'Failed to verify code. Please try again.';
       
-      // ALWAYS show error in alert for debugging (temporary)
-      if (typeof window !== 'undefined') {
-        alert(`OTP Verification Error:\n\n${errorMessage}\n\nCheck console for full details.`);
+      if (err.message) {
+        // Handle specific Supabase error codes
+        if (err.code === 'invalid_token' || err.message.includes('invalid') || err.message.includes('Invalid')) {
+          errorMessage = 'Invalid verification code. Please check and try again.';
+        } else if (err.code === 'expired_token' || err.message.includes('expired') || err.message.includes('Expired')) {
+          errorMessage = 'This verification code has expired. Please request a new one.';
+        } else if (err.message.includes('rate limit') || err.message.includes('too many')) {
+          errorMessage = 'Too many attempts. Please wait a moment and try again.';
+        } else {
+          errorMessage = err.message;
+        }
       }
+      
+      setError(errorMessage);
       setLoading(false);
     }
   };
 
   const handleResend = async () => {
-    if (resendCooldown > 0 || !email) return;
+    if (resendCooldown > 0 || !email) {
+      if (resendCooldown > 0) {
+        setError(`Please wait ${resendCooldown} seconds before requesting a new code.`);
+      }
+      return;
+    }
 
     setLoading(true);
     setError(null);
 
     try {
-      // SEND OTP CODE - Supabase-generated token ONLY
+      console.log('=== RESENDING OTP CODE ===');
       const cleanEmail = email.trim().toLowerCase();
+      console.log('Email:', cleanEmail);
       
-      const { error } = await supabase.auth.signInWithOtp({
+      const { data, error } = await supabase.auth.signInWithOtp({
         email: cleanEmail,
         options: {
           shouldCreateUser: true,
@@ -226,19 +307,37 @@ function VerifyEmailForm() {
       });
 
       if (error) {
-        console.error('sendOtp error (resend):', error);
-        setError(error.message);
+        console.error('Resend OTP error:', error);
+        let errorMessage = 'Failed to send code. Please try again.';
+        
+        // Better error messages
+        if (error.message.includes('rate limit') || error.message.includes('too many')) {
+          errorMessage = 'Too many requests. Please wait a moment before requesting a new code.';
+        } else if (error.message.includes('email')) {
+          errorMessage = 'Invalid email address. Please check and try again.';
+        } else {
+          errorMessage = error.message;
+        }
+        
+        setError(errorMessage);
         setLoading(false);
         return;
       }
 
+      console.log('OTP resend successful');
+      
       // Store cooldown timestamp
       localStorage.setItem(`otp_cooldown_${cleanEmail}`, Date.now().toString());
       setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      
+      // Show success message
+      setError(null);
+      // You could add a success state here if needed
+      
       setLoading(false);
     } catch (err: any) {
-      console.error('Resend error:', err);
-      setError(err.message || 'Failed to send code');
+      console.error('Resend exception:', err);
+      setError(err.message || 'Failed to send code. Please try again.');
       setLoading(false);
     }
   };
