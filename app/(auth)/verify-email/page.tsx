@@ -232,10 +232,12 @@ function VerifyEmailForm() {
       console.log('=====================================');
 
       // Step 4: Create/update profile with university information
+      // NOTE: Profile should already exist from trigger, but we upsert to ensure university_id is set
       console.log('=== CREATING/UPDATING PROFILE ===');
       const cleanEmail = email.trim().toLowerCase();
       
       try {
+        // First attempt: Direct upsert via Supabase client
         const { error: profileError } = await supabase
           .from('profiles')
           .upsert({
@@ -248,36 +250,49 @@ function VerifyEmailForm() {
           });
 
         if (profileError) {
-          console.error('Profile upsert error (direct):', profileError);
-          
-          // Fallback: Try via API route
-          console.log('Attempting profile upsert via API route...');
-          const response = await fetch('/api/profile/upsert', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              universityId: universityId,
-            }),
-            credentials: 'include',
+          console.error('Profile upsert error (direct):', {
+            message: profileError.message,
+            details: profileError.details,
+            hint: profileError.hint,
+            code: profileError.code,
           });
+          
+          // Fallback: Try via API route (uses service role)
+          console.log('Attempting profile upsert via API route (fallback)...');
+          try {
+            const response = await fetch('/api/profile/upsert', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                universityId: universityId,
+              }),
+              credentials: 'include',
+            });
 
-          if (!response.ok) {
-            const result = await response.json();
-            console.error('Profile upsert error (API):', result);
-            // Don't throw - profile can be updated later, user is verified
-            console.warn('Profile upsert failed, but user is verified. Continuing...');
-          } else {
-            console.log('Profile upsert successful via API route');
+            if (!response.ok) {
+              const result = await response.json();
+              console.error('Profile upsert error (API):', result);
+              // IMPORTANT: Don't throw - profile can be updated later
+              // User is verified and can log in, profile is not critical for login
+              console.warn('⚠️ Profile upsert failed via API, but user is verified. User can update profile later.');
+            } else {
+              const result = await response.json();
+              console.log('✓ Profile upsert successful via API route:', result);
+            }
+          } catch (apiErr: any) {
+            console.error('Profile upsert API exception:', apiErr);
+            console.warn('⚠️ Profile upsert failed, but user is verified. Continuing to login...');
           }
         } else {
-          console.log('Profile upsert successful (direct)');
+          console.log('✓ Profile upsert successful (direct)');
         }
       } catch (profileErr: any) {
         console.error('Profile upsert exception:', profileErr);
-        // Don't block the flow - user is verified, profile can be fixed later
-        console.warn('Profile upsert failed, but user is verified. Continuing...');
+        // CRITICAL: Don't block the flow - user is verified, profile can be fixed later
+        // The trigger should have created the profile, so this is just setting university_id
+        console.warn('⚠️ Profile upsert failed, but user is verified. User can login and update profile later.');
       }
 
       // Step 5: Clear auth data from localStorage
