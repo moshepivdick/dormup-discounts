@@ -8,7 +8,7 @@ type EnvVar =
   | 'ADMIN_GATE_COOKIE_TTL_MINUTES';
 
 const getEnv = (key: EnvVar, fallback?: string) => {
-  const value = process.env[key] ?? fallback;
+  const value = process.env[key]?.trim() ?? fallback?.trim();
   if (!value) {
     throw new Error(`Missing required environment variable: ${key}`);
   }

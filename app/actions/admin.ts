@@ -10,13 +10,14 @@ export async function verifyAdminPassword(password: string): Promise<{
   error?: string;
 }> {
   try {
-    // Check session
+    // Check session - use getUser() for security
     const supabase = await createClient();
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    if (!session?.user) {
+    if (userError || !user) {
       return { success: false, error: 'Not authenticated' };
     }
 
@@ -24,7 +25,7 @@ export async function verifyAdminPassword(password: string): Promise<{
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('is_admin')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single();
 
     if (profileError || !profile?.is_admin) {

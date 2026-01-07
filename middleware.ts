@@ -33,13 +33,13 @@ export async function middleware(request: NextRequest) {
       }
     );
 
-    // Check for Supabase session
+    // Check for Supabase session - use getUser() for security
     const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession();
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    if (sessionError || !session?.user) {
+    if (userError || !user) {
       // Redirect to login if no session
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
@@ -50,7 +50,7 @@ export async function middleware(request: NextRequest) {
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('is_admin')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single();
 
     if (profileError || !profile?.is_admin) {
