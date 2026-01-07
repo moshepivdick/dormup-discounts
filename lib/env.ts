@@ -8,10 +8,34 @@ type EnvVar =
   | 'ADMIN_GATE_COOKIE_TTL_MINUTES';
 
 const getEnv = (key: EnvVar, fallback?: string) => {
-  const value = process.env[key]?.trim() ?? fallback?.trim();
+  // Try multiple ways to get the value
+  let value = process.env[key];
+  
+  // If not found, try without trimming first (in case key has spaces)
   if (!value) {
+    // Try to find it in all env vars (case-insensitive, handle spaces)
+    const envKey = key.trim();
+    value = process.env[envKey];
+  }
+  
+  // Try fallback
+  if (!value && fallback) {
+    value = fallback;
+  }
+  
+  // Trim the value if it exists
+  value = value?.trim();
+  
+  if (!value) {
+    // Debug: log all env vars that start with ADMIN_PANEL
+    const adminVars = Object.keys(process.env)
+      .filter(k => k.includes('ADMIN_PANEL'))
+      .map(k => `${k}=${process.env[k]?.substring(0, 20)}...`);
+    console.error(`Missing required environment variable: ${key}`);
+    console.error('Available ADMIN_PANEL vars:', adminVars);
     throw new Error(`Missing required environment variable: ${key}`);
   }
+  
   return value;
 };
 

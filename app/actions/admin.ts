@@ -35,10 +35,18 @@ export async function verifyAdminPassword(password: string): Promise<{
     // Verify password against hash
     let passwordHash: string;
     try {
-      passwordHash = env.adminPanelPasswordHash();
+      // Try to get hash directly from process.env as fallback
+      passwordHash = process.env.ADMIN_PANEL_PASSWORD_HASH?.trim() || env.adminPanelPasswordHash();
     } catch (error: any) {
       console.error('Error getting password hash from env:', error.message);
-      return { success: false, error: 'Server configuration error' };
+      // Try direct access as last resort
+      const directHash = process.env.ADMIN_PANEL_PASSWORD_HASH?.trim();
+      if (directHash) {
+        console.log('Using direct process.env access for password hash');
+        passwordHash = directHash;
+      } else {
+        return { success: false, error: 'Server configuration error' };
+      }
     }
     
     // Debug logging
