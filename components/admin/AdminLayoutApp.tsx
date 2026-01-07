@@ -39,7 +39,7 @@ export function AdminLayout({ children, slug }: Props) {
         </Link>
         <nav className="mt-8 flex flex-col gap-3">
           {navLinks.map((link) => {
-            const active = pathname === link.href || (link.href !== `/control/${slug}` && pathname.startsWith(link.href));
+            const active = pathname === link.href || (pathname && link.href !== `/control/${slug}` && pathname.startsWith(link.href));
             return (
               <Link
                 key={link.href}
