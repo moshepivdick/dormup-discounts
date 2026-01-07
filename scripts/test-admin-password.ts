@@ -27,7 +27,13 @@ async function testPassword(password: string) {
   }
 }
 
-const password = process.argv[2] || '#a*xuG@zDGC5&zA8cBy4';
+const password = process.argv[2];
+
+if (!password) {
+  console.error('Usage: npx ts-node --project tsconfig.seed.json scripts/test-admin-password.ts "password"');
+  console.error('Example: npx ts-node --project tsconfig.seed.json scripts/test-admin-password.ts "my-password"');
+  process.exit(1);
+}
 
 testPassword(password)
   .then(() => process.exit(0))

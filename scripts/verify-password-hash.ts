@@ -22,8 +22,14 @@ async function verifyPassword(password: string, hash: string) {
   return isValid;
 }
 
-const password = process.argv[2] || '#a*xuG@zDGC5&zA8cBy4';
-const hash = process.argv[3] || '$2b$10$NfdPicSbC7ClH/TKi66q0urB/782vryBFjdeZVcBd1NT6hsRLfNNu';
+const password = process.argv[2];
+const hash = process.argv[3];
+
+if (!password || !hash) {
+  console.error('Usage: npx ts-node --project tsconfig.seed.json scripts/verify-password-hash.ts "password" "hash"');
+  console.error('Example: npx ts-node --project tsconfig.seed.json scripts/verify-password-hash.ts "my-password" "$2b$10$..."');
+  process.exit(1);
+}
 
 verifyPassword(password, hash)
   .then(() => process.exit(0))
