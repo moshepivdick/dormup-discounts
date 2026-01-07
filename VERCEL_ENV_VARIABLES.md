@@ -13,7 +13,7 @@ ADMIN_PANEL_SLUG=c8f9a21epewc216aa1c9f2e4b6d8a3c
 ```
 
 ```
-ADMIN_PANEL_PASSWORD_HASH=$2b$10$qAEzB2ZrrWkEo9B1bQfUnuPtp4vNh/jP7YwBw1Hlx3L2DzQgppNHS
+ADMIN_PANEL_PASSWORD_HASH=$2b$10$NfdPicSbC7ClH/TKi66q0urB/782vryBFjdeZVcBd1NT6hsRLfNNu
 ```
 
 ```
@@ -33,7 +33,7 @@ ADMIN_GATE_COOKIE_TTL_MINUTES=120
    - Выберите все окружения (Production, Preview, Development)
    
    - **Key**: `ADMIN_PANEL_PASSWORD_HASH`
-   - **Value**: `$2b$10$qAEzB2ZrrWkEo9B1bQfUnuPtp4vNh/jP7YwBw1Hlx3L2DzQgppNHS`
+   - **Value**: `$2b$10$NfdPicSbC7ClH/TKi66q0urB/782vryBFjdeZVcBd1NT6hsRLfNNu`
    - Выберите все окружения
    
    - **Key**: `ADMIN_GATE_COOKIE_TTL_MINUTES`
