@@ -77,7 +77,7 @@ ts-node --project tsconfig.seed.json scripts/generate-admin-password-hash.ts "yo
 
 ```bash
 ADMIN_PANEL_SLUG="c8f9a21epewc216aa1c9f2e4b6d8a3c"
-ADMIN_PANEL_PASSWORD_HASH="$2b$10$2LY3J802rAE3PckjF31n4udc4eyg8h1r0tSVVU4A1psmla6rS2Edq"
+ADMIN_PANEL_PASSWORD_HASH="$2b$10$8JlSleLbAKB3/9bLl9M2aO4Z8b7TRLsD3CO2AGJ3yoF9nsCGetYHa"
 ADMIN_GATE_COOKIE_TTL_MINUTES="120"
 ```
 
