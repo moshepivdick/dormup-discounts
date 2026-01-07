@@ -49,7 +49,20 @@ export const env = {
   partnerSecret: () => getEnv('PARTNER_JWT_SECRET'),
   adminSecret: () => getEnv('ADMIN_JWT_SECRET'),
   adminPanelSlug: () => getEnv('ADMIN_PANEL_SLUG'),
-  adminPanelPasswordHash: () => getEnv('ADMIN_PANEL_PASSWORD_HASH'),
+  adminPanelPasswordHash: () => {
+    // Try multiple ways to get the hash
+    const hash1 = process.env.ADMIN_PANEL_PASSWORD_HASH?.trim();
+    if (hash1) return hash1;
+    
+    try {
+      return getEnv('ADMIN_PANEL_PASSWORD_HASH');
+    } catch (error) {
+      // Last resort: try without trim
+      const hash2 = process.env.ADMIN_PANEL_PASSWORD_HASH;
+      if (hash2) return hash2.trim();
+      throw error;
+    }
+  },
   adminGateCookieTtlMinutes: () => {
     const raw = getEnvOptional('ADMIN_GATE_COOKIE_TTL_MINUTES') ?? '120';
     const ttl = Number(raw);
