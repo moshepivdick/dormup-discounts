@@ -1,15 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { verifyAdminPassword } from '@/app/actions/admin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-export function AdminPasswordForm() {
+type AdminPasswordFormProps = {
+  slug: string;
+};
+
+export function AdminPasswordForm({ slug }: AdminPasswordFormProps) {
   const router = useRouter();
-  const params = useParams();
-  const slug = params.slug as string;
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);

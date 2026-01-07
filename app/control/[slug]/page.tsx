@@ -54,7 +54,7 @@ export default async function AdminControlPage({ params }: PageProps) {
           <div className="bg-white rounded-2xl shadow-xl p-8">
             <h1 className="text-2xl font-bold text-slate-900 mb-2">Admin Access</h1>
             <p className="text-slate-600 mb-6">Enter admin password to continue</p>
-            <AdminPasswordForm />
+            <AdminPasswordForm slug={slug} />
           </div>
         </div>
       </div>
