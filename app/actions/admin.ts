@@ -32,19 +32,42 @@ export async function verifyAdminPassword(password: string): Promise<{
     }
 
     // Verify password against hash
-    const passwordHash = env.adminPanelPasswordHash();
-    
-    // Debug logging (remove in production if needed)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Verifying password, hash length:', passwordHash.length);
+    let passwordHash: string;
+    try {
+      passwordHash = env.adminPanelPasswordHash();
+    } catch (error: any) {
+      console.error('Error getting password hash from env:', error.message);
+      return { success: false, error: 'Server configuration error' };
     }
     
-    const isValid = await bcrypt.compare(password, passwordHash);
+    // Debug logging
+    console.log('Password verification:', {
+      passwordLength: password.length,
+      hashLength: passwordHash.length,
+      hashPrefix: passwordHash.substring(0, 20),
+      hashSuffix: passwordHash.substring(passwordHash.length - 10),
+    });
+    
+    // Check if hash is valid (bcrypt hashes are always 60 characters)
+    if (passwordHash.length !== 60) {
+      console.error('Invalid hash length:', passwordHash.length, 'Expected: 60');
+      console.error('Hash value:', passwordHash);
+      return { success: false, error: 'Invalid password configuration' };
+    }
+    
+    // Trim any whitespace that might have been added
+    passwordHash = passwordHash.trim();
+    
+    const isValid = await bcrypt.compare(password.trim(), passwordHash);
 
     if (!isValid) {
-      console.error('Password verification failed');
+      console.error('Password verification failed - hash does not match password');
+      console.error('Password received length:', password.length);
+      console.error('Hash length:', passwordHash.length);
       return { success: false, error: 'Invalid password' };
     }
+    
+    console.log('Password verification successful');
 
     // Set admin_gate cookie
     const cookieStore = await cookies();
