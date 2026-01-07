@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPartnerFromCookies } from '@/lib/auth-app-router';
 import { getPartnerVenueStats } from '@/lib/stats';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Check partner auth

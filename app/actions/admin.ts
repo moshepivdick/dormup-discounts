@@ -33,9 +33,16 @@ export async function verifyAdminPassword(password: string): Promise<{
 
     // Verify password against hash
     const passwordHash = env.adminPanelPasswordHash();
+    
+    // Debug logging (remove in production if needed)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Verifying password, hash length:', passwordHash.length);
+    }
+    
     const isValid = await bcrypt.compare(password, passwordHash);
 
     if (!isValid) {
+      console.error('Password verification failed');
       return { success: false, error: 'Invalid password' };
     }
 

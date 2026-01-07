@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFromCookies } from '@/lib/auth-app-router';
 import { getUserActivityStats } from '@/lib/stats';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Check admin auth
