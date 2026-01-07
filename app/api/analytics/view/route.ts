@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const venueViewSchema = z.object({
   venueId: z.number().int(),
   city: z.string(),
