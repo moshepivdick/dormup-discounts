@@ -27,12 +27,32 @@ const getEnv = (key: EnvVar, fallback?: string) => {
   value = value?.trim();
   
   if (!value) {
-    // Debug: log all env vars that start with ADMIN_PANEL
+    // Debug: log all env vars that start with ADMIN_PANEL with full details
     const adminVars = Object.keys(process.env)
       .filter(k => k.includes('ADMIN_PANEL'))
-      .map(k => `${k}=${process.env[k]?.substring(0, 20)}...`);
+      .map(k => {
+        const val = process.env[k];
+        return {
+          key: k,
+          valueLength: val?.length || 0,
+          valuePrefix: val?.substring(0, 30) || 'EMPTY',
+          valueSuffix: val && val.length > 30 ? val.substring(val.length - 10) : '',
+          isEmpty: !val || val.trim().length === 0,
+        };
+      });
     console.error(`Missing required environment variable: ${key}`);
-    console.error('Available ADMIN_PANEL vars:', adminVars);
+    console.error('Available ADMIN_PANEL vars details:', JSON.stringify(adminVars, null, 2));
+    
+    // Try to get the raw value without trim to see what's actually there
+    const rawValue = process.env[key];
+    console.error(`Raw value for ${key}:`, {
+      exists: !!rawValue,
+      length: rawValue?.length || 0,
+      isEmpty: !rawValue || rawValue.trim().length === 0,
+      firstChars: rawValue?.substring(0, 30),
+      lastChars: rawValue && rawValue.length > 30 ? rawValue.substring(rawValue.length - 10) : '',
+    });
+    
     throw new Error(`Missing required environment variable: ${key}`);
   }
   
@@ -51,15 +71,32 @@ export const env = {
   adminPanelSlug: () => getEnv('ADMIN_PANEL_SLUG'),
   adminPanelPasswordHash: () => {
     // Try multiple ways to get the hash
-    const hash1 = process.env.ADMIN_PANEL_PASSWORD_HASH?.trim();
-    if (hash1) return hash1;
+    const rawHash = process.env.ADMIN_PANEL_PASSWORD_HASH;
+    
+    // Log for debugging
+    console.log('Reading ADMIN_PANEL_PASSWORD_HASH:', {
+      exists: !!rawHash,
+      length: rawHash?.length || 0,
+      isEmpty: !rawHash || rawHash.trim().length === 0,
+      firstChars: rawHash?.substring(0, 20),
+    });
+    
+    if (rawHash) {
+      const trimmed = rawHash.trim();
+      if (trimmed.length > 0) {
+        return trimmed;
+      }
+      console.error('ADMIN_PANEL_PASSWORD_HASH exists but is empty after trim');
+    }
     
     try {
       return getEnv('ADMIN_PANEL_PASSWORD_HASH');
     } catch (error) {
+      console.error('Failed to get ADMIN_PANEL_PASSWORD_HASH via getEnv, trying direct access');
       // Last resort: try without trim
-      const hash2 = process.env.ADMIN_PANEL_PASSWORD_HASH;
-      if (hash2) return hash2.trim();
+      if (rawHash && rawHash.length > 0) {
+        return rawHash.trim();
+      }
       throw error;
     }
   },
