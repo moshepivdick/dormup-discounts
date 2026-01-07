@@ -192,37 +192,49 @@ export default function HomePage({ venues, cities, categories }: HomeProps) {
 
 
 export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
-  const venues = await prisma.venue.findMany({
-    where: { isActive: true },
-    orderBy: [{ city: 'asc' }, { name: 'asc' }],
-  });
+  try {
+    const venues = await prisma.venue.findMany({
+      where: { isActive: true },
+      orderBy: [{ city: 'asc' }, { name: 'asc' }],
+    });
 
-  const payload: VenueSummary[] = venues.map((venue) => ({
-    id: venue.id,
-    name: venue.name,
-    city: venue.city,
-    category: venue.category,
-    discountText: venue.discountText,
-    isActive: venue.isActive,
-    imageUrl: venue.imageUrl,
-    thumbnailUrl: venue.thumbnailUrl,
-    openingHoursShort: venue.openingHoursShort,
-    latitude: venue.latitude,
-    longitude: venue.longitude,
-  }));
+    const payload: VenueSummary[] = venues.map((venue) => ({
+      id: venue.id,
+      name: venue.name,
+      city: venue.city,
+      category: venue.category,
+      discountText: venue.discountText,
+      isActive: venue.isActive,
+      imageUrl: venue.imageUrl,
+      thumbnailUrl: venue.thumbnailUrl,
+      openingHoursShort: venue.openingHoursShort,
+      latitude: venue.latitude,
+      longitude: venue.longitude,
+    }));
 
-  const cities = Array.from(new Set(payload.map((venue) => venue.city))).sort();
-  const categories = Array.from(
-    new Set(payload.map((venue) => venue.category)),
-  ).sort();
+    const cities = Array.from(new Set(payload.map((venue) => venue.city))).sort();
+    const categories = Array.from(
+      new Set(payload.map((venue) => venue.category)),
+    ).sort();
 
-  return {
-    props: {
-      venues: payload,
-      cities,
-      categories,
-    },
-  };
+    return {
+      props: {
+        venues: payload,
+        cities,
+        categories,
+      },
+    };
+  } catch (error) {
+    console.error('Error fetching venues in getServerSideProps:', error);
+    // Return empty data instead of crashing
+    return {
+      props: {
+        venues: [],
+        cities: [],
+        categories: [],
+      },
+    };
+  }
 };
 
 HomePage.getLayout = function getLayout(page: ReactElement, pageProps: HomeProps) {
