@@ -3,7 +3,10 @@ import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { env } from '@/lib/env';
 import { AdminPasswordForm } from '@/components/admin/AdminPasswordForm';
-import { AdminDashboard } from '@/components/admin/AdminDashboard';
+import { AdminLayout } from '@/components/admin/AdminLayoutApp';
+import { StatsCard } from '@/components/admin/StatsCard';
+import { SimpleChart } from '@/components/charts/SimpleBarChart';
+import { getDiscountsByDay, getDiscountsByVenue, getOverviewStats } from '@/lib/stats';
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -28,7 +31,7 @@ export default async function AdminControlPage({ params }: PageProps) {
     redirect('/login?redirect=' + encodeURIComponent(`/control/${slug}`));
   }
 
-  // Check if user is admin - use Supabase query with snake_case field name
+  // Check if user is admin
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('is_admin')
@@ -58,11 +61,43 @@ export default async function AdminControlPage({ params }: PageProps) {
     );
   }
 
-  // Show admin dashboard
+  // Load stats and show dashboard
+  const [overview, byVenue, daily] = await Promise.all([
+    getOverviewStats(),
+    getDiscountsByVenue(),
+    getDiscountsByDay(),
+  ]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
-      <AdminDashboard />
-    </div>
+    <AdminLayout slug={slug}>
+      <div className="space-y-8">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <StatsCard title="Discounts generated" value={overview.totalDiscounts} />
+          <StatsCard title="Confirmed" value={overview.confirmedDiscounts} />
+          <StatsCard title="Conversion rate" value={`${overview.conversionRate}%`} />
+        </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 p-4">
+            <h2 className="mb-4 text-lg font-semibold text-white">Daily usage</h2>
+            <SimpleChart
+              labels={daily.map((item) => item.date)}
+              data={daily.map((item) => item.total)}
+              variant="line"
+              label="Codes"
+            />
+          </div>
+          <div className="rounded-2xl border border-white/10 p-4">
+            <h2 className="mb-4 text-lg font-semibold text-white">By venue</h2>
+            <SimpleChart
+              labels={byVenue.map((item) => item.venueName)}
+              data={byVenue.map((item) => item.total)}
+              variant="bar"
+              label="Discounts"
+            />
+          </div>
+        </div>
+      </div>
+    </AdminLayout>
   );
 }
 
