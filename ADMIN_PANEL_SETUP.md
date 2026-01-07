@@ -71,20 +71,17 @@ ts-node --project tsconfig.seed.json scripts/set-admin.ts mikhail.bilak@studio.u
 ts-node --project tsconfig.seed.json scripts/generate-admin-password-hash.ts "your-secure-password"
 ```
 
-## Environment Variables для Vercel
+## Environment Variables
 
-Добавьте следующие переменные в Vercel:
+Все переменные окружения должны быть в `.env` файле:
 
 ```bash
-# Секретный slug для админки (случайная строка 20-40 символов)
-ADMIN_PANEL_SLUG="your-random-secret-slug-here-20-40-chars"
-
-# Bcrypt hash пароля админки (сгенерируйте через скрипт)
-ADMIN_PANEL_PASSWORD_HASH="$2a$10$your-bcrypt-hash-here"
-
-# Время жизни cookie в минутах (по умолчанию 120)
+ADMIN_PANEL_SLUG="c8f9a21epewc216aa1c9f2e4b6d8a3c"
+ADMIN_PANEL_PASSWORD_HASH="$2b$10$2LY3J802rAE3PckjF31n4udc4eyg8h1r0tSVVU4A1psmla6rS2Edq"
 ADMIN_GATE_COOKIE_TTL_MINUTES="120"
 ```
+
+**Важно:** Убедитесь, что все переменные также добавлены в Vercel Environment Variables.
 
 ## Безопасность
 
