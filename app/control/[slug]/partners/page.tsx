@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
 import { AdminLayout } from '@/components/admin/AdminLayoutApp';
 
 type Partner = {
@@ -15,9 +14,11 @@ type Venue = {
   name: string;
 };
 
-export default function AdminPartnersPage() {
-  const params = useParams();
-  const slug = params.slug as string;
+type AdminPartnersPageProps = {
+  slug: string;
+};
+
+function AdminPartnersPageClient({ slug }: AdminPartnersPageProps) {
   
   const [partners, setPartners] = useState<Partner[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
@@ -132,5 +133,14 @@ export default function AdminPartnersPage() {
       </div>
     </AdminLayout>
   );
+}
+
+type PageProps = {
+  params: Promise<{ slug: string }>;
+};
+
+export default async function AdminPartnersPage({ params }: PageProps) {
+  const { slug } = await params;
+  return <AdminPartnersPageClient slug={slug} />;
 }
 

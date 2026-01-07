@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
 import { AdminLayout } from '@/components/admin/AdminLayoutApp';
 
 type VenueDetails = {
@@ -16,9 +15,11 @@ type VenueDetails = {
   mapUrl?: string | null;
 };
 
-export default function AdminVenuesPage() {
-  const params = useParams();
-  const slug = params.slug as string;
+type AdminVenuesPageProps = {
+  slug: string;
+};
+
+function AdminVenuesPageClient({ slug }: AdminVenuesPageProps) {
   
   const [venues, setVenues] = useState<VenueDetails[]>([]);
   const [form, setForm] = useState({
@@ -112,5 +113,14 @@ export default function AdminVenuesPage() {
       </div>
     </AdminLayout>
   );
+}
+
+type PageProps = {
+  params: Promise<{ slug: string }>;
+};
+
+export default async function AdminVenuesPage({ params }: PageProps) {
+  const { slug } = await params;
+  return <AdminVenuesPageClient slug={slug} />;
 }
 
