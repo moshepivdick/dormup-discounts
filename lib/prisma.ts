@@ -42,18 +42,33 @@ function getConnectionUrl(): string {
 
 // Use direct connection (port 5432) for all operations
 // This is more reliable with Prisma than the pooled connection
+// In serverless environments, we need to ensure connection pooling is configured correctly
+const connectionUrl = getConnectionUrl();
+
+// Add connection_limit parameter to prevent too many connections
+// For serverless, we want to limit concurrent connections per instance
+const connectionUrlWithLimit = connectionUrl.includes('?')
+  ? `${connectionUrl}&connection_limit=1`
+  : `${connectionUrl}?connection_limit=1`;
+
 export const prisma =
   global.prisma ??
   new PrismaClient({
     datasources: {
       db: {
-        url: getConnectionUrl(),
+        url: connectionUrlWithLimit,
       },
     },
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
 
+// In production (Vercel), we still use global.prisma to reuse connections within the same process
+// This helps prevent creating too many Prisma Client instances
 if (process.env.NODE_ENV !== 'production') {
+  global.prisma = prisma;
+} else {
+  // In production, also cache the Prisma Client instance
+  // This prevents creating multiple instances in the same serverless function execution
   global.prisma = prisma;
 }
 
