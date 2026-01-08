@@ -128,7 +128,7 @@ export default function HomePage({ venues, cities, categories }: HomeProps) {
               DormUp Discounts
             </p>
             <h1 className="text-3xl font-bold sm:text-5xl">
-              Student discounts, made simple.
+              Student discounts - right where you are
             </h1>
             <p className="text-base text-emerald-50 sm:text-lg sm:w-2/3">
               We&apos;re starting in Rimini.
