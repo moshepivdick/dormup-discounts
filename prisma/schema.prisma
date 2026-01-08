@@ -86,7 +86,7 @@ model VenueView {
   createdAt  DateTime @default(now())
   userAgent  String?
   user_id    String?  @db.Uuid
-  dedupe_key String   @unique
+  dedupe_key String?  @unique
   profiles   Profile? @relation(fields: [user_id], references: [id], onUpdate: NoAction)
   venue      Venue    @relation(fields: [venueId], references: [id])
 

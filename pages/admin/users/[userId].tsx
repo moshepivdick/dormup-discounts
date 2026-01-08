@@ -140,7 +140,7 @@ export default function UserDetailPage({ user, stats }: UserDetailProps) {
                     >
                       <div>
                         <p className="text-white">
-                          Viewed - {view.venue.name}
+                          Viewed - {view.venue?.name || 'Unknown Venue'}
                         </p>
                         <p className="text-xs text-white/60">
                           {new Date(view.createdAt).toLocaleString()}

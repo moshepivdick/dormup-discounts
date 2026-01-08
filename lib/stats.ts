@@ -58,26 +58,67 @@ export const getDiscountsByDay = async (days = 7) => {
 // User activity statistics
 export const getUserActivityStats = async (userId: string) => {
   // Get venue views
-  const allViews = await prisma.venueView.findMany({
-    where: { user_id: userId },
-    include: {
-      venue: {
-        select: {
-          id: true,
-          name: true,
-          city: true,
+  // Handle case where dedupe_key column might not exist yet (before migration)
+  let allViews;
+  try {
+    allViews = await prisma.venueView.findMany({
+      where: { user_id: userId },
+      include: {
+        venue: {
+          select: {
+            id: true,
+            name: true,
+            city: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+      orderBy: { createdAt: 'desc' },
+    });
+  } catch (error: any) {
+    // If dedupe_key column doesn't exist, use raw query
+    if (error?.code === 'P2022' || error?.meta?.column?.includes('dedupe_key')) {
+      allViews = await prisma.$queryRaw<Array<{
+        id: number;
+        venueId: number;
+        city: string;
+        createdAt: Date;
+        userAgent: string | null;
+        user_id: string | null;
+        venue: { id: number; name: string; city: string } | null;
+      }>>`
+        SELECT 
+          v.id, v.venue_id as "venueId", v.city, v.created_at as "createdAt", 
+          v.user_agent as "userAgent", v.user_id,
+          json_build_object(
+            'id', ven.id,
+            'name', ven.name,
+            'city', ven.city
+          ) as venue
+        FROM venue_views v
+        LEFT JOIN venues ven ON v.venue_id = ven.id
+        WHERE v.user_id = ${userId}
+        ORDER BY v.created_at DESC
+      `;
+    } else {
+      throw error;
+    }
+  }
 
-  // Deduplicate by dedupe_key to handle any legacy duplicates
+  // Deduplicate by dedupe_key if available, otherwise by user_id + venueId + minute bucket
+  // This handles any legacy duplicates and works if dedupe_key column doesn't exist yet
   const viewsMap = new Map<string, typeof allViews[0]>();
   for (const view of allViews) {
-    const existing = viewsMap.get(view.dedupe_key);
+    // Use dedupe_key if available, otherwise generate a key from existing fields
+    const dedupeKey = (view as any).dedupe_key || (() => {
+      const minuteBucket = new Date(view.createdAt);
+      minuteBucket.setSeconds(0, 0);
+      const userIdPart = view.user_id || 'anon';
+      return `${view.venueId}:${userIdPart}:${minuteBucket.toISOString().slice(0, 16)}`;
+    })();
+    
+    const existing = viewsMap.get(dedupeKey);
     if (!existing || new Date(view.createdAt) > new Date(existing.createdAt)) {
-      viewsMap.set(view.dedupe_key, view);
+      viewsMap.set(dedupeKey, view);
     }
   }
   const views = Array.from(viewsMap.values()).sort((a, b) => 
@@ -131,7 +172,7 @@ export const getUserActivityStats = async (userId: string) => {
     } else {
       returnVisits.push({
         venueId: view.venueId,
-        venueName: view.venue.name,
+        venueName: view.venue?.name || 'Unknown Venue',
         date: view.createdAt,
       });
     }
@@ -153,29 +194,70 @@ export const getUserActivityStats = async (userId: string) => {
 // Partner venue statistics (only their venue)
 export const getPartnerVenueStats = async (venueId: number) => {
   // Get all views for this venue
-  // Since we now have a unique constraint on dedupe_key, duplicates should be prevented at DB level
-  // However, we still deduplicate here to handle any legacy duplicates that might exist
-  const allViews = await prisma.venueView.findMany({
-    where: { venueId },
-    include: {
-      profiles: {
-        select: {
-          id: true,
-          email: true,
-          first_name: true,
+  // Handle case where dedupe_key column might not exist yet (before migration)
+  let allViews;
+  try {
+    allViews = await prisma.venueView.findMany({
+      where: { venueId },
+      include: {
+        profiles: {
+          select: {
+            id: true,
+            email: true,
+            first_name: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+      orderBy: { createdAt: 'desc' },
+    });
+  } catch (error: any) {
+    // If dedupe_key column doesn't exist (P2022), retry with explicit select excluding it
+    if (error?.code === 'P2022' || error?.meta?.column?.includes('dedupe_key')) {
+      // Query without dedupe_key field - use raw query or select specific fields
+      // For now, fallback to selecting all fields we know exist
+      allViews = await prisma.$queryRaw<Array<{
+        id: number;
+        venueId: number;
+        city: string;
+        createdAt: Date;
+        userAgent: string | null;
+        user_id: string | null;
+        profiles: { id: string; email: string; first_name: string | null } | null;
+      }>>`
+        SELECT 
+          v.id, v.venue_id as "venueId", v.city, v.created_at as "createdAt", 
+          v.user_agent as "userAgent", v.user_id,
+          json_build_object(
+            'id', p.id,
+            'email', p.email,
+            'first_name', p.first_name
+          ) as profiles
+        FROM venue_views v
+        LEFT JOIN profiles p ON v.user_id = p.id
+        WHERE v.venue_id = ${venueId}
+        ORDER BY v.created_at DESC
+      `;
+    } else {
+      throw error;
+    }
+  }
 
-  // Deduplicate by dedupe_key, keeping the most recent view for each unique key
+  // Deduplicate by dedupe_key if available, otherwise by user_id + venueId + minute bucket
   // This handles any legacy duplicates that might exist before the unique constraint was added
+  // Also works if dedupe_key column doesn't exist yet (before migration)
   const viewsMap = new Map<string, typeof allViews[0]>();
   for (const view of allViews) {
-    const existing = viewsMap.get(view.dedupe_key);
+    // Use dedupe_key if available, otherwise generate a key from existing fields
+    const dedupeKey = (view as any).dedupe_key || (() => {
+      const minuteBucket = new Date(view.createdAt);
+      minuteBucket.setSeconds(0, 0);
+      const userIdPart = view.user_id || 'anon';
+      return `${view.venueId}:${userIdPart}:${minuteBucket.toISOString().slice(0, 16)}`;
+    })();
+    
+    const existing = viewsMap.get(dedupeKey);
     if (!existing || new Date(view.createdAt) > new Date(existing.createdAt)) {
-      viewsMap.set(view.dedupe_key, view);
+      viewsMap.set(dedupeKey, view);
     }
   }
   // Convert back to array, sorted by createdAt descending
