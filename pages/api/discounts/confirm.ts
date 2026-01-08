@@ -54,6 +54,12 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
     return apiResponse.error(res, 403, 'Code does not belong to your venue ❌');
   }
 
+  // Ensure confirmed events always have a user_id (from generation)
+  // If user_id is missing, this is a data integrity issue - don't allow confirmation
+  if (!discountUse.user_id) {
+    return apiResponse.error(res, 400, 'Code cannot be confirmed: missing user information ❌');
+  }
+
   await prisma.discountUse.update({
     where: { id: discountUse.id },
     data: {

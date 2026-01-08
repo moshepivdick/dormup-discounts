@@ -166,7 +166,7 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                               {qr.generatedCode}
                             </p>
                             <p className="text-xs text-slate-600">
-                              {qr.profiles?.email || 'Unknown user'}
+                              {qr.profiles?.first_name || qr.profiles?.email || 'Unknown user'}
                             </p>
                             <p className="text-xs text-slate-500">
                               {new Date(qr.createdAt as string).toLocaleString()}
@@ -202,7 +202,7 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                       >
                         <div>
                           <p className="text-sm font-medium text-slate-900">
-                            {view.profiles?.email || 'Anonymous'}
+                            {view.profiles?.first_name || view.profiles?.email || 'Anonymous'}
                           </p>
                           <p className="text-xs text-slate-500">
                             {new Date(view.createdAt as string).toLocaleString()}

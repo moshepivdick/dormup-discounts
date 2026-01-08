@@ -112,6 +112,7 @@ model University {
 model Profile {
   id                        String                     @id @db.Uuid
   email                     String                     @unique
+  first_name                String?
   university_id             String                     @db.Uuid
   verified_student          Boolean                    @default(false)
   role                      String                     @default("user")

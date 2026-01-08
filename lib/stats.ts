@@ -148,6 +148,7 @@ export const getPartnerVenueStats = async (venueId: number) => {
         select: {
           id: true,
           email: true,
+          first_name: true,
         },
       },
     },
@@ -162,6 +163,7 @@ export const getPartnerVenueStats = async (venueId: number) => {
         select: {
           id: true,
           email: true,
+          first_name: true,
         },
       },
     },
@@ -178,7 +180,7 @@ export const getPartnerVenueStats = async (venueId: number) => {
 
   // Count QR codes per user
   const userQrCounts = discountUses.reduce<
-    Record<string, { generated: number; verified: number; email?: string }>
+    Record<string, { generated: number; verified: number; email?: string; name?: string }>
   >((acc, use) => {
     if (use.user_id) {
       if (!acc[use.user_id]) {
@@ -186,6 +188,7 @@ export const getPartnerVenueStats = async (venueId: number) => {
           generated: 0,
           verified: 0,
           email: use.profiles?.email,
+          name: use.profiles?.first_name || undefined,
         };
       }
       acc[use.user_id].generated++;
