@@ -58,7 +58,7 @@ export const getDiscountsByDay = async (days = 7) => {
 // User activity statistics
 export const getUserActivityStats = async (userId: string) => {
   // Get venue views
-  const views = await prisma.venueView.findMany({
+  const allViews = await prisma.venueView.findMany({
     where: { user_id: userId },
     include: {
       venue: {
@@ -71,6 +71,18 @@ export const getUserActivityStats = async (userId: string) => {
     },
     orderBy: { createdAt: 'desc' },
   });
+
+  // Deduplicate by dedupe_key to handle any legacy duplicates
+  const viewsMap = new Map<string, typeof allViews[0]>();
+  for (const view of allViews) {
+    const existing = viewsMap.get(view.dedupe_key);
+    if (!existing || new Date(view.createdAt) > new Date(existing.createdAt)) {
+      viewsMap.set(view.dedupe_key, view);
+    }
+  }
+  const views = Array.from(viewsMap.values()).sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 
   // Get QR codes generated and verified
   const discountUses = await prisma.discountUse.findMany({
@@ -141,7 +153,9 @@ export const getUserActivityStats = async (userId: string) => {
 // Partner venue statistics (only their venue)
 export const getPartnerVenueStats = async (venueId: number) => {
   // Get all views for this venue
-  const views = await prisma.venueView.findMany({
+  // Since we now have a unique constraint on dedupe_key, duplicates should be prevented at DB level
+  // However, we still deduplicate here to handle any legacy duplicates that might exist
+  const allViews = await prisma.venueView.findMany({
     where: { venueId },
     include: {
       profiles: {
@@ -154,6 +168,20 @@ export const getPartnerVenueStats = async (venueId: number) => {
     },
     orderBy: { createdAt: 'desc' },
   });
+
+  // Deduplicate by dedupe_key, keeping the most recent view for each unique key
+  // This handles any legacy duplicates that might exist before the unique constraint was added
+  const viewsMap = new Map<string, typeof allViews[0]>();
+  for (const view of allViews) {
+    const existing = viewsMap.get(view.dedupe_key);
+    if (!existing || new Date(view.createdAt) > new Date(existing.createdAt)) {
+      viewsMap.set(view.dedupe_key, view);
+    }
+  }
+  // Convert back to array, sorted by createdAt descending
+  const views = Array.from(viewsMap.values()).sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 
   // Get all QR codes for this venue
   const discountUses = await prisma.discountUse.findMany({

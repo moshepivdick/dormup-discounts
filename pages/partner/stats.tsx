@@ -195,21 +195,38 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                   {stats.recentViews.length === 0 ? (
                     <p className="text-slate-600">No views yet</p>
                   ) : (
-                    stats.recentViews.slice(0, 20).map((view) => (
-                      <div
-                        key={view.id}
-                        className="flex items-center justify-between rounded-lg bg-slate-50 p-3"
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-slate-900">
-                            {view.profiles?.first_name || view.profiles?.email || 'Anonymous'}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {new Date(view.createdAt as string).toLocaleString()}
-                          </p>
+                    (() => {
+                      // Client-side deduplication safety net: dedupe by email + timestamp (rounded to minute)
+                      // This is a last-resort for legacy data, as DB-level deduplication is primary
+                      const seen = new Set<string>();
+                      const uniqueViews = stats.recentViews.filter((view) => {
+                        const email = view.profiles?.email || 'Anonymous';
+                        const timestamp = new Date(view.createdAt as string);
+                        timestamp.setSeconds(0, 0); // Round to minute
+                        const key = `${email}:${timestamp.toISOString()}`;
+                        if (seen.has(key)) {
+                          return false;
+                        }
+                        seen.add(key);
+                        return true;
+                      });
+                      
+                      return uniqueViews.slice(0, 20).map((view) => (
+                        <div
+                          key={view.id}
+                          className="flex items-center justify-between rounded-lg bg-slate-50 p-3"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-slate-900">
+                              {view.profiles?.first_name || view.profiles?.email || 'Anonymous'}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {new Date(view.createdAt as string).toLocaleString()}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      ));
+                    })()
                   )}
                 </div>
               </div>

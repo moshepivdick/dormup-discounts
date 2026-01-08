@@ -11,6 +11,35 @@ const venueViewSchema = z.object({
   userAgent: z.string().optional(),
 });
 
+/**
+ * Generate a deterministic dedupe_key for a view event.
+ * Format: venueId:userId:minuteBucket
+ * - venueId: the venue being viewed
+ * - userId: the user ID or 'anon' for anonymous
+ * - minuteBucket: timestamp rounded to the nearest minute (YYYY-MM-DD HH24:MI:00)
+ * 
+ * This ensures that within a 1-minute window, the same user viewing the same venue
+ * will generate the same dedupe_key, allowing us to use upsert to prevent duplicates.
+ * 
+ * Format matches SQL DATE_TRUNC format: 'YYYY-MM-DD HH24:MI:SS'
+ */
+function generateDedupeKey(venueId: number, userId: string | null, timestamp: Date = new Date()): string {
+  // Round to minute by zeroing seconds and milliseconds
+  const rounded = new Date(timestamp);
+  rounded.setSeconds(0, 0);
+  
+  // Format as YYYY-MM-DD HH24:MI:00 (matching PostgreSQL DATE_TRUNC format)
+  const year = rounded.getUTCFullYear();
+  const month = String(rounded.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(rounded.getUTCDate()).padStart(2, '0');
+  const hour = String(rounded.getUTCHours()).padStart(2, '0');
+  const minute = String(rounded.getUTCMinutes()).padStart(2, '0');
+  const minuteBucket = `${year}-${month}-${day} ${hour}:${minute}:00`;
+  
+  const userIdPart = userId || 'anon';
+  return `${venueId}:${userIdPart}:${minuteBucket}`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -35,19 +64,61 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id || null;
 
-    // Create venue view with user_id if available
-    await prisma.venueView.create({
-      data: {
-        venueId,
-        city,
-        userAgent: parsedUserAgent,
-        user_id: userId,
-      },
-    });
+    // Generate dedupe_key for idempotency
+    const now = new Date();
+    const dedupeKey = generateDedupeKey(venueId, userId, now);
+
+    // Use upsert to prevent duplicates
+    // This handles both React StrictMode double calls and rapid successive API calls
+    // The unique constraint on dedupe_key at DB level ensures no duplicates can be inserted
+    try {
+      await prisma.venueView.upsert({
+        where: { dedupe_key: dedupeKey },
+        update: {
+          // If view already exists, update timestamp and userAgent
+          userAgent: parsedUserAgent,
+          createdAt: now,
+        },
+        create: {
+          venueId,
+          city,
+          userAgent: parsedUserAgent,
+          user_id: userId,
+          dedupe_key: dedupeKey,
+        },
+      });
+    } catch (error: any) {
+      // Handle race condition: if unique constraint violation occurs, 
+      // try to update the existing record
+      if (error?.code === 'P2002' || error?.message?.includes('Unique constraint') || error?.message?.includes('dedupe_key')) {
+        const existing = await prisma.venueView.findFirst({
+          where: { dedupe_key: dedupeKey },
+        });
+        if (existing) {
+          await prisma.venueView.update({
+            where: { id: existing.id },
+            data: {
+              userAgent: parsedUserAgent,
+              createdAt: now,
+            },
+          });
+        }
+      } else {
+        throw error;
+      }
+    }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    // Log error but don't expose internal details to client
     console.error('Error tracking venue view:', error);
+    
+    // If it's a unique constraint violation, it's actually fine (duplicate prevented)
+    // Just return success since the view was already recorded
+    if (error instanceof Error && error.message.includes('Unique constraint')) {
+      return NextResponse.json({ ok: true });
+    }
+    
     return NextResponse.json(
       { error: 'Failed to track view' },
       { status: 500 }

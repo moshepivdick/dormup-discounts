@@ -80,18 +80,20 @@ model Admin {
 }
 
 model VenueView {
-  id        Int      @id @default(autoincrement())
-  venueId   Int
-  city      String
-  createdAt DateTime @default(now())
-  userAgent String?
-  user_id   String?  @db.Uuid
-  profiles  Profile? @relation(fields: [user_id], references: [id], onUpdate: NoAction)
-  venue     Venue    @relation(fields: [venueId], references: [id])
+  id         Int      @id @default(autoincrement())
+  venueId    Int
+  city       String
+  createdAt  DateTime @default(now())
+  userAgent  String?
+  user_id    String?  @db.Uuid
+  dedupe_key String   @unique
+  profiles   Profile? @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+  venue      Venue    @relation(fields: [venueId], references: [id])
 
   @@index([createdAt], map: "idx_venue_views_created_at")
   @@index([user_id], map: "idx_venue_views_user_id")
   @@index([venueId, user_id], map: "idx_venue_views_venue_user")
+  @@index([dedupe_key], map: "idx_venue_views_dedupe_key")
   @@schema("public")
 }
 
