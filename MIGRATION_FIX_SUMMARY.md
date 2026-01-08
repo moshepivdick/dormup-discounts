@@ -71,3 +71,4 @@ npx prisma migrate deploy
 - The duplicate RLS migration was safely removed (RLS setup is in the profiles table creation migration)
 
 
+

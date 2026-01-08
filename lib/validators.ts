@@ -53,4 +53,3 @@ export const universityRequestSchema = z.object({
   requesterEmail: z.string().email('Please enter a valid email address'),
   notes: z.string().optional(),
 });
-

@@ -136,3 +136,4 @@ SELECT * FROM pg_policies WHERE tablename = 'profiles';
 - **Monitor Supabase logs** for any remaining errors
 
 
+

@@ -115,3 +115,4 @@ ALTER TABLE auth.users ENABLE TRIGGER on_auth_user_created;
 6. ✅ Profile can be updated later with university_id via API
 
 
+

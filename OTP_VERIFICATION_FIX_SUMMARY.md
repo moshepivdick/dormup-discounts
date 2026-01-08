@@ -192,3 +192,4 @@ The session is automatically persisted by Supabase SSR client:
 4. Add ability to change email/university
 5. Add account deletion functionality
 
+

@@ -67,3 +67,4 @@ Supabase uses a separate `auth` schema that Prisma can't easily manage with migr
 
 
 
+

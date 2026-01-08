@@ -123,3 +123,4 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 - Profile upsert happens client-side using authenticated Supabase client (RLS allows it)
 
 
+
