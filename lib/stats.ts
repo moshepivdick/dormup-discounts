@@ -226,9 +226,17 @@ export const getPartnerVenueStats = async (venueId: number) => {
   };
   let allViews: ViewWithProfile[] = [];
   try {
+    // Use explicit select to avoid querying dedupe_key if it doesn't exist
+    // Select only fields that exist in the database
     const views = await prisma.venueView.findMany({
       where: { venueId },
-      include: {
+      select: {
+        id: true,
+        venueId: true,
+        city: true,
+        createdAt: true,
+        userAgent: true,
+        user_id: true,
         profiles: {
           select: {
             id: true,
@@ -241,37 +249,33 @@ export const getPartnerVenueStats = async (venueId: number) => {
     });
     allViews = views as ViewWithProfile[];
   } catch (error: any) {
-    // If dedupe_key column doesn't exist (P2022), use raw query with explicit schema
-    if (error?.code === 'P2022' || error?.meta?.column?.includes('dedupe_key')) {
-      try {
-        // Use Prisma.sql template with explicit schema name
-        const rawViews = await prisma.$queryRaw<ViewWithProfile[]>`
-          SELECT 
-            v.id, v.venue_id as "venueId", v.city, v.created_at as "createdAt", 
-            v.user_agent as "userAgent", v.user_id,
-            CASE 
-              WHEN p.id IS NOT NULL THEN
-                json_build_object(
-                  'id', p.id,
-                  'email', p.email,
-                  'first_name', p.first_name
-                )
-              ELSE NULL
-            END as profiles
-          FROM public.venue_views v
-          LEFT JOIN public.profiles p ON v.user_id = p.id
-          WHERE v.venue_id = ${venueId}
-          ORDER BY v.created_at DESC
-        `;
-      } catch (rawError: any) {
-        // If raw query also fails (table doesn't exist or other issue), 
-        // return empty array as fallback to prevent complete failure
-        console.error('Error fetching views with raw query:', rawError?.code, rawError?.message);
-        allViews = [];
-      }
-    } else {
-      // For any other error, log it but continue with empty array to prevent total failure
-      console.error('Error fetching views:', error?.code, error?.message);
+    // If any error occurs (dedupe_key column, table doesn't exist, etc.), 
+    // try raw query with explicit fields excluding dedupe_key
+    try {
+      // Try without schema prefix first (some DBs might not need it)
+      const rawViews = await prisma.$queryRaw<ViewWithProfile[]>`
+        SELECT 
+          v.id, v.venue_id as "venueId", v.city, v.created_at as "createdAt", 
+          v.user_agent as "userAgent", v.user_id,
+          CASE 
+            WHEN p.id IS NOT NULL THEN
+              json_build_object(
+                'id', p.id,
+                'email', p.email,
+                'first_name', p.first_name
+              )
+            ELSE NULL
+          END as profiles
+        FROM venue_views v
+        LEFT JOIN profiles p ON v.user_id = p.id
+        WHERE v.venue_id = ${venueId}
+        ORDER BY v.created_at DESC
+      `;
+      allViews = rawViews;
+    } catch (rawError: any) {
+      // If raw query also fails (table doesn't exist or other issue), 
+      // return empty array as fallback to prevent complete failure
+      console.error('Error fetching views - table may not exist:', rawError?.code, rawError?.message?.substring(0, 100));
       allViews = [];
     }
   }
