@@ -11,8 +11,61 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'GET') {
-    const venues = await prisma.venue.findMany();
-    return apiResponse.success(res, { venues });
+    try {
+      // Use explicit select to avoid avgStudentBill if migration not applied
+      const venues = await prisma.venue.findMany({
+        select: {
+          id: true,
+          name: true,
+          city: true,
+          category: true,
+          discountText: true,
+          isActive: true,
+          details: true,
+          openingHours: true,
+          openingHoursShort: true,
+          mapUrl: true,
+          latitude: true,
+          longitude: true,
+          imageUrl: true,
+          thumbnailUrl: true,
+          phone: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: [{ city: 'asc' }, { name: 'asc' }],
+      });
+      return apiResponse.success(res, { venues });
+    } catch (error: any) {
+      // Fallback to raw SQL if Prisma fails with P2022 (column not found)
+      if (error?.code === 'P2022' && error?.meta?.column === 'Venue.avgStudentBill') {
+        const rawVenues = await prisma.$queryRaw<Array<{
+          id: number;
+          name: string;
+          city: string;
+          category: string;
+          discountText: string;
+          isActive: boolean;
+          details: string | null;
+          openingHours: string | null;
+          openingHoursShort: string | null;
+          mapUrl: string | null;
+          latitude: number;
+          longitude: number;
+          imageUrl: string | null;
+          thumbnailUrl: string | null;
+          phone: string | null;
+          createdAt: Date;
+          updatedAt: Date;
+        }>>`
+          SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", latitude, longitude, "imageUrl", "thumbnailUrl", phone, "createdAt", "updatedAt"
+          FROM public.venues
+          ORDER BY city ASC, name ASC;
+        `;
+        return apiResponse.success(res, { venues: rawVenues });
+      }
+      throw error;
+    }
   }
 
   if (req.method === 'POST') {
