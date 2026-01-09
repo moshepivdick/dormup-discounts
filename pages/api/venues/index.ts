@@ -4,23 +4,37 @@ import { apiResponse, withMethods } from '@/lib/api';
 
 export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResponse) => {
   try {
-    // Try to fetch venues - show all to restore them
+    // Try to fetch venues - use explicit select to avoid avgStudentBill field until migration is applied
     let venues;
     try {
       venues = await prisma.venue.findMany({
+        select: {
+          id: true,
+          name: true,
+          city: true,
+          category: true,
+          discountText: true,
+          isActive: true,
+          imageUrl: true,
+          thumbnailUrl: true,
+          openingHoursShort: true,
+          latitude: true,
+          longitude: true,
+          // Explicitly exclude avgStudentBill to avoid P2022 error if column doesn't exist
+        },
         orderBy: [{ city: 'asc' }, { name: 'asc' }],
       });
     } catch (prismaError: any) {
       console.error('Prisma error fetching venues:', prismaError);
-      // If error is about missing column, try selecting only known fields
-      if (prismaError?.message?.includes('avg_student_bill') || prismaError?.code === 'P2021') {
-        console.log('Attempting to fetch venues without avgStudentBill field...');
-        // Try with explicit select to avoid new field issues
+      // If error is about missing column (P2022), use raw SQL
+      if (prismaError?.code === 'P2022' || prismaError?.message?.includes('avgStudentBill') || prismaError?.message?.includes('avg_student_bill')) {
+        console.log('Column avgStudentBill does not exist, using raw SQL query...');
+        // Use raw SQL to avoid Prisma schema mismatch
         venues = await (prisma as any).$queryRaw`
           SELECT id, name, city, category, "discountText", "isActive", 
                  "imageUrl", "thumbnailUrl", "openingHoursShort", 
                  latitude, longitude
-          FROM venues
+          FROM "public"."venues"
           ORDER BY city ASC, name ASC
         `;
         // Convert raw results to match expected format
