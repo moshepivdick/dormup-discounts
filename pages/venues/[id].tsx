@@ -465,36 +465,117 @@ export const getServerSideProps: GetServerSideProps<VenuePageProps> = async ({
     return { notFound: true };
   }
 
-  const venue = await prisma.venue.findUnique({
-    where: { id },
-  });
+  try {
+    // Use explicit select to avoid avgStudentBill if migration not applied
+    const venue = await prisma.venue.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        city: true,
+        category: true,
+        discountText: true,
+        isActive: true,
+        details: true,
+        openingHours: true,
+        openingHoursShort: true,
+        mapUrl: true,
+        imageUrl: true,
+        thumbnailUrl: true,
+        latitude: true,
+        longitude: true,
+      },
+    });
 
-  if (!venue || !venue.isActive) {
+    if (!venue || !venue.isActive) {
+      return { notFound: true };
+    }
+
+    const payload: VenueDetails = {
+      id: venue.id,
+      name: venue.name,
+      city: venue.city,
+      category: venue.category,
+      discountText: venue.discountText,
+      isActive: venue.isActive,
+      details: venue.details,
+      openingHours: venue.openingHours,
+      openingHoursShort: venue.openingHoursShort,
+      mapUrl: venue.mapUrl, // Kept for type compatibility but not used in rendering
+      phone: null,
+      imageUrl: venue.imageUrl,
+      thumbnailUrl: venue.thumbnailUrl,
+      latitude: venue.latitude,
+      longitude: venue.longitude,
+    };
+
+    return {
+      props: {
+        venue: payload,
+      },
+    };
+  } catch (error: any) {
+    // Fallback to raw SQL if Prisma fails with P2022 (column not found)
+    if (error.code === 'P2022' && error.meta?.column === 'Venue.avgStudentBill') {
+      try {
+        const rawVenue = await prisma.$queryRaw<Array<{
+          id: number;
+          name: string;
+          city: string;
+          category: string;
+          discountText: string;
+          isActive: boolean;
+          details: string | null;
+          openingHours: string | null;
+          openingHoursShort: string | null;
+          mapUrl: string | null;
+          imageUrl: string | null;
+          thumbnailUrl: string | null;
+          latitude: number;
+          longitude: number;
+        }>>`
+          SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude
+          FROM public.venues
+          WHERE id = ${id} AND "isActive" = true;
+        `;
+
+        if (!rawVenue || rawVenue.length === 0) {
+          return { notFound: true };
+        }
+
+        const venue = rawVenue[0];
+        const payload: VenueDetails = {
+          id: venue.id,
+          name: venue.name,
+          city: venue.city,
+          category: venue.category,
+          discountText: venue.discountText,
+          isActive: venue.isActive,
+          details: venue.details,
+          openingHours: venue.openingHours,
+          openingHoursShort: venue.openingHoursShort,
+          mapUrl: venue.mapUrl,
+          phone: null,
+          imageUrl: venue.imageUrl,
+          thumbnailUrl: venue.thumbnailUrl,
+          latitude: venue.latitude,
+          longitude: venue.longitude,
+        };
+
+        return {
+          props: {
+            venue: payload,
+          },
+        };
+      } catch (fallbackError) {
+        console.error('Error fetching venue with fallback:', fallbackError);
+        return { notFound: true };
+      }
+    }
+
+    // Re-throw other errors
+    console.error('Error fetching venue:', error);
     return { notFound: true };
   }
-
-  const payload: VenueDetails = {
-    id: venue.id,
-    name: venue.name,
-    city: venue.city,
-    category: venue.category,
-    discountText: venue.discountText,
-    isActive: venue.isActive,
-    details: venue.details,
-    openingHours: venue.openingHours,
-    openingHoursShort: venue.openingHoursShort,
-    mapUrl: venue.mapUrl, // Kept for type compatibility but not used in rendering
-    phone: null,
-    imageUrl: venue.imageUrl,
-    thumbnailUrl: venue.thumbnailUrl,
-    latitude: venue.latitude,
-    longitude: venue.longitude,
-  };
-
-  return {
-    props: {
-      venue: payload,
-    },
-  };
 };
 
