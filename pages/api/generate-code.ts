@@ -15,12 +15,15 @@ const payloadSchema = z.object({
 
 export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiResponse) => {
   try {
-    // Require authenticated user
-    const supabase = createClientFromRequest(req);
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return apiResponse.error(res, 401, 'Authentication required. Please log in to generate a discount code.');
+    // Try to get authenticated user (optional - not required for code generation)
+    let userId: string | null = null;
+    try {
+      const supabase = createClientFromRequest(req);
+      const { data: { user } } = await supabase.auth.getUser();
+      userId = user?.id || null;
+    } catch {
+      // User not authenticated - continue without user_id
+      userId = null;
     }
 
     const parsed = payloadSchema.safeParse(req.body);
@@ -29,16 +32,42 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
     }
     const { venueId } = parsed.data;
 
-    const venue = await prisma.venue.findUnique({ where: { id: Number(venueId) } });
+    // Use explicit select to avoid avgStudentBill if migration not applied
+    let venue;
+    try {
+      venue = await prisma.venue.findUnique({
+        where: { id: Number(venueId) },
+        select: {
+          id: true,
+          isActive: true,
+        },
+      });
+    } catch (error: any) {
+      // Fallback to raw SQL if Prisma fails with P2022 (column not found)
+      if (error?.code === 'P2022' && error?.meta?.column === 'Venue.avgStudentBill') {
+        const rawVenue = await prisma.$queryRaw<Array<{
+          id: number;
+          isActive: boolean;
+        }>>`
+          SELECT id, "isActive"
+          FROM public.venues
+          WHERE id = ${Number(venueId)};
+        `;
+        venue = rawVenue?.[0] || null;
+      } else {
+        throw error;
+      }
+    }
+
     if (!venue || !venue.isActive) {
       return apiResponse.error(res, 404, 'Venue not found');
     }
 
-    // Cancel any existing active codes for this user and venue
+    // Cancel any existing active codes for this venue (and user if authenticated)
     await prisma.discountUse.updateMany({
       where: {
         venueId: venue.id,
-        user_id: user.id,
+        ...(userId ? { user_id: userId } : {}),
         status: 'generated',
       },
       data: {
@@ -64,7 +93,7 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
             qrSlug: generateSlug(12),
             status: 'generated',
             expiresAt,
-            user_id: user.id, // Link to authenticated user
+            user_id: userId || null, // Link to authenticated user if available
           },
         });
         break;
