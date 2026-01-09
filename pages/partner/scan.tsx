@@ -116,8 +116,8 @@ export default function PartnerScanPage() {
     const code = qrCode.trim().toUpperCase();
     if (!code) return;
     
-    // Additional validation: check code format
-    if (code.length < 5 || code.length > 7) {
+    // Additional validation: check code format (5-8 for backward compatibility)
+    if (code.length < 5 || code.length > 8) {
       setStatus('error');
       setMessage('Invalid code format');
       return;
@@ -138,10 +138,10 @@ export default function PartnerScanPage() {
     const code = manualCode.trim().toUpperCase();
     if (!code) return;
 
-    // Validate input length (5-7 chars)
-    if (code.length < 5 || code.length > 7) {
+    // Validate input length (5-8 chars for backward compatibility with old codes)
+    if (code.length < 5 || code.length > 8) {
       setStatus('error');
-      setMessage('Code must be between 5 and 7 characters');
+      setMessage('Code must be between 5 and 8 characters');
       return;
     }
 

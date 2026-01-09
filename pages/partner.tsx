@@ -35,11 +35,11 @@ export default function PartnerPage({ partner }: PartnerPageProps) {
     
     const trimmedCode = code.trim().toUpperCase();
     
-    // Validate input length (5-7 chars)
-    if (trimmedCode.length < 5 || trimmedCode.length > 7) {
+    // Validate input length (5-8 chars for backward compatibility with old codes)
+    if (trimmedCode.length < 5 || trimmedCode.length > 8) {
       setFeedback({
         success: false,
-        message: 'Code must be between 5 and 7 characters',
+        message: 'Code must be between 5 and 8 characters',
       });
       return;
     }
