@@ -28,6 +28,7 @@ export default function VenuePage({ venue }: VenuePageProps) {
   const [codeExpiresAt, setCodeExpiresAt] = useState<Date | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [showExpiredMessage, setShowExpiredMessage] = useState(false);
+  const [codeStatus, setCodeStatus] = useState<'generated' | 'confirmed' | 'expired' | 'cancelled' | null>(null);
   const [fullScreen, setFullScreen] = useState(false);
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [openingRange, setOpeningRange] = useState<ReturnType<typeof parseOpeningRangeFromShort> | null>(null);
@@ -62,6 +63,48 @@ export default function VenuePage({ venue }: VenuePageProps) {
     return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
+  // Track if expiration has been handled to prevent multiple timeouts
+  const expirationHandledRef = useRef(false);
+  const statusPollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Poll code status to detect partner confirmation
+  const startCodeStatusPolling = useCallback((code: string) => {
+    // Clear any existing polling
+    if (statusPollingIntervalRef.current) {
+      clearInterval(statusPollingIntervalRef.current);
+    }
+    
+    // Poll every 3 seconds to check if code was confirmed
+    statusPollingIntervalRef.current = setInterval(async () => {
+      try {
+        const response = await fetch('/api/discounts/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data) {
+            const newStatus = data.data.status as 'generated' | 'confirmed' | 'expired' | 'cancelled';
+            setCodeStatus(newStatus);
+            
+            // If code is confirmed or cancelled, stop polling
+            if (newStatus === 'confirmed' || newStatus === 'cancelled') {
+              if (statusPollingIntervalRef.current) {
+                clearInterval(statusPollingIntervalRef.current);
+                statusPollingIntervalRef.current = null;
+              }
+            }
+          }
+        }
+      } catch (error) {
+        // Silently fail - don't interrupt user experience
+        console.error('Error checking code status:', error);
+      }
+    }, 3000); // Poll every 3 seconds
+  }, []);
+
   // API-based discount code generation
   const handleGenerateDiscount = useCallback(async () => {
     try {
@@ -89,16 +132,27 @@ export default function VenuePage({ venue }: VenuePageProps) {
       
       setDiscountCode(newCode);
       setCodeExpiresAt(expiresAt);
+      setCodeStatus('generated');
       const secondsUntilExpiry = Math.floor((expiresAt.getTime() - now.getTime()) / 1000);
       setRemainingSeconds(Math.max(0, secondsUntilExpiry));
       setShowExpiredMessage(false);
+      
+      // Start polling for code status to detect when partner confirms it
+      startCodeStatusPolling(newCode);
     } catch (error) {
       console.error('Error generating discount code:', error);
     }
-  }, [venue.id]);
-
-  // Track if expiration has been handled to prevent multiple timeouts
-  const expirationHandledRef = useRef(false);
+  }, [venue.id, startCodeStatusPolling]);
+  
+  // Cleanup polling on unmount or when code changes
+  useEffect(() => {
+    return () => {
+      if (statusPollingIntervalRef.current) {
+        clearInterval(statusPollingIntervalRef.current);
+        statusPollingIntervalRef.current = null;
+      }
+    };
+  }, [discountCode]);
 
   // Countdown timer effect - based on expiresAt from server
   useEffect(() => {
@@ -231,11 +285,16 @@ export default function VenuePage({ venue }: VenuePageProps) {
                 <div className="flex justify-center">
                   <QRCode value={discountCode} size={160} />
                 </div>
-                {(isTimerActive && remainingSeconds !== null) || showExpiredMessage ? (
-                  <div className="flex justify-center">
-                    {isTimerActive && remainingSeconds !== null && (
+                {(isTimerActive && remainingSeconds !== null) || showExpiredMessage || codeStatus === 'confirmed' ? (
+                  <div className="flex justify-center gap-2 flex-wrap">
+                    {isTimerActive && remainingSeconds !== null && codeStatus === 'generated' && (
                       <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
                         {formatCountdown(remainingSeconds)}
+                      </span>
+                    )}
+                    {codeStatus === 'confirmed' && (
+                      <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+                        ✓ Confirmed by partner
                       </span>
                     )}
                     {showExpiredMessage && (
@@ -243,10 +302,17 @@ export default function VenuePage({ venue }: VenuePageProps) {
                         Code expired
                       </span>
                     )}
+                    {codeStatus === 'cancelled' && (
+                      <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-800">
+                        Code cancelled
+                      </span>
+                    )}
                   </div>
                 ) : null}
                 <p className="text-xs text-slate-500">
-                  Show this code at the counter.
+                  {codeStatus === 'confirmed'
+                    ? 'This code has been confirmed and cannot be used again.'
+                    : 'Show this code at the counter.'}
                 </p>
                 {isTimerActive && (
                   <button
@@ -351,24 +417,36 @@ export default function VenuePage({ venue }: VenuePageProps) {
           <div className="mt-6 rounded-3xl bg-white p-6">
             <QRCode value={discountCode} size={220} />
           </div>
-          {(isTimerActive && remainingSeconds !== null) || showExpiredMessage ? (
-            <div className="mt-4 flex justify-center">
-              {isTimerActive && remainingSeconds !== null && (
-                <span className="inline-flex items-center rounded-full bg-amber-500/20 px-3 py-1 text-sm font-semibold text-amber-200">
-                  {formatCountdown(remainingSeconds)}
-                </span>
-              )}
-              {showExpiredMessage && (
-                <span className="inline-flex items-center rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-200">
-                  Code expired
-                </span>
-              )}
-            </div>
-          ) : null}
+                {(isTimerActive && remainingSeconds !== null) || showExpiredMessage || codeStatus === 'confirmed' ? (
+                  <div className="mt-4 flex justify-center gap-2 flex-wrap">
+                    {isTimerActive && remainingSeconds !== null && codeStatus === 'generated' && (
+                      <span className="inline-flex items-center rounded-full bg-amber-500/20 px-3 py-1 text-sm font-semibold text-amber-200">
+                        {formatCountdown(remainingSeconds)}
+                      </span>
+                    )}
+                    {codeStatus === 'confirmed' && (
+                      <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-semibold text-emerald-200">
+                        ✓ Confirmed by partner
+                      </span>
+                    )}
+                    {showExpiredMessage && (
+                      <span className="inline-flex items-center rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-200">
+                        Code expired
+                      </span>
+                    )}
+                    {codeStatus === 'cancelled' && (
+                      <span className="inline-flex items-center rounded-full bg-slate-500/20 px-3 py-1 text-sm font-semibold text-slate-200">
+                        Code cancelled
+                      </span>
+                    )}
+                  </div>
+                ) : null}
           <p className="mt-4 text-center text-sm text-emerald-100">
-            {isTimerActive
-              ? `Show this to the barista. Valid for ${formatCountdown(remainingSeconds ?? 0)}.`
-              : 'Show this to the barista. Valid for 30 minutes.'}
+            {codeStatus === 'confirmed'
+              ? 'This code has been confirmed and cannot be used again.'
+              : isTimerActive
+                ? `Show this to the barista. Valid for ${formatCountdown(remainingSeconds ?? 0)}.`
+                : 'Show this to the barista. Valid for 30 minutes.'}
           </p>
         </div>
       )}

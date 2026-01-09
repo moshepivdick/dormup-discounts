@@ -15,6 +15,7 @@ export default function PartnerScanPage() {
   const [message, setMessage] = useState('');
   const [showQRConfirmation, setShowQRConfirmation] = useState(false);
   const isSubmittingRef = useRef(false);
+  const processedCodesRef = useRef<Set<string>>(new Set()); // Track processed codes to prevent duplicate scans
 
   useEffect(() => {
     const reader = new BrowserMultiFormatReader();
@@ -63,6 +64,12 @@ export default function PartnerScanPage() {
   }, []);
 
   const confirmCodeAPI = async (codeToConfirm: string, isQRCode = false) => {
+    // Prevent duplicate processing of the same code
+    if (processedCodesRef.current.has(codeToConfirm)) {
+      console.log('Code already processed, skipping:', codeToConfirm);
+      return;
+    }
+
     if (isSubmittingRef.current) return;
     
     isSubmittingRef.current = true;
@@ -79,6 +86,9 @@ export default function PartnerScanPage() {
       const msg = payload.data?.message ?? payload.message ?? '';
 
       if (success) {
+        // Mark code as processed to prevent duplicate scans
+        processedCodesRef.current.add(codeToConfirm);
+        
         if (navigator.vibrate) {
           navigator.vibrate(200);
         }
@@ -105,6 +115,19 @@ export default function PartnerScanPage() {
   const handleQRConfirm = async (qrCode: string) => {
     const code = qrCode.trim().toUpperCase();
     if (!code) return;
+    
+    // Additional validation: check code format
+    if (code.length < 6 || code.length > 8) {
+      setStatus('error');
+      setMessage('Invalid code format');
+      return;
+    }
+    
+    // Prevent duplicate scans with debounce
+    if (processedCodesRef.current.has(code)) {
+      return;
+    }
+    
     await confirmCodeAPI(code, true);
   };
 
