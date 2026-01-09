@@ -1,6 +1,8 @@
-import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 type DateRange = '7d' | '30d' | '90d' | 'all';
+
+export type { DateRange };
 
 type DateRangeSelectorProps = {
   value: DateRange;
@@ -16,17 +18,20 @@ export function DateRangeSelector({ value, onChange }: DateRangeSelectorProps) {
   ];
 
   return (
-    <div className="flex gap-2">
+    <div className="inline-flex rounded-2xl bg-slate-100 p-1">
       {options.map((option) => (
-        <Button
+        <button
           key={option.value}
-          variant={value === option.value ? 'default' : 'outline'}
-          size="sm"
           onClick={() => onChange(option.value)}
-          className="min-w-[80px]"
+          className={cn(
+            'px-4 py-1.5 text-sm font-medium rounded-xl transition-all',
+            value === option.value
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          )}
         >
           {option.label}
-        </Button>
+        </button>
       ))}
     </div>
   );

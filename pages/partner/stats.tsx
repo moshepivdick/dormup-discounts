@@ -5,14 +5,14 @@ import { requirePartner } from '@/lib/guards';
 import Link from 'next/link';
 import { DateRangeSelector, getDateRangeDates } from '@/components/dashboard/DateRangeSelector';
 import { KPICard } from '@/components/dashboard/KPICard';
-import { ConversionFunnel } from '@/components/dashboard/ConversionFunnel';
+import { StudentJourney } from '@/components/dashboard/StudentJourney';
 import { VisitsByDayOfWeek } from '@/components/dashboard/VisitsByDayOfWeek';
 import { VisitsByTimeRange } from '@/components/dashboard/VisitsByTimeRange';
 import { LoyaltySection } from '@/components/dashboard/LoyaltySection';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { AdvancedPanel } from '@/components/dashboard/AdvancedPanel';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 type PartnerStatsProps = {
   partner: {
@@ -72,6 +72,8 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const [avgStudentBill, setAvgStudentBill] = useState<string>('15');
+  const [savingBill, setSavingBill] = useState(false);
+  const [billSaved, setBillSaved] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -103,6 +105,53 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
     fetchStats();
   }, [dateRange]);
 
+  // Load avgStudentBill from venue
+  useEffect(() => {
+    const fetchVenue = async () => {
+      try {
+        const response = await fetch(`/api/venues/${partner.venueId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data?.venue?.avgStudentBill) {
+            setAvgStudentBill(data.data.venue.avgStudentBill.toString());
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching venue:', error);
+      }
+    };
+    fetchVenue();
+  }, [partner.venueId]);
+
+  const handleSaveBill = async () => {
+    setSavingBill(true);
+    setBillSaved(false);
+    try {
+      const response = await fetch('/api/partner/venue-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avgStudentBill: parseFloat(avgStudentBill) || 0 }),
+      });
+      if (response.ok) {
+        setBillSaved(true);
+        setTimeout(() => setBillSaved(false), 2000);
+      }
+    } catch (error) {
+      console.error('Error saving bill:', error);
+    } finally {
+      setSavingBill(false);
+    }
+  };
+
+  const getDateRangeLabel = () => {
+    switch (dateRange) {
+      case '7d': return 'Last 7 days';
+      case '30d': return 'Last 30 days';
+      case '90d': return 'Last 90 days';
+      case 'all': return 'All time';
+    }
+  };
+
   const estimatedRevenue = stats
     ? stats.discountsRedeemed * parseFloat(avgStudentBill || '0')
     : 0;
@@ -115,7 +164,7 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
       <main className="min-h-screen bg-slate-100 px-4 py-8">
         <div className="mx-auto max-w-7xl">
           {/* Top Bar */}
-          <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-semibold text-slate-900">Restaurant Dashboard</h1>
               <p className="mt-1 text-slate-600">{partner.venueName}</p>
@@ -124,7 +173,7 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
               <DateRangeSelector value={dateRange} onChange={setDateRange} />
               <Link
                 href="/partner"
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                className="text-sm text-slate-600 hover:text-slate-900 transition"
               >
                 Back to Console
               </Link>
@@ -140,72 +189,77 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
               <p className="text-slate-600">Failed to load statistics</p>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Executive Summary - 5 KPI Cards */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+            <div className="space-y-8">
+              {/* Executive Summary - KPI Cards */}
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
                 <KPICard
                   title="Verified Student Visits"
                   value={stats.verifiedStudentVisits}
+                  subtitle={getDateRangeLabel()}
                   highlight
+                  hero
                   tooltip="Number of confirmed discount redemptions by verified students"
                 />
                 <KPICard
                   title="Unique Students"
                   value={stats.uniqueStudents}
+                  subtitle={getDateRangeLabel()}
                   tooltip="Number of unique students who viewed your venue page"
                 />
                 <KPICard
                   title="Discounts Redeemed"
                   value={stats.discountsRedeemed}
+                  subtitle={getDateRangeLabel()}
                   tooltip="Total number of discount codes confirmed/redeemed"
                 />
                 <KPICard
                   title="Returning Students"
                   value={stats.returningStudentsCount}
+                  subtitle={getDateRangeLabel()}
                   tooltip="Students who have redeemed 2 or more discounts"
                 />
                 <KPICard
                   title="Estimated Revenue"
                   value={`€${estimatedRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  subtitle={getDateRangeLabel()}
                   highlight
                   tooltip="Estimated revenue based on redeemed discounts and average student bill"
                 />
               </div>
 
-              {/* Revenue Input */}
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    <label className="text-sm font-medium text-slate-700">
-                      Avg student bill (€):
-                    </label>
-                    <Input
-                      type="number"
-                      value={avgStudentBill}
-                      onChange={(e) => setAvgStudentBill(e.target.value)}
-                      className="w-24"
-                      min="0"
-                      step="0.01"
-                    />
-                    <p className="text-xs text-slate-500">
-                      {/* TODO: Persist this value per restaurant in database */}
-                      This value is stored locally. Consider persisting it in the database.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Revenue Input - Compact Inline */}
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-medium text-slate-700 whitespace-nowrap">
+                  Avg student bill (€):
+                </label>
+                <Input
+                  type="number"
+                  value={avgStudentBill}
+                  onChange={(e) => setAvgStudentBill(e.target.value)}
+                  className="w-20 h-9"
+                  min="0"
+                  step="0.01"
+                />
+                <Button
+                  size="sm"
+                  onClick={handleSaveBill}
+                  disabled={savingBill}
+                  className="h-9"
+                >
+                  {savingBill ? 'Saving...' : billSaved ? 'Saved!' : 'Save'}
+                </Button>
+              </div>
 
-              {/* Conversion Funnel */}
-              <ConversionFunnel
+              {/* Student Journey */}
+              <StudentJourney
                 pageViews={stats.pageViews}
                 uniqueStudents={stats.uniqueStudents}
                 discountsRedeemed={stats.discountsRedeemed}
                 verifiedVisits={stats.verifiedStudentVisits}
-                conversionRates={stats.conversionRates}
               />
 
               {/* Operational Insights */}
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
                 <VisitsByDayOfWeek data={stats.visitsByDayOfWeek} />
                 <VisitsByTimeRange
                   lunch={stats.visitsByTimeRange.lunch}
