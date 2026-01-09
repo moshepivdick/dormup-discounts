@@ -193,8 +193,8 @@ export default function HomePage({ venues, cities, categories }: HomeProps) {
 
 export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
   try {
+    // Temporarily show all venues to restore them after migration issue
     const venues = await prisma.venue.findMany({
-      where: { isActive: true },
       orderBy: [{ city: 'asc' }, { name: 'asc' }],
     });
 
