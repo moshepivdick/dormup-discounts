@@ -35,7 +35,33 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
     }
     const { venueId } = parsed.data;
 
-    const venue = await prisma.venue.findUnique({ where: { id: Number(venueId) } });
+    // Use explicit select to avoid avgStudentBill if migration not applied
+    let venue;
+    try {
+      venue = await prisma.venue.findUnique({
+        where: { id: Number(venueId) },
+        select: {
+          id: true,
+          isActive: true,
+        },
+      });
+    } catch (error: any) {
+      // Fallback to raw SQL if Prisma fails with P2022 (column not found)
+      if (error?.code === 'P2022' && error?.meta?.column === 'Venue.avgStudentBill') {
+        const rawVenue = await prisma.$queryRaw<Array<{
+          id: number;
+          isActive: boolean;
+        }>>`
+          SELECT id, "isActive"
+          FROM public.venues
+          WHERE id = ${Number(venueId)};
+        `;
+        venue = rawVenue?.[0] || null;
+      } else {
+        throw error;
+      }
+    }
+
     if (!venue || !venue.isActive) {
       return res.status(404).json({
         error: 'Failed to generate code',

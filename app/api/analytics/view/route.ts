@@ -84,7 +84,11 @@ export async function POST(request: NextRequest) {
       });
     } catch (createError: any) {
       // If dedupe_key column doesn't exist (P2022 = column not found)
-      if (createError?.code === 'P2022' || createError?.meta?.column?.includes('dedupe_key')) {
+      if (
+        createError?.code === 'P2022' &&
+        (createError?.meta?.column === 'VenueView.dedupe_key' ||
+          createError?.meta?.column?.includes('dedupe_key'))
+      ) {
         // Column doesn't exist yet - create without dedupe_key (backward compatibility)
         await prisma.venueView.create({
           data: {
