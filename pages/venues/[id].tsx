@@ -270,11 +270,11 @@ export default function VenuePage({ venue }: VenuePageProps) {
                 href="https://www.chiburdlazgarden.com/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 inline-flex items-center justify-center gap-2 rounded-2xl bg-[#014D40] px-5 py-3 text-base font-medium text-white shadow-md transition-all duration-200 hover:bg-[#013a30] hover:shadow-lg"
+                className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-200 hover:border-slate-400"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
+                  className="h-4 w-4"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
