@@ -1,9 +1,18 @@
 import Head from 'next/head';
 import { useState, useEffect } from 'react';
 import type { GetServerSideProps, GetServerSidePropsContext } from 'next';
-import { auth } from '@/lib/auth';
 import { requirePartner } from '@/lib/guards';
 import Link from 'next/link';
+import { DateRangeSelector, getDateRangeDates } from '@/components/dashboard/DateRangeSelector';
+import { KPICard } from '@/components/dashboard/KPICard';
+import { ConversionFunnel } from '@/components/dashboard/ConversionFunnel';
+import { VisitsByDayOfWeek } from '@/components/dashboard/VisitsByDayOfWeek';
+import { VisitsByTimeRange } from '@/components/dashboard/VisitsByTimeRange';
+import { LoyaltySection } from '@/components/dashboard/LoyaltySection';
+import { RecentActivity } from '@/components/dashboard/RecentActivity';
+import { AdvancedPanel } from '@/components/dashboard/AdvancedPanel';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 
 type PartnerStatsProps = {
   partner: {
@@ -13,38 +22,71 @@ type PartnerStatsProps = {
   };
 };
 
+type DateRange = '7d' | '30d' | '90d' | 'all';
+
 type Stats = {
-  totalViews: number;
-  totalQrCodes: number;
-  totalVerified: number;
-  uniqueUsers: number;
-  userViewCounts: Record<string, number>;
-  userQrCounts: Record<string, { generated: number; verified: number; email?: string; name?: string }>;
-  recentViews: Array<{
-    id: number;
-    createdAt: string | Date;
-    user_id: string | null;
-    profiles: { email: string; first_name: string | null } | null;
+  pageViews: number;
+  uniqueStudents: number;
+  discountsRedeemed: number;
+  verifiedStudentVisits: number;
+  returningStudentsCount: number;
+  newStudentsCount: number;
+  avgVisitsPerStudent: number;
+  conversionRates: {
+    viewsToStudents: number;
+    studentsToDiscounts: number;
+    discountsToVerified: number;
+  };
+  visitsByDayOfWeek: Array<{
+    day: number;
+    dayName: string;
+    views: number;
+    confirmed: number;
   }>;
+  visitsByTimeRange: {
+    lunch: number;
+    dinner: number;
+    other: number;
+  };
   recentQrCodes: Array<{
     id: number;
     generatedCode: string;
     status: string;
     createdAt: string | Date;
     confirmedAt: string | Date | null;
-    user_id: string | null;
-    profiles: { email: string; first_name: string | null } | null;
+  }>;
+  userQrCounts: Record<string, { generated: number; verified: number; email?: string; name?: string }>;
+  userViewCounts: Record<string, number>;
+  allDiscountUses: Array<{
+    id: number;
+    generatedCode: string;
+    status: string;
+    createdAt: string | Date;
+    confirmedAt: string | Date | null;
+    profiles?: { email: string; first_name: string | null } | null;
   }>;
 };
 
 export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<DateRange>('30d');
+  const [avgStudentBill, setAvgStudentBill] = useState<string>('15');
 
   useEffect(() => {
     const fetchStats = async () => {
+      setLoading(true);
       try {
-        const response = await fetch('/api/partner/stats');
+        const { startDate, endDate } = getDateRangeDates(dateRange);
+        const params = new URLSearchParams();
+        if (startDate) {
+          params.append('startDate', startDate.toISOString());
+        }
+        if (endDate) {
+          params.append('endDate', endDate.toISOString());
+        }
+
+        const response = await fetch(`/api/partner/stats?${params.toString()}`);
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.data?.stats) {
@@ -59,26 +101,34 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
     };
 
     fetchStats();
-  }, []);
+  }, [dateRange]);
+
+  const estimatedRevenue = stats
+    ? stats.discountsRedeemed * parseFloat(avgStudentBill || '0')
+    : 0;
 
   return (
     <>
       <Head>
-        <title>Statistics | DormUp Discounts</title>
+        <title>Restaurant Dashboard | DormUp Discounts</title>
       </Head>
       <main className="min-h-screen bg-slate-100 px-4 py-8">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-6 flex items-center justify-between">
+        <div className="mx-auto max-w-7xl">
+          {/* Top Bar */}
+          <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-semibold text-slate-900">Venue Statistics</h1>
+              <h1 className="text-3xl font-semibold text-slate-900">Restaurant Dashboard</h1>
               <p className="mt-1 text-slate-600">{partner.venueName}</p>
             </div>
-            <Link
-              href="/partner"
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              Back to Console
-            </Link>
+            <div className="flex items-center gap-4">
+              <DateRangeSelector value={dateRange} onChange={setDateRange} />
+              <Link
+                href="/partner"
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Back to Console
+              </Link>
+            </div>
           </div>
 
           {loading ? (
@@ -91,145 +141,95 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Overview Cards */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <p className="text-sm font-medium text-slate-600">Total Views</p>
-                  <p className="mt-2 text-3xl font-semibold text-slate-900">{stats.totalViews}</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <p className="text-sm font-medium text-slate-600">QR Codes</p>
-                  <p className="mt-2 text-3xl font-semibold text-slate-900">{stats.totalQrCodes}</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <p className="text-sm font-medium text-slate-600">Verified</p>
-                  <p className="mt-2 text-3xl font-semibold text-emerald-600">{stats.totalVerified}</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <p className="text-sm font-medium text-slate-600">Unique Users</p>
-                  <p className="mt-2 text-3xl font-semibold text-slate-900">{stats.uniqueUsers}</p>
-                </div>
+              {/* Executive Summary - 5 KPI Cards */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+                <KPICard
+                  title="Verified Student Visits"
+                  value={stats.verifiedStudentVisits}
+                  highlight
+                  tooltip="Number of confirmed discount redemptions by verified students"
+                />
+                <KPICard
+                  title="Unique Students"
+                  value={stats.uniqueStudents}
+                  tooltip="Number of unique students who viewed your venue page"
+                />
+                <KPICard
+                  title="Discounts Redeemed"
+                  value={stats.discountsRedeemed}
+                  tooltip="Total number of discount codes confirmed/redeemed"
+                />
+                <KPICard
+                  title="Returning Students"
+                  value={stats.returningStudentsCount}
+                  tooltip="Students who have redeemed 2 or more discounts"
+                />
+                <KPICard
+                  title="Estimated Revenue"
+                  value={`€${estimatedRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  highlight
+                  tooltip="Estimated revenue based on redeemed discounts and average student bill"
+                />
               </div>
 
+              {/* Revenue Input */}
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    <label className="text-sm font-medium text-slate-700">
+                      Avg student bill (€):
+                    </label>
+                    <Input
+                      type="number"
+                      value={avgStudentBill}
+                      onChange={(e) => setAvgStudentBill(e.target.value)}
+                      className="w-24"
+                      min="0"
+                      step="0.01"
+                    />
+                    <p className="text-xs text-slate-500">
+                      {/* TODO: Persist this value per restaurant in database */}
+                      This value is stored locally. Consider persisting it in the database.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Conversion Funnel */}
+              <ConversionFunnel
+                pageViews={stats.pageViews}
+                uniqueStudents={stats.uniqueStudents}
+                discountsRedeemed={stats.discountsRedeemed}
+                verifiedVisits={stats.verifiedStudentVisits}
+                conversionRates={stats.conversionRates}
+              />
+
+              {/* Operational Insights */}
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                {/* User Activity */}
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <h2 className="mb-4 text-lg font-semibold text-slate-900">User Activity</h2>
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {Object.entries(stats.userQrCounts).length === 0 ? (
-                      <p className="text-slate-600">No user activity yet</p>
-                    ) : (
-                      Object.entries(stats.userQrCounts)
-                        .sort(([, a], [, b]) => b.generated - a.generated)
-                        .map(([userId, counts]) => (
-                          <div
-                            key={userId}
-                            className="flex items-center justify-between rounded-lg bg-slate-50 p-3"
-                          >
-                            <div>
-                              <p className="font-medium text-slate-900">
-                                {counts.name || counts.email || 'Unknown User'}
-                              </p>
-                              <p className="text-xs text-slate-600">
-                                {counts.verified} verified of {counts.generated} codes
-                              </p>
-                              <p className="text-xs text-slate-500">
-                                {stats.userViewCounts[userId] || 0} views
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-semibold text-slate-900">
-                                {counts.generated}
-                              </p>
-                              <p className="text-xs text-slate-500">QR codes</p>
-                            </div>
-                          </div>
-                        ))
-                    )}
-                  </div>
-                </div>
-
-                {/* Recent QR Codes */}
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <h2 className="mb-4 text-lg font-semibold text-slate-900">Recent QR Codes</h2>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {stats.recentQrCodes.length === 0 ? (
-                      <p className="text-slate-600">No QR codes generated yet</p>
-                    ) : (
-                      stats.recentQrCodes.slice(0, 20).map((qr) => (
-                        <div
-                          key={qr.id}
-                          className="flex items-center justify-between rounded-lg bg-slate-50 p-3"
-                        >
-                          <div>
-                            <p className="font-mono text-sm font-semibold text-slate-900">
-                              {qr.generatedCode}
-                            </p>
-                            <p className="text-xs text-slate-600">
-                              {qr.profiles?.first_name || qr.profiles?.email || 'Unknown user'}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {new Date(qr.createdAt as string).toLocaleString()}
-                            </p>
-                          </div>
-                          <span
-                            className={`rounded-full px-2 py-1 text-xs font-medium ${
-                              qr.status === 'confirmed'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-amber-100 text-amber-700'
-                            }`}
-                          >
-                            {qr.status}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
+                <VisitsByDayOfWeek data={stats.visitsByDayOfWeek} />
+                <VisitsByTimeRange
+                  lunch={stats.visitsByTimeRange.lunch}
+                  dinner={stats.visitsByTimeRange.dinner}
+                  other={stats.visitsByTimeRange.other}
+                />
               </div>
 
-              {/* Recent Views */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 className="mb-4 text-lg font-semibold text-slate-900">Recent Views</h2>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {stats.recentViews.length === 0 ? (
-                    <p className="text-slate-600">No views yet</p>
-                  ) : (
-                    (() => {
-                      // Client-side deduplication safety net: dedupe by email + timestamp (rounded to minute)
-                      // This is a last-resort for legacy data, as DB-level deduplication is primary
-                      const seen = new Set<string>();
-                      const uniqueViews = stats.recentViews.filter((view) => {
-                        const email = view.profiles?.email || 'Anonymous';
-                        const timestamp = new Date(view.createdAt as string);
-                        timestamp.setSeconds(0, 0); // Round to minute
-                        const key = `${email}:${timestamp.toISOString()}`;
-                        if (seen.has(key)) {
-                          return false;
-                        }
-                        seen.add(key);
-                        return true;
-                      });
-                      
-                      return uniqueViews.slice(0, 20).map((view) => (
-                        <div
-                          key={view.id}
-                          className="flex items-center justify-between rounded-lg bg-slate-50 p-3"
-                        >
-                          <div>
-                            <p className="text-sm font-medium text-slate-900">
-                              {view.profiles?.first_name || view.profiles?.email || 'Anonymous'}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {new Date(view.createdAt as string).toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                      ));
-                    })()
-                  )}
-                </div>
-              </div>
+              {/* Loyalty */}
+              <LoyaltySection
+                newStudents={stats.newStudentsCount}
+                returningStudents={stats.returningStudentsCount}
+                avgVisitsPerStudent={stats.avgVisitsPerStudent}
+              />
+
+              {/* Recent Activity */}
+              <RecentActivity recentCodes={stats.recentQrCodes} />
+
+              {/* Advanced Panel */}
+              <AdvancedPanel
+                allDiscountUses={stats.allDiscountUses}
+                userQrCounts={stats.userQrCounts}
+                userViewCounts={stats.userViewCounts}
+              />
             </div>
           )}
         </div>
@@ -265,4 +265,3 @@ export const getServerSideProps = async (ctx: GetServerSidePropsContext) => {
     },
   };
 };
-

@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { auth } from '@/lib/auth';
 import { apiResponse, withMethods } from '@/lib/api';
-import { getPartnerVenueStats } from '@/lib/stats';
+import { getPartnerVenueStatsWithDateRange } from '@/lib/stats-enhanced';
 
 export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResponse) => {
   const partner = await auth.getPartnerFromRequest(req);
@@ -14,7 +14,12 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
   }
 
   try {
-    const stats = await getPartnerVenueStats(partner.venueId);
+    // Parse date range from query params
+    const { startDate, endDate } = req.query;
+    const start = startDate ? new Date(startDate as string) : undefined;
+    const end = endDate ? new Date(endDate as string) : undefined;
+
+    const stats = await getPartnerVenueStatsWithDateRange(partner.venueId, start, end);
     return apiResponse.success(res, { stats });
   } catch (error) {
     console.error('Error fetching partner stats:', error);
