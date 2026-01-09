@@ -107,32 +107,26 @@ export async function POST(request: NextRequest) {
           String(createError?.meta?.column || '').includes('dedupe_key'));
 
       if (isDedupeKeyError) {
-        // Column doesn't exist yet - create without dedupe_key (backward compatibility)
+        // Column doesn't exist yet - use raw SQL to create without dedupe_key
+        // This avoids Prisma trying to use the column even if we don't pass it
         try {
-          await prisma.venueView.create({
-            data: {
-              venueId,
-              city,
-              userAgent: parsedUserAgent,
-              user_id: userId,
-            },
-          });
+          await prisma.$executeRaw`
+            INSERT INTO public.venue_views (venue_id, city, user_agent, user_id, created_at)
+            VALUES (${venueId}, ${city}, ${parsedUserAgent || null}, ${userId}, ${now})
+            ON CONFLICT DO NOTHING
+          `;
           // Success - return early
           return NextResponse.json({ ok: true });
         } catch (fallbackError: any) {
-          // If unique constraint violation on fallback, view was already recorded
-          if (fallbackError?.code === 'P2002') {
+          // If unique constraint violation or any other error, view might already be recorded
+          // Return success anyway - view tracking is not critical
+          if (fallbackError?.code === 'P2002' || fallbackError?.code === '23505') {
             // View already exists - return success
             return NextResponse.json({ ok: true });
           }
-          // If it's another P2022 error (shouldn't happen, but handle it anyway)
-          if (fallbackError?.code === 'P2022') {
-            console.warn('Unexpected P2022 error in fallback:', fallbackError?.meta);
-            // Return success anyway - we tried our best
-            return NextResponse.json({ ok: true });
-          }
-          // Re-throw other errors to outer catch
-          throw fallbackError;
+          // Log but don't fail - view tracking is not critical
+          console.warn('Raw SQL fallback also failed:', fallbackError?.code, fallbackError?.message?.substring(0, 100));
+          return NextResponse.json({ ok: true }); // Return success anyway
         }
       } else if (createError?.code === 'P2002') {
         // Unique constraint violation - dedupe_key exists and duplicate found
@@ -182,24 +176,22 @@ export async function POST(request: NextRequest) {
         String(error?.meta?.column || '').includes('dedupe_key'));
 
     if (isDedupeKeyError) {
-      // Try one more time without dedupe_key (data already parsed above)
+      // Try one more time using raw SQL (data already parsed above)
+      // This avoids Prisma trying to use the column even if we don't pass it
       try {
-        await prisma.venueView.create({
-          data: {
-            venueId,
-            city,
-            userAgent: parsedUserAgent,
-            user_id: userId,
-          },
-        });
+        await prisma.$executeRaw`
+          INSERT INTO public.venue_views (venue_id, city, user_agent, user_id, created_at)
+          VALUES (${venueId}, ${city}, ${parsedUserAgent || null}, ${userId}, ${new Date()})
+          ON CONFLICT DO NOTHING
+        `;
         return NextResponse.json({ ok: true });
       } catch (finalError: any) {
-        // If unique constraint violation, view was already recorded
-        if (finalError?.code === 'P2002') {
+        // If unique constraint violation or any other error, view might already be recorded
+        if (finalError?.code === 'P2002' || finalError?.code === '23505') {
           return NextResponse.json({ ok: true });
         }
         // Log but don't fail - view tracking is not critical
-        console.error('Final fallback also failed:', finalError?.code);
+        console.warn('Final raw SQL fallback also failed:', finalError?.code, finalError?.message?.substring(0, 100));
         return NextResponse.json({ ok: true }); // Return success anyway to not break user experience
       }
     }
