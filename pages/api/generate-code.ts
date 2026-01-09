@@ -15,16 +15,10 @@ const payloadSchema = z.object({
 
 export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiResponse) => {
   try {
-    // Try to get authenticated user (optional - not required for code generation)
-    let userId: string | null = null;
-    try {
-      const supabase = createClientFromRequest(req);
-      const { data: { user } } = await supabase.auth.getUser();
-      userId = user?.id || null;
-    } catch {
-      // User not authenticated - continue without user_id
-      userId = null;
-    }
+    // Try to get authenticated user (optional - allow anonymous code generation)
+    const supabase = createClientFromRequest(req);
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id || null;
 
     const parsed = payloadSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -64,12 +58,15 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
     }
 
     // Cancel any existing active codes for this venue (and user if authenticated)
+    const cancelWhere: any = {
+      venueId: venue.id,
+      status: 'generated',
+    };
+    if (userId) {
+      cancelWhere.user_id = userId;
+    }
     await prisma.discountUse.updateMany({
-      where: {
-        venueId: venue.id,
-        ...(userId ? { user_id: userId } : {}),
-        status: 'generated',
-      },
+      where: cancelWhere,
       data: {
         status: 'cancelled',
         confirmedAt: new Date(),
@@ -93,7 +90,7 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
             qrSlug: generateSlug(12),
             status: 'generated',
             expiresAt,
-            user_id: userId || null, // Link to authenticated user if available
+            user_id: userId, // Link to authenticated user if available
           },
         });
         break;
