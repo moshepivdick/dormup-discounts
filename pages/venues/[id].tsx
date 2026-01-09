@@ -265,6 +265,30 @@ export default function VenuePage({ venue }: VenuePageProps) {
             className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-emerald-900/5"
           >
             <p className="text-sm font-semibold text-slate-500">About</p>
+            {venue.name === 'Chi Burdlaz Garden' && (
+              <a
+                href="https://www.chiburdlazgarden.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center justify-center gap-2 rounded-2xl bg-[#014D40] px-5 py-3 text-base font-medium text-white shadow-md transition-all duration-200 hover:bg-[#013a30] hover:shadow-lg"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
+                  />
+                </svg>
+                Official Website
+              </a>
+            )}
             <div className="mt-3 space-y-3 text-base text-slate-700">
               {venue.discountText && (
                 <p>{venue.discountText}</p>
