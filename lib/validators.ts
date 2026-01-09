@@ -5,14 +5,14 @@ export const authSchema = z.object({
   password: z.string().min(6),
 });
 
-// Valid discount code format: uppercase alphanumeric, 6-8 characters
-const DISCOUNT_CODE_REGEX = /^[A-Z0-9]{6,8}$/;
+// Valid discount code format: uppercase alphanumeric, 5-7 characters
+const DISCOUNT_CODE_REGEX = /^[A-Z0-9]{5,7}$/;
 
 export const discountConfirmSchema = z.object({
   code: z
     .string()
-    .min(6, 'Code must be at least 6 characters')
-    .max(8, 'Code must be at most 8 characters')
+    .min(5, 'Code must be at least 5 characters')
+    .max(7, 'Code must be at most 7 characters')
     .regex(DISCOUNT_CODE_REGEX, 'Code must contain only uppercase letters and numbers'),
 });
 

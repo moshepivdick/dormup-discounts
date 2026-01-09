@@ -87,7 +87,7 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
     let discountUse;
 
     while (attempt < MAX_ATTEMPTS) {
-      const code = generateDiscountCode(6 + attempt);
+      const code = generateDiscountCode(5 + attempt);
       try {
         const expiresAt = new Date(Date.now() + DISCOUNT_CODE_TTL_MS);
 

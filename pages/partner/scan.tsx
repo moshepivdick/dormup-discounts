@@ -117,7 +117,7 @@ export default function PartnerScanPage() {
     if (!code) return;
     
     // Additional validation: check code format
-    if (code.length < 6 || code.length > 8) {
+    if (code.length < 5 || code.length > 7) {
       setStatus('error');
       setMessage('Invalid code format');
       return;
@@ -138,10 +138,10 @@ export default function PartnerScanPage() {
     const code = manualCode.trim().toUpperCase();
     if (!code) return;
 
-    // Validate input length (6-8 chars)
-    if (code.length < 6 || code.length > 8) {
+    // Validate input length (5-7 chars)
+    if (code.length < 5 || code.length > 7) {
       setStatus('error');
-      setMessage('Code must be between 6 and 8 characters');
+      setMessage('Code must be between 5 and 7 characters');
       return;
     }
 
