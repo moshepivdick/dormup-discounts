@@ -127,13 +127,13 @@ export async function POST(request: NextRequest) {
         console.log('Profile created via service role client:', serviceProfileData.id);
         return NextResponse.json({
           success: true,
-          profile: {
-            id: serviceProfileData.id,
-            email: serviceProfileData.email,
-            first_name: firstName,
-            university_id: serviceProfileData.university_id || universityId,
-            is_student_verified: serviceProfileData.verified_student || true,
-          },
+            profile: {
+              id: serviceProfileData.id,
+              email: serviceProfileData.email,
+              first_name: firstName,
+              university_id: serviceProfileData.university_id || universityId,
+              is_student_verified: serviceProfileData.verified_student || true,
+            },
         });
       } catch (fallbackError: any) {
         console.error('All profile creation methods failed:', fallbackError);
@@ -145,13 +145,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      profile: {
-        id: profile.id,
-        email: profile.email,
-        first_name: firstName,
-        university_id: profile.university_id || universityId,
-        is_student_verified: profile.verified_student || true,
-      },
+        profile: {
+          id: profile.id,
+          email: profile.email,
+          first_name: firstName,
+          university_id: profile.university_id || universityId,
+          is_student_verified: profile.verified_student || true,
+        },
     });
   } catch (error: any) {
     console.error('Profile upsert error:', error);
