@@ -105,10 +105,55 @@ export const getServerSideProps = (async (ctx) => {
 
   const [partners, venues] = await Promise.all([
     prisma.partner.findMany({
-      include: { venue: true },
+      include: {
+        venue: {
+          select: {
+            id: true,
+            name: true,
+            city: true,
+            category: true,
+            discountText: true,
+            details: true,
+            openingHours: true,
+            openingHoursShort: true,
+            mapUrl: true,
+            latitude: true,
+            longitude: true,
+            imageUrl: true,
+            thumbnailUrl: true,
+            isActive: true,
+            createdAt: true,
+            updatedAt: true,
+            phone: true,
+            // Explicitly exclude avgStudentBill to avoid P2022 error if column doesn't exist
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     }),
-    prisma.venue.findMany({ orderBy: { name: 'asc' } }),
+    prisma.venue.findMany({
+      select: {
+        id: true,
+        name: true,
+        city: true,
+        category: true,
+        discountText: true,
+        details: true,
+        openingHours: true,
+        openingHoursShort: true,
+        mapUrl: true,
+        latitude: true,
+        longitude: true,
+        imageUrl: true,
+        thumbnailUrl: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        phone: true,
+        // Explicitly exclude avgStudentBill
+      },
+      orderBy: { name: 'asc' },
+    }),
   ]);
 
   return {

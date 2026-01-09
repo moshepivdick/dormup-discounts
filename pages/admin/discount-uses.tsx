@@ -57,7 +57,30 @@ export const getServerSideProps = (async (
   }
 
   const uses = await prisma.discountUse.findMany({
-    include: { venue: true },
+    include: {
+      venue: {
+        select: {
+          id: true,
+          name: true,
+          city: true,
+          category: true,
+          discountText: true,
+          details: true,
+          openingHours: true,
+          openingHoursShort: true,
+          mapUrl: true,
+          latitude: true,
+          longitude: true,
+          imageUrl: true,
+          thumbnailUrl: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+          phone: true,
+          // Explicitly exclude avgStudentBill to avoid P2022 error if column doesn't exist
+        },
+      },
+    },
     orderBy: { createdAt: 'desc' },
     take: 100,
   });

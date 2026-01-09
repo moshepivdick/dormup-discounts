@@ -12,8 +12,65 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'GET') {
-    const partners = await prisma.partner.findMany({ include: { venue: true } });
-    return apiResponse.success(res, { partners });
+    try {
+      const partners = await prisma.partner.findMany({
+        include: {
+          venue: {
+            select: {
+              id: true,
+              name: true,
+              city: true,
+              category: true,
+              discountText: true,
+              details: true,
+              openingHours: true,
+              openingHoursShort: true,
+              mapUrl: true,
+              latitude: true,
+              longitude: true,
+              imageUrl: true,
+              thumbnailUrl: true,
+              isActive: true,
+              createdAt: true,
+              updatedAt: true,
+              phone: true,
+              // Explicitly exclude avgStudentBill to avoid P2022 error if column doesn't exist
+            },
+          },
+        },
+      });
+      return apiResponse.success(res, { partners });
+    } catch (error: any) {
+      if (error?.code === 'P2022' || error?.message?.includes('avgStudentBill')) {
+        console.error('Prisma error, using fallback:', error);
+        const partners = await (prisma as any).$queryRaw`
+          SELECT p.*, 
+                 json_build_object(
+                   'id', v.id,
+                   'name', v.name,
+                   'city', v.city,
+                   'category', v.category,
+                   'discountText', v."discountText",
+                   'details', v.details,
+                   'openingHours', v."openingHours",
+                   'openingHoursShort', v."openingHoursShort",
+                   'mapUrl', v."mapUrl",
+                   'latitude', v.latitude,
+                   'longitude', v.longitude,
+                   'imageUrl', v."imageUrl",
+                   'thumbnailUrl', v."thumbnailUrl",
+                   'isActive', v."isActive",
+                   'createdAt', v."createdAt",
+                   'updatedAt', v."updatedAt",
+                   'phone', v.phone
+                 ) as venue
+          FROM partners p
+          LEFT JOIN venues v ON p."venueId" = v.id
+        `;
+        return apiResponse.success(res, { partners });
+      }
+      throw error;
+    }
   }
 
   if (req.method === 'POST') {
