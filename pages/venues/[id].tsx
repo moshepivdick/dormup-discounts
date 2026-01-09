@@ -143,7 +143,7 @@ export default function VenuePage({ venue }: VenuePageProps) {
       console.error('Error generating discount code:', error);
     }
   }, [venue.id, startCodeStatusPolling]);
-  
+
   // Cleanup polling on unmount or when code changes
   useEffect(() => {
     return () => {
@@ -420,33 +420,33 @@ export default function VenuePage({ venue }: VenuePageProps) {
                 {(isTimerActive && remainingSeconds !== null) || showExpiredMessage || codeStatus === 'confirmed' ? (
                   <div className="mt-4 flex justify-center gap-2 flex-wrap">
                     {isTimerActive && remainingSeconds !== null && codeStatus === 'generated' && (
-                      <span className="inline-flex items-center rounded-full bg-amber-500/20 px-3 py-1 text-sm font-semibold text-amber-200">
-                        {formatCountdown(remainingSeconds)}
-                      </span>
-                    )}
+                <span className="inline-flex items-center rounded-full bg-amber-500/20 px-3 py-1 text-sm font-semibold text-amber-200">
+                  {formatCountdown(remainingSeconds)}
+                </span>
+              )}
                     {codeStatus === 'confirmed' && (
                       <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-semibold text-emerald-200">
                         ✓ Confirmed by partner
                       </span>
                     )}
-                    {showExpiredMessage && (
-                      <span className="inline-flex items-center rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-200">
-                        Code expired
-                      </span>
-                    )}
+              {showExpiredMessage && (
+                <span className="inline-flex items-center rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-200">
+                  Code expired
+                </span>
+              )}
                     {codeStatus === 'cancelled' && (
                       <span className="inline-flex items-center rounded-full bg-slate-500/20 px-3 py-1 text-sm font-semibold text-slate-200">
                         Code cancelled
                       </span>
                     )}
-                  </div>
-                ) : null}
+            </div>
+          ) : null}
           <p className="mt-4 text-center text-sm text-emerald-100">
             {codeStatus === 'confirmed'
               ? 'This code has been confirmed and cannot be used again.'
               : isTimerActive
-                ? `Show this to the barista. Valid for ${formatCountdown(remainingSeconds ?? 0)}.`
-                : 'Show this to the barista. Valid for 30 minutes.'}
+              ? `Show this to the barista. Valid for ${formatCountdown(remainingSeconds ?? 0)}.`
+              : 'Show this to the barista. Valid for 30 minutes.'}
           </p>
         </div>
       )}
@@ -467,8 +467,8 @@ export const getServerSideProps: GetServerSideProps<VenuePageProps> = async ({
 
   try {
     // Use explicit select to avoid avgStudentBill if migration not applied
-    const venue = await prisma.venue.findUnique({
-      where: { id },
+  const venue = await prisma.venue.findUnique({
+    where: { id },
       select: {
         id: true,
         name: true,
@@ -485,35 +485,35 @@ export const getServerSideProps: GetServerSideProps<VenuePageProps> = async ({
         latitude: true,
         longitude: true,
       },
-    });
+  });
 
-    if (!venue || !venue.isActive) {
-      return { notFound: true };
-    }
+  if (!venue || !venue.isActive) {
+    return { notFound: true };
+  }
 
-    const payload: VenueDetails = {
-      id: venue.id,
-      name: venue.name,
-      city: venue.city,
-      category: venue.category,
-      discountText: venue.discountText,
-      isActive: venue.isActive,
-      details: venue.details,
-      openingHours: venue.openingHours,
-      openingHoursShort: venue.openingHoursShort,
-      mapUrl: venue.mapUrl, // Kept for type compatibility but not used in rendering
-      phone: null,
-      imageUrl: venue.imageUrl,
-      thumbnailUrl: venue.thumbnailUrl,
-      latitude: venue.latitude,
-      longitude: venue.longitude,
-    };
+  const payload: VenueDetails = {
+    id: venue.id,
+    name: venue.name,
+    city: venue.city,
+    category: venue.category,
+    discountText: venue.discountText,
+    isActive: venue.isActive,
+    details: venue.details,
+    openingHours: venue.openingHours,
+    openingHoursShort: venue.openingHoursShort,
+    mapUrl: venue.mapUrl, // Kept for type compatibility but not used in rendering
+    phone: null,
+    imageUrl: venue.imageUrl,
+    thumbnailUrl: venue.thumbnailUrl,
+    latitude: venue.latitude,
+    longitude: venue.longitude,
+  };
 
-    return {
-      props: {
-        venue: payload,
-      },
-    };
+  return {
+    props: {
+      venue: payload,
+    },
+  };
   } catch (error: any) {
     // Fallback to raw SQL if Prisma fails with P2022 (column not found)
     if (error.code === 'P2022' && error.meta?.column === 'Venue.avgStudentBill') {

@@ -211,8 +211,8 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
           longitude: true,
           // Explicitly exclude avgStudentBill to avoid P2022 error if column doesn't exist
         },
-        orderBy: [{ city: 'asc' }, { name: 'asc' }],
-      });
+      orderBy: [{ city: 'asc' }, { name: 'asc' }],
+    });
     } catch (prismaError: any) {
       console.error('Prisma error fetching venues:', prismaError);
       // If error is about missing column (P2022), use raw SQL

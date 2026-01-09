@@ -22,17 +22,49 @@ export const getOverviewStats = async () => {
 };
 
 export const getDiscountsByVenue = async () => {
-  const venues = await prisma.venue.findMany({
-    include: {
-      discountUses: true,
-    },
-  });
+  try {
+    // Use explicit select to avoid avgStudentBill if migration not applied
+    const venues = await prisma.venue.findMany({
+      select: {
+        id: true,
+        name: true,
+        discountUses: true,
+      },
+    });
 
-  return venues.map((venue) => ({
-    venueName: venue.name,
-    total: venue.discountUses.length,
-    confirmed: venue.discountUses.filter((d) => d.status === 'confirmed').length,
-  }));
+    return venues.map((venue) => ({
+      venueName: venue.name,
+      total: venue.discountUses.length,
+      confirmed: venue.discountUses.filter((d) => d.status === 'confirmed').length,
+    }));
+  } catch (error: any) {
+    // Fallback to raw SQL if Prisma fails with P2022 (column not found)
+    if (error?.code === 'P2022' && error?.meta?.column === 'Venue.avgStudentBill') {
+      const rawData = await prisma.$queryRaw<Array<{
+        venue_id: number;
+        venue_name: string;
+        total: bigint;
+        confirmed: bigint;
+      }>>`
+        SELECT 
+          v.id as venue_id,
+          v.name as venue_name,
+          COUNT(du.id) as total,
+          COUNT(CASE WHEN du.status = 'confirmed' THEN 1 END) as confirmed
+        FROM venues v
+        LEFT JOIN discount_uses du ON v.id = du."venueId"
+        GROUP BY v.id, v.name
+        ORDER BY v.name ASC;
+      `;
+
+      return rawData.map((row) => ({
+        venueName: row.venue_name,
+        total: Number(row.total),
+        confirmed: Number(row.confirmed),
+      }));
+    }
+    throw error;
+  }
 };
 
 export const getDiscountsByDay = async (days = 7) => {
@@ -606,4 +638,3 @@ export const getPartnerVenueStatsWithDateRange = async (
     allDiscountUses: discountUses,
   };
 };
-
