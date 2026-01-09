@@ -41,8 +41,15 @@ function generateDedupeKey(venueId: number, userId: string | null, timestamp: Da
 }
 
 export async function POST(request: NextRequest) {
+  // Read request body once at the beginning
+  let body: any;
+  let venueId: number;
+  let city: string;
+  let parsedUserAgent: string | undefined;
+  let userId: string | null;
+
   try {
-    const body = await request.json();
+    body = await request.json();
     const userAgent = request.headers.get('user-agent') || undefined;
     
     const parsed = venueViewSchema.safeParse({
@@ -57,12 +64,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { venueId, city, userAgent: parsedUserAgent } = parsed.data;
+    ({ venueId, city, userAgent: parsedUserAgent } = parsed.data);
 
     // Get user from Supabase session
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const userId = user?.id || null;
+    userId = user?.id || null;
+  } catch (parseError) {
+    return NextResponse.json(
+      { error: 'Invalid request body' },
+      { status: 400 }
+    );
+  }
+
+  try {
 
     // Generate dedupe_key for idempotency (if column exists)
     const now = new Date();
@@ -84,11 +99,14 @@ export async function POST(request: NextRequest) {
       });
     } catch (createError: any) {
       // If dedupe_key column doesn't exist (P2022 = column not found)
-      if (
+      const isDedupeKeyError = 
         createError?.code === 'P2022' &&
         (createError?.meta?.column === 'VenueView.dedupe_key' ||
-          createError?.meta?.column?.includes('dedupe_key'))
-      ) {
+          createError?.meta?.column === 'dedupe_key' ||
+          createError?.meta?.column?.includes('dedupe_key') ||
+          String(createError?.meta?.column || '').includes('dedupe_key'));
+
+      if (isDedupeKeyError) {
         // Column doesn't exist yet - create without dedupe_key (backward compatibility)
         try {
           await prisma.venueView.create({
@@ -99,13 +117,21 @@ export async function POST(request: NextRequest) {
               user_id: userId,
             },
           });
+          // Success - return early
+          return NextResponse.json({ ok: true });
         } catch (fallbackError: any) {
           // If unique constraint violation on fallback, view was already recorded
           if (fallbackError?.code === 'P2002') {
             // View already exists - return success
             return NextResponse.json({ ok: true });
           }
-          // Re-throw other errors
+          // If it's another P2022 error (shouldn't happen, but handle it anyway)
+          if (fallbackError?.code === 'P2022') {
+            console.warn('Unexpected P2022 error in fallback:', fallbackError?.meta);
+            // Return success anyway - we tried our best
+            return NextResponse.json({ ok: true });
+          }
+          // Re-throw other errors to outer catch
           throw fallbackError;
         }
       } else if (createError?.code === 'P2002') {
@@ -143,20 +169,51 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (error) {
+  } catch (error: any) {
     // Log error but don't expose internal details to client
     console.error('Error tracking venue view:', error);
     
+    // Check if it's a P2022 error for dedupe_key (missed in inner catch)
+    const isDedupeKeyError = 
+      error?.code === 'P2022' &&
+      (error?.meta?.column === 'VenueView.dedupe_key' ||
+        error?.meta?.column === 'dedupe_key' ||
+        error?.meta?.column?.includes('dedupe_key') ||
+        String(error?.meta?.column || '').includes('dedupe_key'));
+
+    if (isDedupeKeyError) {
+      // Try one more time without dedupe_key (data already parsed above)
+      try {
+        await prisma.venueView.create({
+          data: {
+            venueId,
+            city,
+            userAgent: parsedUserAgent,
+            user_id: userId,
+          },
+        });
+        return NextResponse.json({ ok: true });
+      } catch (finalError: any) {
+        // If unique constraint violation, view was already recorded
+        if (finalError?.code === 'P2002') {
+          return NextResponse.json({ ok: true });
+        }
+        // Log but don't fail - view tracking is not critical
+        console.error('Final fallback also failed:', finalError?.code);
+        return NextResponse.json({ ok: true }); // Return success anyway to not break user experience
+      }
+    }
+    
     // If it's a unique constraint violation, it's actually fine (duplicate prevented)
     // Just return success since the view was already recorded
-    if (error instanceof Error && error.message.includes('Unique constraint')) {
+    if (error?.code === 'P2002' || (error instanceof Error && error.message.includes('Unique constraint'))) {
       return NextResponse.json({ ok: true });
     }
     
-    return NextResponse.json(
-      { error: 'Failed to track view' },
-      { status: 500 }
-    );
+    // For any other error, return success anyway to not break user experience
+    // View tracking is not critical for the app to function
+    console.warn('Non-critical view tracking error, returning success:', error?.code, error?.message?.substring(0, 100));
+    return NextResponse.json({ ok: true });
   }
 }
 
