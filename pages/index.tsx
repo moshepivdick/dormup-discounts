@@ -193,18 +193,51 @@ export default function HomePage({ venues, cities, categories }: HomeProps) {
 
 export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
   try {
-    // Temporarily show all venues to restore them after migration issue
-    const venues = await prisma.venue.findMany({
-      orderBy: [{ city: 'asc' }, { name: 'asc' }],
-    });
+    // Try to fetch venues - show all to restore them
+    let venues;
+    try {
+      venues = await prisma.venue.findMany({
+        orderBy: [{ city: 'asc' }, { name: 'asc' }],
+      });
+    } catch (prismaError: any) {
+      console.error('Prisma error fetching venues:', prismaError);
+      // If error is about missing column, try selecting only known fields
+      if (prismaError?.message?.includes('avg_student_bill') || prismaError?.code === 'P2021') {
+        console.log('Attempting to fetch venues without avgStudentBill field...');
+        // Try with explicit select to avoid new field issues
+        venues = await (prisma as any).$queryRaw`
+          SELECT id, name, city, category, "discountText", "isActive", 
+                 "imageUrl", "thumbnailUrl", "openingHoursShort", 
+                 latitude, longitude
+          FROM venues
+          ORDER BY city ASC, name ASC
+        `;
+        // Convert raw results to match expected format
+        venues = venues.map((v: any) => ({
+          id: Number(v.id),
+          name: v.name,
+          city: v.city,
+          category: v.category,
+          discountText: v.discountText,
+          isActive: v.isActive ?? true,
+          imageUrl: v.imageUrl,
+          thumbnailUrl: v.thumbnailUrl,
+          openingHoursShort: v.openingHoursShort,
+          latitude: Number(v.latitude),
+          longitude: Number(v.longitude),
+        }));
+      } else {
+        throw prismaError;
+      }
+    }
 
-    const payload: VenueSummary[] = venues.map((venue) => ({
+    const payload: VenueSummary[] = venues.map((venue: any) => ({
       id: venue.id,
       name: venue.name,
       city: venue.city,
       category: venue.category,
       discountText: venue.discountText,
-      isActive: venue.isActive,
+      isActive: venue.isActive ?? true,
       imageUrl: venue.imageUrl,
       thumbnailUrl: venue.thumbnailUrl,
       openingHoursShort: venue.openingHoursShort,
@@ -217,6 +250,8 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
       new Set(payload.map((venue) => venue.category)),
     ).sort();
 
+    console.log(`Successfully loaded ${payload.length} venues`);
+
     return {
       props: {
         venues: payload,
@@ -224,9 +259,14 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
         categories,
       },
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching venues in getServerSideProps:', error);
-    // Return empty data instead of crashing
+    console.error('Error details:', {
+      message: error?.message,
+      code: error?.code,
+      stack: error?.stack,
+    });
+    // Return empty data instead of crashing, but log the error
     return {
       props: {
         venues: [],
