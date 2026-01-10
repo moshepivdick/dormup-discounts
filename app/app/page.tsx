@@ -4,6 +4,9 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/browser';
 
+// Force dynamic rendering since this page uses client-side navigation
+export const dynamic = 'force-dynamic';
+
 export default function AppPage() {
   const router = useRouter();
   const supabase = createClient();

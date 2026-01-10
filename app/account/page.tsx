@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { BrandLogo } from '@/components/BrandLogo';
 
+// Force dynamic rendering since we use client-side auth checks
+export const dynamic = 'force-dynamic';
+
 export default function AccountPage() {
   const router = useRouter();
   const supabase = createClient();

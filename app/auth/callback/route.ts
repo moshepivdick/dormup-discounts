@@ -2,6 +2,9 @@ import { createClient } from '@/lib/supabase/server';
 import { syncProfileAfterConfirm } from '@/app/actions/auth';
 import { NextResponse } from 'next/server';
 
+// Force dynamic rendering since we use cookies for authentication
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
