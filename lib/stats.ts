@@ -260,7 +260,7 @@ export const getPartnerVenueStats = async (venueId: number) => {
   try {
     // Use explicit select to avoid querying dedupe_key if it doesn't exist
     // Select only fields that exist in the database
-    const views = await prisma.venueView.findMany({
+    const views = (await prisma.venueView.findMany({
       where: { venueId },
       select: {
         id: true,
@@ -274,12 +274,12 @@ export const getPartnerVenueStats = async (venueId: number) => {
             id: true,
             email: true,
             first_name: true,
-          },
+          } as any,
         },
       },
       orderBy: { createdAt: 'desc' },
-    });
-    allViews = views as ViewWithProfile[];
+    })) as ViewWithProfile[];
+    allViews = views;
   } catch (error: any) {
     // If any error occurs (dedupe_key column, table doesn't exist, etc.), 
     // try raw query with explicit fields excluding dedupe_key
@@ -336,7 +336,7 @@ export const getPartnerVenueStats = async (venueId: number) => {
   );
 
   // Get all QR codes for this venue
-  const discountUses = await prisma.discountUse.findMany({
+  const discountUses = (await prisma.discountUse.findMany({
     where: { venueId },
     include: {
       profiles: {
@@ -344,11 +344,19 @@ export const getPartnerVenueStats = async (venueId: number) => {
           id: true,
           email: true,
           first_name: true,
-        },
+        } as any,
       },
     },
     orderBy: { createdAt: 'desc' },
-  });
+  })) as Array<{
+    id: number;
+    venueId: number;
+    status: string;
+    user_id: string | null;
+    createdAt: Date;
+    confirmedAt: Date | null;
+    profiles: { id: string; email: string; first_name: string | null } | null;
+  }>;
 
   // Count views per user
   const userViewCounts = views.reduce<Record<string, number>>((acc, view) => {
@@ -361,7 +369,7 @@ export const getPartnerVenueStats = async (venueId: number) => {
   // Count QR codes per user
   const userQrCounts = discountUses.reduce<
     Record<string, { generated: number; verified: number; email?: string; name?: string }>
-  >((acc, use) => {
+  >((acc, use: any) => {
     if (use.user_id) {
       if (!acc[use.user_id]) {
         acc[use.user_id] = {
@@ -426,7 +434,7 @@ export const getPartnerVenueStatsWithDateRange = async (
   };
   let allViews: ViewWithProfile[] = [];
   try {
-    const views = await prisma.venueView.findMany({
+    const views = (await prisma.venueView.findMany({
       where: {
         venueId,
         ...(Object.keys(dateFilter).length > 0 ? dateFilter : {}),
@@ -444,12 +452,12 @@ export const getPartnerVenueStatsWithDateRange = async (
             email: true,
             first_name: true,
             verified_student: true,
-          },
+          } as any,
         },
       },
       orderBy: { createdAt: 'desc' },
-    });
-    allViews = views as ViewWithProfile[];
+    })) as ViewWithProfile[];
+    allViews = views;
   } catch (error: any) {
     try {
       const rawViews = await prisma.$queryRaw<ViewWithProfile[]>` 
@@ -500,7 +508,7 @@ export const getPartnerVenueStatsWithDateRange = async (
   );
 
   // Get discount uses for this venue within date range
-  const discountUses = await prisma.discountUse.findMany({
+  const discountUses = (await prisma.discountUse.findMany({
     where: {
       venueId,
       ...(Object.keys(dateFilter).length > 0 ? dateFilter : {}),
@@ -512,11 +520,19 @@ export const getPartnerVenueStatsWithDateRange = async (
           email: true,
           first_name: true,
           verified_student: true,
-        },
+        } as any,
       },
     },
     orderBy: { createdAt: 'desc' },
-  });
+  })) as Array<{
+    id: number;
+    venueId: number;
+    status: string;
+    user_id: string | null;
+    createdAt: Date;
+    confirmedAt: Date | null;
+    profiles: { id: string; email: string; first_name: string | null; verified_student: boolean } | null;
+  }>;
 
   // Calculate metrics
   const pageViews = views.length;
@@ -525,7 +541,7 @@ export const getPartnerVenueStatsWithDateRange = async (
   
   // Verified student visits: count of confirmed discounts by verified students
   const verifiedStudentVisits = discountUses.filter(
-    (d) => d.status === 'confirmed' && d.profiles?.verified_student === true
+    (d: any) => d.status === 'confirmed' && d.profiles?.verified_student === true
   ).length;
 
   // Returning students: users with >=2 confirmed discounts in range
@@ -618,7 +634,7 @@ export const getPartnerVenueStatsWithDateRange = async (
     }, {}),
     userQrCounts: discountUses.reduce<
       Record<string, { generated: number; verified: number; email?: string; name?: string }>
-    >((acc, use) => {
+    >((acc, use: any) => {
       if (use.user_id) {
         if (!acc[use.user_id]) {
           acc[use.user_id] = {
