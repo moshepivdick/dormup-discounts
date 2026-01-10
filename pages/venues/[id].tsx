@@ -89,8 +89,25 @@ export default function VenuePage({ venue }: VenuePageProps) {
             const newStatus = data.data.status as 'generated' | 'confirmed' | 'expired' | 'cancelled';
             setCodeStatus(newStatus);
             
-            // If code is confirmed or cancelled, stop polling
-            if (newStatus === 'confirmed' || newStatus === 'cancelled') {
+            // If code is confirmed, show success message and hide QR code after delay
+            if (newStatus === 'confirmed') {
+              if (statusPollingIntervalRef.current) {
+                clearInterval(statusPollingIntervalRef.current);
+                statusPollingIntervalRef.current = null;
+              }
+              
+              // Hide QR code and clear after showing success message for 3 seconds
+              setTimeout(() => {
+                setDiscountCode(null);
+                setCodeExpiresAt(null);
+                setRemainingSeconds(null);
+                setShowExpiredMessage(false);
+                setFullScreen(false);
+              }, 3000); // Show "Скидка применена" for 3 seconds
+            }
+            
+            // If code is cancelled, stop polling
+            if (newStatus === 'cancelled') {
               if (statusPollingIntervalRef.current) {
                 clearInterval(statusPollingIntervalRef.current);
                 statusPollingIntervalRef.current = null;
@@ -278,45 +295,70 @@ export default function VenuePage({ venue }: VenuePageProps) {
 
             {discountCode && (
               <div className="mt-6 space-y-4 rounded-2xl bg-slate-50 p-4 text-center">
-                <p className="text-xs uppercase tracking-[0.4em] text-slate-500">
-                  Your code
-                </p>
-                <p className={`text-4xl font-bold tracking-[0.5em] ${showExpiredMessage || codeStatus === 'expired' || (!isTimerActive && remainingSeconds !== null) ? 'text-slate-400' : 'text-slate-900'}`}>
-                  {discountCode}
-                </p>
-                <div className={`flex justify-center ${showExpiredMessage || codeStatus === 'expired' || (!isTimerActive && remainingSeconds !== null) ? 'grayscale' : ''}`}>
-                  <QRCode value={discountCode} size={160} />
-                </div>
-                {(isTimerActive && remainingSeconds !== null) || showExpiredMessage || codeStatus === 'confirmed' ? (
-                  <div className="flex justify-center gap-2 flex-wrap">
-                    {isTimerActive && remainingSeconds !== null && codeStatus === 'generated' && (
-                      <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-                        {formatCountdown(remainingSeconds)}
-                      </span>
-                    )}
-                    {codeStatus === 'confirmed' && (
-                      <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
-                        ✓ Confirmed by partner
-                      </span>
-                    )}
-                    {showExpiredMessage && (
-                      <span className="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-800">
-                        Code expired
-                      </span>
-                    )}
-                    {codeStatus === 'cancelled' && (
-                      <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-800">
-                        Code cancelled
-                      </span>
-                    )}
+                {codeStatus === 'confirmed' ? (
+                  // Success message when code is confirmed
+                  <div className="space-y-3">
+                    <div className="flex justify-center">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+                        <svg
+                          className="h-8 w-8 text-emerald-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                    <p className="text-lg font-bold text-emerald-700">
+                      Скидка применена! ✅
+                    </p>
+                    <p className="text-sm text-emerald-600">
+                      Discount applied successfully
+                    </p>
                   </div>
-                ) : null}
-                <p className="text-xs text-slate-500">
-                  {codeStatus === 'confirmed'
-                    ? 'This code has been confirmed and cannot be used again.'
-                    : 'Show this code at the counter.'}
-                </p>
-                {isTimerActive && (
+                ) : (
+                  // Normal QR code display
+                  <>
+                    <p className="text-xs uppercase tracking-[0.4em] text-slate-500">
+                      Your code
+                    </p>
+                    <p className={`text-4xl font-bold tracking-[0.5em] ${showExpiredMessage || codeStatus === 'expired' || (!isTimerActive && remainingSeconds !== null) ? 'text-slate-400' : 'text-slate-900'}`}>
+                      {discountCode}
+                    </p>
+                    <div className={`flex justify-center ${showExpiredMessage || codeStatus === 'expired' || (!isTimerActive && remainingSeconds !== null) ? 'grayscale' : ''}`}>
+                      <QRCode value={discountCode} size={160} />
+                    </div>
+                    {(isTimerActive && remainingSeconds !== null) || showExpiredMessage ? (
+                      <div className="flex justify-center gap-2 flex-wrap">
+                        {isTimerActive && remainingSeconds !== null && codeStatus === 'generated' && (
+                          <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                            {formatCountdown(remainingSeconds)}
+                          </span>
+                        )}
+                        {showExpiredMessage && (
+                          <span className="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-800">
+                            Code expired
+                          </span>
+                        )}
+                        {codeStatus === 'cancelled' && (
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-800">
+                            Code cancelled
+                          </span>
+                        )}
+                      </div>
+                    ) : null}
+                    <p className="text-xs text-slate-500">
+                      Show this code at the counter.
+                    </p>
+                  </>
+                )}
+                {isTimerActive && codeStatus !== 'confirmed' && (
                   <button
                     type="button"
                     onClick={() => setFullScreen(true)}
@@ -412,44 +454,71 @@ export default function VenuePage({ venue }: VenuePageProps) {
           >
             Close ✕
           </button>
-          <p className="text-sm uppercase tracking-[0.4em] text-emerald-200">
-            <BrandLogo /> discount
-          </p>
-          <p className={`mt-2 text-5xl font-bold tracking-[0.4em] ${showExpiredMessage || codeStatus === 'expired' || (!isTimerActive && remainingSeconds !== null) ? 'text-slate-400' : ''}`}>{discountCode}</p>
-          <div className={`mt-6 rounded-3xl bg-white p-6 ${showExpiredMessage || codeStatus === 'expired' || (!isTimerActive && remainingSeconds !== null) ? 'grayscale' : ''}`}>
-            <QRCode value={discountCode} size={220} />
-          </div>
-                {(isTimerActive && remainingSeconds !== null) || showExpiredMessage || codeStatus === 'confirmed' ? (
-                  <div className="mt-4 flex justify-center gap-2 flex-wrap">
-                    {isTimerActive && remainingSeconds !== null && codeStatus === 'generated' && (
-                <span className="inline-flex items-center rounded-full bg-amber-500/20 px-3 py-1 text-sm font-semibold text-amber-200">
-                  {formatCountdown(remainingSeconds)}
-                </span>
-              )}
-                    {codeStatus === 'confirmed' && (
-                      <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-semibold text-emerald-200">
-                        ✓ Confirmed by partner
-                      </span>
-                    )}
-              {showExpiredMessage && (
-                <span className="inline-flex items-center rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-200">
-                  Code expired
-                </span>
-              )}
-                    {codeStatus === 'cancelled' && (
-                      <span className="inline-flex items-center rounded-full bg-slate-500/20 px-3 py-1 text-sm font-semibold text-slate-200">
-                        Code cancelled
-                      </span>
-                    )}
+          {codeStatus === 'confirmed' ? (
+            // Success message when confirmed
+            <div className="space-y-6 text-center">
+              <div className="flex justify-center">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/20">
+                  <svg
+                    className="h-10 w-10 text-emerald-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-emerald-400">
+                  Скидка применена! ✅
+                </p>
+                <p className="mt-2 text-lg text-emerald-300">
+                  Discount applied successfully
+                </p>
+              </div>
             </div>
-          ) : null}
-          <p className="mt-4 text-center text-sm text-emerald-100">
-            {codeStatus === 'confirmed'
-              ? 'This code has been confirmed and cannot be used again.'
-              : isTimerActive
-              ? `Show this to the barista. Valid for ${formatCountdown(remainingSeconds ?? 0)}.`
-              : 'Show this to the barista. Valid for 5 minutes.'}
-          </p>
+          ) : (
+            // Normal QR code display
+            <>
+              <p className="text-sm uppercase tracking-[0.4em] text-emerald-200">
+                <BrandLogo /> discount
+              </p>
+              <p className={`mt-2 text-5xl font-bold tracking-[0.4em] ${showExpiredMessage || codeStatus === 'expired' || (!isTimerActive && remainingSeconds !== null) ? 'text-slate-400' : ''}`}>{discountCode}</p>
+              <div className={`mt-6 rounded-3xl bg-white p-6 ${showExpiredMessage || codeStatus === 'expired' || (!isTimerActive && remainingSeconds !== null) ? 'grayscale' : ''}`}>
+                <QRCode value={discountCode} size={220} />
+              </div>
+              {(isTimerActive && remainingSeconds !== null) || showExpiredMessage ? (
+                <div className="mt-4 flex justify-center gap-2 flex-wrap">
+                  {isTimerActive && remainingSeconds !== null && codeStatus === 'generated' && (
+                    <span className="inline-flex items-center rounded-full bg-amber-500/20 px-3 py-1 text-sm font-semibold text-amber-200">
+                      {formatCountdown(remainingSeconds)}
+                    </span>
+                  )}
+                  {showExpiredMessage && (
+                    <span className="inline-flex items-center rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-200">
+                      Code expired
+                    </span>
+                  )}
+                  {codeStatus === 'cancelled' && (
+                    <span className="inline-flex items-center rounded-full bg-slate-500/20 px-3 py-1 text-sm font-semibold text-slate-200">
+                      Code cancelled
+                    </span>
+                  )}
+                </div>
+              ) : null}
+              <p className="mt-4 text-center text-sm text-emerald-100">
+                {isTimerActive
+                  ? `Show this to the barista. Valid for ${formatCountdown(remainingSeconds ?? 0)}.`
+                  : 'Show this to the barista. Valid for 5 minutes.'}
+              </p>
+            </>
+          )}
         </div>
       )}
     </>

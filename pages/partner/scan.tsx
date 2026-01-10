@@ -14,6 +14,7 @@ export default function PartnerScanPage() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [showQRConfirmation, setShowQRConfirmation] = useState(false);
+  const [showAlreadyUsedWarning, setShowAlreadyUsedWarning] = useState(false);
   const isSubmittingRef = useRef(false);
   const processedCodesRef = useRef<Set<string>>(new Set()); // Track processed codes to prevent duplicate scans
 
@@ -100,8 +101,42 @@ export default function PartnerScanPage() {
           setShowQRConfirmation(true);
         }
       } else {
+        // Check if code is already used - show warning and close scanner
+        const isAlreadyUsed = msg.includes('already confirmed') || 
+                             msg.includes('already used') || 
+                             msg.includes('Code already');
+        
         setStatus('error');
         setMessage(msg || 'Invalid code');
+        
+        // Stop video stream immediately if code is already used
+        if (isAlreadyUsed) {
+          try {
+            const video = videoRef.current;
+            if (video && video.srcObject) {
+              const stream = video.srcObject as MediaStream;
+              stream.getTracks().forEach((track) => track.stop());
+              video.srcObject = null;
+            }
+            // Reader cleanup is handled by useEffect cleanup
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+          
+          // If code is already used, show warning modal
+          if (isQRCode) {
+            // For QR codes, show modal and close scanner
+            setShowAlreadyUsedWarning(true);
+            // Close scanner and redirect after showing warning
+            setTimeout(() => {
+              setShowAlreadyUsedWarning(false);
+              router.push('/partner');
+            }, 3000); // Show warning for 3 seconds, then redirect
+          } else {
+            // For manual entry, just show warning message (modal not needed)
+            // The error message is already displayed below the input
+          }
+        }
       }
     } catch (error) {
       setStatus('error');
@@ -197,7 +232,7 @@ export default function PartnerScanPage() {
               {status === 'loading' ? 'Confirming…' : 'Confirm'}
             </button>
           </form>
-          {status !== 'idle' && (
+          {status !== 'idle' && !showAlreadyUsedWarning && (
             <p
               className={`text-center text-sm font-semibold ${
                 status === 'success' ? 'text-emerald-600' : 'text-rose-600'
@@ -244,6 +279,40 @@ export default function PartnerScanPage() {
               >
                 Advance
               </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Already Used Warning Modal */}
+        {showAlreadyUsedWarning && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="mx-4 w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-2xl">
+              <div className="mb-4 flex justify-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+                  <svg
+                    className="h-8 w-8 text-amber-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <h2 className="mb-2 text-2xl font-bold text-slate-900">
+                Code Already Used
+              </h2>
+              <p className="mb-6 text-sm text-slate-600">
+                This discount code has already been confirmed and cannot be used again.
+              </p>
+              <p className="mb-4 text-xs text-slate-500">
+                Scanner will close automatically...
+              </p>
             </div>
           </div>
         )}
