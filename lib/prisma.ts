@@ -47,9 +47,10 @@ const connectionUrl = getConnectionUrl();
 
 // Add connection_limit parameter to prevent too many connections
 // For serverless, we want to limit concurrent connections per instance
+// Increased to 3 to allow some parallel queries while still being conservative
 const connectionUrlWithLimit = connectionUrl.includes('?')
-  ? `${connectionUrl}&connection_limit=1`
-  : `${connectionUrl}?connection_limit=1`;
+  ? `${connectionUrl}&connection_limit=3&pool_timeout=20`
+  : `${connectionUrl}?connection_limit=3&pool_timeout=20`;
 
 export const prisma =
   global.prisma ??

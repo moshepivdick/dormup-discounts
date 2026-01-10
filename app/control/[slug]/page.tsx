@@ -71,18 +71,25 @@ export default async function AdminControlPage({ params }: PageProps) {
     );
   }
 
-  // Load all stats in parallel with error handling
-  // Note: getAlerts will use userActivity data to avoid duplicate queries
+  // Load stats sequentially to avoid connection pool exhaustion
+  // Connection pool limit is 1, so we need to avoid too many parallel queries
   let overview, byVenue, daily, userActivity, microInsights, alerts;
   try {
-    [overview, byVenue, daily, userActivity, microInsights] = await Promise.all([
+    // Load basic stats first (these are lightweight)
+    [overview, byVenue, daily] = await Promise.all([
       getOverviewStats(),
       getDiscountsByVenue(),
       getDiscountsByDay(),
-      getUserActivityOverview(),
-      getMicroInsights(),
     ]);
+    
+    // Load user activity (this does multiple sequential queries internally)
+    userActivity = await getUserActivityOverview();
+    
+    // Load micro insights (lightweight, uses cached data where possible)
+    microInsights = await getMicroInsights();
+    
     // Get alerts after userActivity is loaded to pass it as parameter
+    // getAlerts will use the passed userActivity to avoid duplicate queries
     alerts = await getAlerts(userActivity);
   } catch (error) {
     console.error('Error loading dashboard stats:', error);

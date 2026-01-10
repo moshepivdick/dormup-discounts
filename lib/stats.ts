@@ -671,52 +671,31 @@ export const getUserActivityOverview = async () => {
   const monthStart = new Date(todayStart);
   monthStart.setDate(monthStart.getDate() - 30);
 
-  // Get all activity (views, QR generations, confirmations) for active users
-  // Active user = performed at least one: venue view, QR generation, or discount confirmation
-  const [viewsToday, viewsWeek, viewsMonth] = await Promise.all([
-    prisma.venueView.findMany({
-      where: { createdAt: { gte: todayStart } },
-      select: { user_id: true, createdAt: true },
-    }),
-    prisma.venueView.findMany({
-      where: { createdAt: { gte: weekStart } },
-      select: { user_id: true, createdAt: true },
-    }),
-    prisma.venueView.findMany({
-      where: { createdAt: { gte: monthStart } },
-      select: { user_id: true, createdAt: true },
-    }),
-  ]);
+  // Optimized: Fetch all data in sequence to avoid connection pool exhaustion
+  // Get all views from month start (we'll filter by date in memory)
+  const allViews = await prisma.venueView.findMany({
+    where: { createdAt: { gte: monthStart } },
+    select: { user_id: true, createdAt: true },
+  });
 
-  const [qrToday, qrWeek, qrMonth] = await Promise.all([
-    prisma.discountUse.findMany({
-      where: { createdAt: { gte: todayStart } },
-      select: { user_id: true, createdAt: true },
-    }),
-    prisma.discountUse.findMany({
-      where: { createdAt: { gte: weekStart } },
-      select: { user_id: true, createdAt: true },
-    }),
-    prisma.discountUse.findMany({
-      where: { createdAt: { gte: monthStart } },
-      select: { user_id: true, createdAt: true },
-    }),
-  ]);
+  // Get all discount uses from month start
+  const allDiscountUses = await prisma.discountUse.findMany({
+    where: { createdAt: { gte: monthStart } },
+    select: { user_id: true, createdAt: true, status: true, confirmedAt: true },
+  });
 
-  const [confirmedToday, confirmedWeek, confirmedMonth] = await Promise.all([
-    prisma.discountUse.findMany({
-      where: { status: 'confirmed', confirmedAt: { gte: todayStart } },
-      select: { user_id: true, confirmedAt: true },
-    }),
-    prisma.discountUse.findMany({
-      where: { status: 'confirmed', confirmedAt: { gte: weekStart } },
-      select: { user_id: true, confirmedAt: true },
-    }),
-    prisma.discountUse.findMany({
-      where: { status: 'confirmed', confirmedAt: { gte: monthStart } },
-      select: { user_id: true, confirmedAt: true },
-    }),
-  ]);
+  // Filter in memory by date ranges
+  const viewsToday = allViews.filter(v => v.createdAt >= todayStart);
+  const viewsWeek = allViews.filter(v => v.createdAt >= weekStart);
+  const viewsMonth = allViews;
+
+  const qrToday = allDiscountUses.filter(q => q.createdAt >= todayStart);
+  const qrWeek = allDiscountUses.filter(q => q.createdAt >= weekStart);
+  const qrMonth = allDiscountUses;
+
+  const confirmedToday = allDiscountUses.filter(c => c.status === 'confirmed' && c.confirmedAt && c.confirmedAt >= todayStart);
+  const confirmedWeek = allDiscountUses.filter(c => c.status === 'confirmed' && c.confirmedAt && c.confirmedAt >= weekStart);
+  const confirmedMonth = allDiscountUses.filter(c => c.status === 'confirmed' && c.confirmedAt && c.confirmedAt >= monthStart);
 
   // Combine all activities and get unique users per period
   const activeUsersToday = new Set<string>();
@@ -738,47 +717,36 @@ export const getUserActivityOverview = async () => {
   const wau = activeUsersWeek.size;
   const mau = activeUsersMonth.size;
 
-  // New users (created profile in period)
-  const [newUsersToday, newUsersWeek] = await Promise.all([
-    prisma.profile.count({
-      where: { createdAt: { gte: todayStart } },
-    }),
-    prisma.profile.count({
-      where: { createdAt: { gte: weekStart } },
-    }),
-  ]);
+  // New users (created profile in period) - fetch from week start to cover both periods
+  const newUsersWeekData = await prisma.profile.findMany({
+    where: { createdAt: { gte: weekStart } },
+    select: { createdAt: true },
+  });
+  const newUsersToday = newUsersWeekData.filter(p => p.createdAt >= todayStart).length;
+  const newUsersWeek = newUsersWeekData.length;
 
   // Returning users percentage (users active in last 7 days who were also active in previous 7 days)
   const previousWeekStart = new Date(weekStart);
   previousWeekStart.setDate(previousWeekStart.getDate() - 7);
   
-  // Returning users: simpler approach using Prisma
-  const [currentWeekViews, currentWeekQr, currentWeekConfirmed, previousWeekViews, previousWeekQr, previousWeekConfirmed] = await Promise.all([
-    prisma.venueView.findMany({
-      where: { createdAt: { gte: weekStart }, user_id: { not: null } },
-      select: { user_id: true },
-    }),
-    prisma.discountUse.findMany({
-      where: { createdAt: { gte: weekStart }, user_id: { not: null } },
-      select: { user_id: true },
-    }),
-    prisma.discountUse.findMany({
-      where: { status: 'confirmed', confirmedAt: { gte: weekStart }, user_id: { not: null } },
-      select: { user_id: true },
-    }),
-    prisma.venueView.findMany({
-      where: { createdAt: { gte: previousWeekStart, lt: weekStart }, user_id: { not: null } },
-      select: { user_id: true },
-    }),
-    prisma.discountUse.findMany({
-      where: { createdAt: { gte: previousWeekStart, lt: weekStart }, user_id: { not: null } },
-      select: { user_id: true },
-    }),
-    prisma.discountUse.findMany({
-      where: { status: 'confirmed', confirmedAt: { gte: previousWeekStart, lt: weekStart }, user_id: { not: null } },
-      select: { user_id: true },
-    }),
-  ]);
+  // Use already fetched data for current week, fetch previous week data separately
+  const previousWeekViews = await prisma.venueView.findMany({
+    where: { createdAt: { gte: previousWeekStart, lt: weekStart }, user_id: { not: null } },
+    select: { user_id: true },
+  });
+  const previousWeekQr = await prisma.discountUse.findMany({
+    where: { createdAt: { gte: previousWeekStart, lt: weekStart }, user_id: { not: null } },
+    select: { user_id: true },
+  });
+  const previousWeekConfirmed = await prisma.discountUse.findMany({
+    where: { status: 'confirmed', confirmedAt: { gte: previousWeekStart, lt: weekStart }, user_id: { not: null } },
+    select: { user_id: true },
+  });
+
+  // Use already fetched current week data
+  const currentWeekViews = viewsWeek.filter(v => v.user_id !== null);
+  const currentWeekQr = qrWeek.filter(q => q.user_id !== null);
+  const currentWeekConfirmed = confirmedWeek.filter(c => c.user_id !== null);
 
   const currentWeekUserIds = new Set<string>();
   currentWeekViews.forEach(v => v.user_id && currentWeekUserIds.add(v.user_id));
@@ -816,21 +784,19 @@ export const getMicroInsights = async () => {
   weekStart.setDate(weekStart.getDate() - 7);
   weekStart.setHours(0, 0, 0, 0);
 
-  // Get all activities in last 7 days
-  const [views, qrCodes, confirmed] = await Promise.all([
-    prisma.venueView.findMany({
-      where: { createdAt: { gte: weekStart } },
-      select: { createdAt: true },
-    }),
-    prisma.discountUse.findMany({
-      where: { createdAt: { gte: weekStart } },
-      select: { createdAt: true },
-    }),
-    prisma.discountUse.findMany({
-      where: { status: 'confirmed', confirmedAt: { gte: weekStart } },
-      select: { confirmedAt: true },
-    }),
-  ]);
+  // Get all activities in last 7 days - sequential to avoid connection pool issues
+  const views = await prisma.venueView.findMany({
+    where: { createdAt: { gte: weekStart } },
+    select: { createdAt: true },
+  });
+  
+  const allDiscountUses = await prisma.discountUse.findMany({
+    where: { createdAt: { gte: weekStart } },
+    select: { createdAt: true, status: true, confirmedAt: true },
+  });
+  
+  const qrCodes = allDiscountUses;
+  const confirmed = allDiscountUses.filter(c => c.status === 'confirmed' && c.confirmedAt);
 
   // Combine all activities with timestamps
   const allActivities: Date[] = [
@@ -886,7 +852,7 @@ export const getMicroInsights = async () => {
     .sort(([, a], [, b]) => b - a)[0]?.[0];
   const mostActiveDay = mostActiveDayNum !== undefined ? dayNames[parseInt(mostActiveDayNum)] : 'N/A';
 
-  // Top cohort (verified vs non-verified users)
+  // Top cohort (verified vs non-verified users) - sequential to avoid connection pool issues
   const verifiedUsers = await prisma.profile.count({
     where: {
       verified_student: true,
@@ -943,20 +909,19 @@ export const getAlerts = async (activityOverview?: Awaited<ReturnType<typeof get
   const activity = activityOverview ?? await getUserActivityOverview();
 
   // 1. DAU Drop: DAU today ≥30% lower than yesterday
-  const [viewsYesterday, qrYesterday, confirmedYesterday] = await Promise.all([
-    prisma.venueView.findMany({
-      where: { createdAt: { gte: yesterdayStart, lt: yesterdayEnd } },
-      select: { user_id: true },
-    }),
-    prisma.discountUse.findMany({
-      where: { createdAt: { gte: yesterdayStart, lt: yesterdayEnd } },
-      select: { user_id: true },
-    }),
-    prisma.discountUse.findMany({
-      where: { status: 'confirmed', confirmedAt: { gte: yesterdayStart, lt: yesterdayEnd } },
-      select: { user_id: true },
-    }),
-  ]);
+  // Fetch yesterday data sequentially to avoid connection pool exhaustion
+  const yesterdayDiscountUses = await prisma.discountUse.findMany({
+    where: { createdAt: { gte: yesterdayStart, lt: yesterdayEnd } },
+    select: { user_id: true, status: true, confirmedAt: true },
+  });
+  
+  const viewsYesterday = await prisma.venueView.findMany({
+    where: { createdAt: { gte: yesterdayStart, lt: yesterdayEnd } },
+    select: { user_id: true },
+  });
+  
+  const qrYesterday = yesterdayDiscountUses;
+  const confirmedYesterday = yesterdayDiscountUses.filter(c => c.status === 'confirmed' && c.confirmedAt && c.confirmedAt >= yesterdayStart && c.confirmedAt < yesterdayEnd);
 
   const activeUsersYesterday = new Set<string>();
   viewsYesterday.forEach(v => v.user_id && activeUsersYesterday.add(v.user_id));
@@ -997,21 +962,19 @@ export const getAlerts = async (activityOverview?: Awaited<ReturnType<typeof get
   previousMonthStart.setDate(previousMonthStart.getDate() - 30);
   const previousMonthEnd = monthStart;
 
-  // Get previous month's MAU (30-60 days ago)
-  const [prevMonthViews, prevMonthQr, prevMonthConfirmed] = await Promise.all([
-    prisma.venueView.findMany({
-      where: { createdAt: { gte: previousMonthStart, lt: previousMonthEnd } },
-      select: { user_id: true },
-    }),
-    prisma.discountUse.findMany({
-      where: { createdAt: { gte: previousMonthStart, lt: previousMonthEnd } },
-      select: { user_id: true },
-    }),
-    prisma.discountUse.findMany({
-      where: { status: 'confirmed', confirmedAt: { gte: previousMonthStart, lt: previousMonthEnd } },
-      select: { user_id: true },
-    }),
-  ]);
+  // Get previous month's MAU (30-60 days ago) - sequential queries
+  const prevMonthDiscountUses = await prisma.discountUse.findMany({
+    where: { createdAt: { gte: previousMonthStart, lt: previousMonthEnd } },
+    select: { user_id: true, status: true, confirmedAt: true },
+  });
+  
+  const prevMonthViews = await prisma.venueView.findMany({
+    where: { createdAt: { gte: previousMonthStart, lt: previousMonthEnd } },
+    select: { user_id: true },
+  });
+  
+  const prevMonthQr = prevMonthDiscountUses;
+  const prevMonthConfirmed = prevMonthDiscountUses.filter(c => c.status === 'confirmed' && c.confirmedAt && c.confirmedAt >= previousMonthStart && c.confirmedAt < previousMonthEnd);
 
   const prevMonthActiveUsers = new Set<string>();
   prevMonthViews.forEach(v => v.user_id && prevMonthActiveUsers.add(v.user_id));
@@ -1024,20 +987,19 @@ export const getAlerts = async (activityOverview?: Awaited<ReturnType<typeof get
   const weekAgoStart = new Date(weekStart);
   weekAgoStart.setDate(weekAgoStart.getDate() - 7);
   
-  const [views7dAgo, qr7dAgo, confirmed7dAgo] = await Promise.all([
-    prisma.venueView.findMany({
-      where: { createdAt: { gte: weekAgoStart, lt: weekStart } },
-      select: { user_id: true },
-    }),
-    prisma.discountUse.findMany({
-      where: { createdAt: { gte: weekAgoStart, lt: weekStart } },
-      select: { user_id: true },
-    }),
-    prisma.discountUse.findMany({
-      where: { status: 'confirmed', confirmedAt: { gte: weekAgoStart, lt: weekStart } },
-      select: { user_id: true },
-    }),
-  ]);
+  // Sequential queries to avoid connection pool exhaustion
+  const weekAgoDiscountUses = await prisma.discountUse.findMany({
+    where: { createdAt: { gte: weekAgoStart, lt: weekStart } },
+    select: { user_id: true, status: true, confirmedAt: true },
+  });
+  
+  const views7dAgo = await prisma.venueView.findMany({
+    where: { createdAt: { gte: weekAgoStart, lt: weekStart } },
+    select: { user_id: true },
+  });
+  
+  const qr7dAgo = weekAgoDiscountUses;
+  const confirmed7dAgo = weekAgoDiscountUses.filter(c => c.status === 'confirmed' && c.confirmedAt && c.confirmedAt >= weekAgoStart && c.confirmedAt < weekStart);
 
   const activeUsers7dAgo = new Set<string>();
   views7dAgo.forEach(v => v.user_id && activeUsers7dAgo.add(v.user_id));
