@@ -9,8 +9,9 @@ export const getOverviewStats = async () => {
       prisma.venueView.count(),
     ]);
 
+  // Fixed: Conversion rate = confirmed / generated (not views)
   const conversionRate =
-    views === 0 ? 0 : Number(((confirmedDiscounts / views) * 100).toFixed(1));
+    totalDiscounts === 0 ? 0 : Number(((confirmedDiscounts / totalDiscounts) * 100).toFixed(1));
 
   return {
     totalDiscounts,
@@ -653,4 +654,410 @@ export const getPartnerVenueStatsWithDateRange = async (
     }, {}),
     allDiscountUses: discountUses,
   };
+};
+
+// User Activity Overview - Founder-level metrics
+export const getUserActivityOverview = async () => {
+  const now = new Date();
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  
+  const yesterdayStart = new Date(todayStart);
+  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+  
+  const weekStart = new Date(todayStart);
+  weekStart.setDate(weekStart.getDate() - 7);
+  
+  const monthStart = new Date(todayStart);
+  monthStart.setDate(monthStart.getDate() - 30);
+
+  // Get all activity (views, QR generations, confirmations) for active users
+  // Active user = performed at least one: venue view, QR generation, or discount confirmation
+  const [viewsToday, viewsWeek, viewsMonth] = await Promise.all([
+    prisma.venueView.findMany({
+      where: { createdAt: { gte: todayStart } },
+      select: { user_id: true, createdAt: true },
+    }),
+    prisma.venueView.findMany({
+      where: { createdAt: { gte: weekStart } },
+      select: { user_id: true, createdAt: true },
+    }),
+    prisma.venueView.findMany({
+      where: { createdAt: { gte: monthStart } },
+      select: { user_id: true, createdAt: true },
+    }),
+  ]);
+
+  const [qrToday, qrWeek, qrMonth] = await Promise.all([
+    prisma.discountUse.findMany({
+      where: { createdAt: { gte: todayStart } },
+      select: { user_id: true, createdAt: true },
+    }),
+    prisma.discountUse.findMany({
+      where: { createdAt: { gte: weekStart } },
+      select: { user_id: true, createdAt: true },
+    }),
+    prisma.discountUse.findMany({
+      where: { createdAt: { gte: monthStart } },
+      select: { user_id: true, createdAt: true },
+    }),
+  ]);
+
+  const [confirmedToday, confirmedWeek, confirmedMonth] = await Promise.all([
+    prisma.discountUse.findMany({
+      where: { status: 'confirmed', confirmedAt: { gte: todayStart } },
+      select: { user_id: true, confirmedAt: true },
+    }),
+    prisma.discountUse.findMany({
+      where: { status: 'confirmed', confirmedAt: { gte: weekStart } },
+      select: { user_id: true, confirmedAt: true },
+    }),
+    prisma.discountUse.findMany({
+      where: { status: 'confirmed', confirmedAt: { gte: monthStart } },
+      select: { user_id: true, confirmedAt: true },
+    }),
+  ]);
+
+  // Combine all activities and get unique users per period
+  const activeUsersToday = new Set<string>();
+  viewsToday.forEach(v => v.user_id && activeUsersToday.add(v.user_id));
+  qrToday.forEach(q => q.user_id && activeUsersToday.add(q.user_id));
+  confirmedToday.forEach(c => c.user_id && activeUsersToday.add(c.user_id));
+
+  const activeUsersWeek = new Set<string>();
+  viewsWeek.forEach(v => v.user_id && activeUsersWeek.add(v.user_id));
+  qrWeek.forEach(q => q.user_id && activeUsersWeek.add(q.user_id));
+  confirmedWeek.forEach(c => c.user_id && activeUsersWeek.add(c.user_id));
+
+  const activeUsersMonth = new Set<string>();
+  viewsMonth.forEach(v => v.user_id && activeUsersMonth.add(v.user_id));
+  qrMonth.forEach(q => q.user_id && activeUsersMonth.add(q.user_id));
+  confirmedMonth.forEach(c => c.user_id && activeUsersMonth.add(c.user_id));
+
+  const dau = activeUsersToday.size;
+  const wau = activeUsersWeek.size;
+  const mau = activeUsersMonth.size;
+
+  // New users (created profile in period)
+  const [newUsersToday, newUsersWeek] = await Promise.all([
+    prisma.profile.count({
+      where: { createdAt: { gte: todayStart } },
+    }),
+    prisma.profile.count({
+      where: { createdAt: { gte: weekStart } },
+    }),
+  ]);
+
+  // Returning users percentage (users active in last 7 days who were also active in previous 7 days)
+  const previousWeekStart = new Date(weekStart);
+  previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+  
+  // Returning users: simpler approach using Prisma
+  const [currentWeekViews, currentWeekQr, currentWeekConfirmed, previousWeekViews, previousWeekQr, previousWeekConfirmed] = await Promise.all([
+    prisma.venueView.findMany({
+      where: { createdAt: { gte: weekStart }, user_id: { not: null } },
+      select: { user_id: true },
+    }),
+    prisma.discountUse.findMany({
+      where: { createdAt: { gte: weekStart }, user_id: { not: null } },
+      select: { user_id: true },
+    }),
+    prisma.discountUse.findMany({
+      where: { status: 'confirmed', confirmedAt: { gte: weekStart }, user_id: { not: null } },
+      select: { user_id: true },
+    }),
+    prisma.venueView.findMany({
+      where: { createdAt: { gte: previousWeekStart, lt: weekStart }, user_id: { not: null } },
+      select: { user_id: true },
+    }),
+    prisma.discountUse.findMany({
+      where: { createdAt: { gte: previousWeekStart, lt: weekStart }, user_id: { not: null } },
+      select: { user_id: true },
+    }),
+    prisma.discountUse.findMany({
+      where: { status: 'confirmed', confirmedAt: { gte: previousWeekStart, lt: weekStart }, user_id: { not: null } },
+      select: { user_id: true },
+    }),
+  ]);
+
+  const currentWeekUserIds = new Set<string>();
+  currentWeekViews.forEach(v => v.user_id && currentWeekUserIds.add(v.user_id));
+  currentWeekQr.forEach(q => q.user_id && currentWeekUserIds.add(q.user_id));
+  currentWeekConfirmed.forEach(c => c.user_id && currentWeekUserIds.add(c.user_id));
+
+  const previousWeekUserIds = new Set<string>();
+  previousWeekViews.forEach(v => v.user_id && previousWeekUserIds.add(v.user_id));
+  previousWeekQr.forEach(q => q.user_id && previousWeekUserIds.add(q.user_id));
+  previousWeekConfirmed.forEach(c => c.user_id && previousWeekUserIds.add(c.user_id));
+
+  const returningUsers = Array.from(currentWeekUserIds).filter(id => previousWeekUserIds.has(id)).length;
+  const returningPercentage = currentWeekUserIds.size === 0 ? 0 : 
+    Number(((returningUsers / currentWeekUserIds.size) * 100).toFixed(1));
+
+  // Average discounts per user (7-day window)
+  const totalDiscounts7d = qrWeek.length;
+  const avgDiscountsPerUser = activeUsersWeek.size === 0 ? 0 :
+    Number((totalDiscounts7d / activeUsersWeek.size).toFixed(2));
+
+  return {
+    dau,
+    wau,
+    mau,
+    newUsersToday,
+    newUsersWeek,
+    returningPercentage,
+    avgDiscountsPerUser,
+  };
+};
+
+// Micro-insights: peak activity time, most active day, top cohort
+export const getMicroInsights = async () => {
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - 7);
+  weekStart.setHours(0, 0, 0, 0);
+
+  // Get all activities in last 7 days
+  const [views, qrCodes, confirmed] = await Promise.all([
+    prisma.venueView.findMany({
+      where: { createdAt: { gte: weekStart } },
+      select: { createdAt: true },
+    }),
+    prisma.discountUse.findMany({
+      where: { createdAt: { gte: weekStart } },
+      select: { createdAt: true },
+    }),
+    prisma.discountUse.findMany({
+      where: { status: 'confirmed', confirmedAt: { gte: weekStart } },
+      select: { confirmedAt: true },
+    }),
+  ]);
+
+  // Combine all activities with timestamps
+  const allActivities: Date[] = [
+    ...views.map(v => v.createdAt),
+    ...qrCodes.map(q => q.createdAt),
+    ...confirmed.map(c => c.confirmedAt).filter((date): date is Date => date !== null),
+  ];
+
+  if (allActivities.length === 0) {
+    return {
+      peakActivityTime: 'N/A',
+      mostActiveDay: 'N/A',
+      topCohort: 'N/A',
+    };
+  }
+
+  // Peak activity time (hour range)
+  const hourCounts: Record<number, number> = {};
+  allActivities.forEach(activity => {
+    const hour = activity.getHours();
+    hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+  });
+
+  const sortedHours = Object.entries(hourCounts)
+    .map(([h, count]) => ({ hour: parseInt(h), count }))
+    .sort((a, b) => b.count - a.count);
+
+  let peakStartHour = sortedHours[0]?.hour ?? 0;
+  let peakEndHour = peakStartHour;
+  let peakCount = sortedHours[0]?.count ?? 0;
+
+  // Find consecutive hours with high activity (within 80% of peak)
+  const threshold = peakCount * 0.8;
+  for (let i = peakStartHour; i < 24; i++) {
+    if ((hourCounts[i] || 0) >= threshold) {
+      peakEndHour = i;
+    } else {
+      break;
+    }
+  }
+
+  const peakActivityTime = `${peakStartHour.toString().padStart(2, '0')}:00–${(peakEndHour + 1).toString().padStart(2, '0')}:00`;
+
+  // Most active day of week
+  const dayCounts: Record<number, number> = {};
+  allActivities.forEach(activity => {
+    const day = activity.getDay(); // 0 = Sunday, 6 = Saturday
+    dayCounts[day] = (dayCounts[day] || 0) + 1;
+  });
+
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const mostActiveDayNum = Object.entries(dayCounts)
+    .sort(([, a], [, b]) => b - a)[0]?.[0];
+  const mostActiveDay = mostActiveDayNum !== undefined ? dayNames[parseInt(mostActiveDayNum)] : 'N/A';
+
+  // Top cohort (verified vs non-verified users)
+  const verifiedUsers = await prisma.profile.count({
+    where: {
+      verified_student: true,
+      DiscountUse: {
+        some: {
+          createdAt: { gte: weekStart },
+        },
+      },
+    },
+  });
+
+  const nonVerifiedUsers = await prisma.profile.count({
+    where: {
+      verified_student: false,
+      DiscountUse: {
+        some: {
+          createdAt: { gte: weekStart },
+        },
+      },
+    },
+  });
+
+  const topCohort = verifiedUsers > nonVerifiedUsers ? 'Verified students' : 
+    nonVerifiedUsers > verifiedUsers ? 'Non-verified users' : 'Equal';
+
+  return {
+    peakActivityTime,
+    mostActiveDay,
+    topCohort,
+  };
+};
+
+// Alerts / Red Flags system
+// Accepts optional activityOverview to avoid duplicate queries
+export const getAlerts = async (activityOverview?: Awaited<ReturnType<typeof getUserActivityOverview>>) => {
+  const alerts: Array<{ type: 'warning' | 'critical'; message: string; id: string }> = [];
+  
+  const now = new Date();
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  
+  const yesterdayStart = new Date(todayStart);
+  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+  
+  const yesterdayEnd = new Date(todayStart);
+  
+  const weekStart = new Date(todayStart);
+  weekStart.setDate(weekStart.getDate() - 7);
+
+  const monthStart = new Date(todayStart);
+  monthStart.setDate(monthStart.getDate() - 30);
+
+  // Get activity overview if not provided
+  const activity = activityOverview ?? await getUserActivityOverview();
+
+  // 1. DAU Drop: DAU today ≥30% lower than yesterday
+  const [viewsYesterday, qrYesterday, confirmedYesterday] = await Promise.all([
+    prisma.venueView.findMany({
+      where: { createdAt: { gte: yesterdayStart, lt: yesterdayEnd } },
+      select: { user_id: true },
+    }),
+    prisma.discountUse.findMany({
+      where: { createdAt: { gte: yesterdayStart, lt: yesterdayEnd } },
+      select: { user_id: true },
+    }),
+    prisma.discountUse.findMany({
+      where: { status: 'confirmed', confirmedAt: { gte: yesterdayStart, lt: yesterdayEnd } },
+      select: { user_id: true },
+    }),
+  ]);
+
+  const activeUsersYesterday = new Set<string>();
+  viewsYesterday.forEach(v => v.user_id && activeUsersYesterday.add(v.user_id));
+  qrYesterday.forEach(q => q.user_id && activeUsersYesterday.add(q.user_id));
+  confirmedYesterday.forEach(c => c.user_id && activeUsersYesterday.add(c.user_id));
+
+  const dauYesterday = activeUsersYesterday.size;
+  if (dauYesterday > 0 && activity.dau < dauYesterday * 0.7) {
+    const dropPercent = Number(((1 - activity.dau / dauYesterday) * 100).toFixed(1));
+    alerts.push({
+      type: 'critical',
+      message: `DAU dropped ${dropPercent}% (${activity.dau} vs ${dauYesterday} yesterday)`,
+      id: 'dau-drop',
+    });
+  }
+
+  // 2. Low Retention: Returning users % < 25%
+  if (activity.returningPercentage < 25) {
+    alerts.push({
+      type: 'critical',
+      message: `Low retention: ${activity.returningPercentage}% returning users (< 25%)`,
+      id: 'low-retention',
+    });
+  }
+
+  // 3. Low Engagement: Avg discounts per user < 1.2 (7-day window)
+  if (activity.avgDiscountsPerUser < 1.2) {
+    alerts.push({
+      type: 'warning',
+      message: `Low engagement: ${activity.avgDiscountsPerUser} avg discounts/user (< 1.2)`,
+      id: 'low-engagement',
+    });
+  }
+
+  // 4. Fake Growth: MAU (30d) increases while DAU (7d avg) stays flat or decreases
+  // Compare current MAU with previous month's MAU, and check if 7d avg DAU is flat/decreasing
+  const previousMonthStart = new Date(monthStart);
+  previousMonthStart.setDate(previousMonthStart.getDate() - 30);
+  const previousMonthEnd = monthStart;
+
+  // Get previous month's MAU (30-60 days ago)
+  const [prevMonthViews, prevMonthQr, prevMonthConfirmed] = await Promise.all([
+    prisma.venueView.findMany({
+      where: { createdAt: { gte: previousMonthStart, lt: previousMonthEnd } },
+      select: { user_id: true },
+    }),
+    prisma.discountUse.findMany({
+      where: { createdAt: { gte: previousMonthStart, lt: previousMonthEnd } },
+      select: { user_id: true },
+    }),
+    prisma.discountUse.findMany({
+      where: { status: 'confirmed', confirmedAt: { gte: previousMonthStart, lt: previousMonthEnd } },
+      select: { user_id: true },
+    }),
+  ]);
+
+  const prevMonthActiveUsers = new Set<string>();
+  prevMonthViews.forEach(v => v.user_id && prevMonthActiveUsers.add(v.user_id));
+  prevMonthQr.forEach(q => q.user_id && prevMonthActiveUsers.add(q.user_id));
+  prevMonthConfirmed.forEach(c => c.user_id && prevMonthActiveUsers.add(c.user_id));
+
+  const prevMonthMAU = prevMonthActiveUsers.size;
+
+  // Get 7d avg DAU from previous week (to compare with current WAU)
+  const weekAgoStart = new Date(weekStart);
+  weekAgoStart.setDate(weekAgoStart.getDate() - 7);
+  
+  const [views7dAgo, qr7dAgo, confirmed7dAgo] = await Promise.all([
+    prisma.venueView.findMany({
+      where: { createdAt: { gte: weekAgoStart, lt: weekStart } },
+      select: { user_id: true },
+    }),
+    prisma.discountUse.findMany({
+      where: { createdAt: { gte: weekAgoStart, lt: weekStart } },
+      select: { user_id: true },
+    }),
+    prisma.discountUse.findMany({
+      where: { status: 'confirmed', confirmedAt: { gte: weekAgoStart, lt: weekStart } },
+      select: { user_id: true },
+    }),
+  ]);
+
+  const activeUsers7dAgo = new Set<string>();
+  views7dAgo.forEach(v => v.user_id && activeUsers7dAgo.add(v.user_id));
+  qr7dAgo.forEach(q => q.user_id && activeUsers7dAgo.add(q.user_id));
+  confirmed7dAgo.forEach(c => c.user_id && activeUsers7dAgo.add(c.user_id));
+
+  const prevWeekWAU = activeUsers7dAgo.size;
+  const currentWAU = activity.wau;
+  
+  // Fake Growth: MAU increased but 7d avg DAU (WAU) is flat or decreasing
+  const mauIncreased = activity.mau > prevMonthMAU * 1.1; // 10% increase threshold
+  const dauFlatOrDecreasing = currentWAU <= prevWeekWAU * 1.05; // Within 5% = flat, less = decreasing
+  
+  if (mauIncreased && dauFlatOrDecreasing && prevMonthMAU > 0) {
+    alerts.push({
+      type: 'warning',
+      message: `Fake growth detected: MAU increased to ${activity.mau} (from ${prevMonthMAU}) but 7d active users flat/decreasing (${currentWAU} vs ${prevWeekWAU})`,
+      id: 'fake-growth',
+    });
+  }
+
+  return alerts;
 };
