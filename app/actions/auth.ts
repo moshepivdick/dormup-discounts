@@ -84,7 +84,23 @@ export async function signup(formData: FormData) {
     }
 
     // Create profile using Supabase service role client (bypasses RLS)
-    const serviceClient = createServiceRoleClient();
+    let serviceClient;
+    try {
+      serviceClient = createServiceRoleClient();
+    } catch (serviceClientError: any) {
+      console.error('Failed to create service role client:', serviceClientError);
+      // If service role key is missing, try to cleanup and return error
+      try {
+        const cleanupClient = await createClient();
+        await cleanupClient.auth.admin.deleteUser(authData.user.id);
+      } catch (cleanupError) {
+        console.error('Failed to cleanup auth user:', cleanupError);
+      }
+      return {
+        error: 'Server configuration error. Please contact support.',
+      };
+    }
+
     try {
       // Insert profile using Supabase service role (bypasses RLS)
       const { error: profileError } = await serviceClient

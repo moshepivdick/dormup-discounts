@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import '../styles/globals.css';
 import { AuthProvider } from './providers/AuthProvider';
+import { ClientErrorBoundary } from '@/components/ClientErrorBoundary';
 
 export const metadata: Metadata = {
   title: 'DormUp Discounts',
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <ClientErrorBoundary>
+          <AuthProvider>{children}</AuthProvider>
+        </ClientErrorBoundary>
       </body>
     </html>
   );
