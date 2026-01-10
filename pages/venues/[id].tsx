@@ -448,7 +448,7 @@ export default function VenuePage({ venue }: VenuePageProps) {
               ? 'This code has been confirmed and cannot be used again.'
               : isTimerActive
               ? `Show this to the barista. Valid for ${formatCountdown(remainingSeconds ?? 0)}.`
-              : 'Show this to the barista. Valid for 30 minutes.'}
+              : 'Show this to the barista. Valid for 5 minutes.'}
           </p>
         </div>
       )}
