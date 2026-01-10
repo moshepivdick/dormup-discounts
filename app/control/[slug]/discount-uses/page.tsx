@@ -19,8 +19,19 @@ export default async function AdminDiscountUsesPage({ params }: PageProps) {
   
   await requireAdminAccess(slug);
 
+  // Use select instead of include to avoid avgStudentBill column that might not exist
   const uses = await prisma.discountUse.findMany({
-    include: { venue: true },
+    select: {
+      id: true,
+      generatedCode: true,
+      status: true,
+      createdAt: true,
+      venue: {
+        select: {
+          name: true,
+        },
+      },
+    },
     orderBy: { createdAt: 'desc' },
     take: 100,
   });
