@@ -169,16 +169,18 @@ export default function VenuePage({ venue }: VenuePageProps) {
       
       setRemainingSeconds(remaining);
 
-      // When timer expires, clear the code (only once)
+      // When timer expires, mark as expired (only once)
       if (remaining === 0 && !expirationHandledRef.current) {
         expirationHandledRef.current = true;
         setShowExpiredMessage(true);
+        setCodeStatus('expired');
         // Show expired message briefly, then clear
         expiredTimeout = setTimeout(() => {
           setDiscountCode(null);
           setCodeExpiresAt(null);
           setRemainingSeconds(null);
           setShowExpiredMessage(false);
+          setCodeStatus(null);
           expirationHandledRef.current = false;
         }, 2000); // Show "Code expired" for 2 seconds
       }
@@ -279,10 +281,10 @@ export default function VenuePage({ venue }: VenuePageProps) {
                 <p className="text-xs uppercase tracking-[0.4em] text-slate-500">
                   Your code
                 </p>
-                <p className="text-4xl font-bold tracking-[0.5em] text-slate-900">
+                <p className={`text-4xl font-bold tracking-[0.5em] ${showExpiredMessage || codeStatus === 'expired' || (!isTimerActive && remainingSeconds !== null) ? 'text-slate-400' : 'text-slate-900'}`}>
                   {discountCode}
                 </p>
-                <div className="flex justify-center">
+                <div className={`flex justify-center ${showExpiredMessage || codeStatus === 'expired' || (!isTimerActive && remainingSeconds !== null) ? 'grayscale' : ''}`}>
                   <QRCode value={discountCode} size={160} />
                 </div>
                 {(isTimerActive && remainingSeconds !== null) || showExpiredMessage || codeStatus === 'confirmed' ? (
@@ -413,8 +415,8 @@ export default function VenuePage({ venue }: VenuePageProps) {
           <p className="text-sm uppercase tracking-[0.4em] text-emerald-200">
             <BrandLogo /> discount
           </p>
-          <p className="mt-2 text-5xl font-bold tracking-[0.4em]">{discountCode}</p>
-          <div className="mt-6 rounded-3xl bg-white p-6">
+          <p className={`mt-2 text-5xl font-bold tracking-[0.4em] ${showExpiredMessage || codeStatus === 'expired' || (!isTimerActive && remainingSeconds !== null) ? 'text-slate-400' : ''}`}>{discountCode}</p>
+          <div className={`mt-6 rounded-3xl bg-white p-6 ${showExpiredMessage || codeStatus === 'expired' || (!isTimerActive && remainingSeconds !== null) ? 'grayscale' : ''}`}>
             <QRCode value={discountCode} size={220} />
           </div>
                 {(isTimerActive && remainingSeconds !== null) || showExpiredMessage || codeStatus === 'confirmed' ? (
