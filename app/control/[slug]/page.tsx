@@ -17,6 +17,9 @@ import {
   getAlerts,
 } from '@/lib/stats';
 
+// Force dynamic rendering since we use cookies for authentication
+export const dynamic = 'force-dynamic';
+
 type PageProps = {
   params: Promise<{ slug: string }>;
 };

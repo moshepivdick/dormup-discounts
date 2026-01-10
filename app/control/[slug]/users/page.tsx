@@ -7,6 +7,9 @@ import { prisma } from '@/lib/prisma';
 import { getUserActivityStats } from '@/lib/stats';
 import Link from 'next/link';
 
+// Force dynamic rendering since we use cookies for authentication
+export const dynamic = 'force-dynamic';
+
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
