@@ -4,11 +4,9 @@ import { auth } from '@/lib/auth';
 export const requireAdmin = async (ctx: GetServerSidePropsContext) => {
   const admin = await auth.getAdminFromRequest(ctx.req);
   if (!admin) {
+    // Return 404 instead of redirecting to non-existent /admin/login
     return {
-      redirect: {
-        destination: '/admin/login',
-        permanent: false,
-      },
+      notFound: true,
     } as const;
   }
   return { admin } as const;
