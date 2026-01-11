@@ -238,9 +238,18 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
       }
 
       // Launch Playwright (headless)
+      // Use additional args for Vercel/serverless compatibility
       const browser = await chromium.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'], // Required for Vercel/serverless
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process', // Required for Vercel/serverless
+        ],
       });
 
       const context = await browser.newContext();
