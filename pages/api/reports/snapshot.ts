@@ -208,8 +208,9 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
       let chromium: any;
       try {
         // Try to use bundled chromium first (works on Vercel)
+        // @playwright/browser-chromium exports chromium as default
         const browserChromium = await import('@playwright/browser-chromium');
-        chromium = browserChromium.chromium;
+        chromium = browserChromium.default || browserChromium;
       } catch (browserChromiumError) {
         // Fallback to regular playwright (for local development)
         console.warn('@playwright/browser-chromium not available, falling back to playwright');

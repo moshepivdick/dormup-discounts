@@ -4,8 +4,8 @@ const nextConfig = {
   images: {
     domains: ['lh3.googleusercontent.com'],
   },
-  // Exclude playwright from server-side bundling
-  serverComponentsExternalPackages: ['playwright'],
+  // Exclude playwright packages from server-side bundling
+  serverExternalPackages: ['playwright', '@playwright/browser-chromium'],
   webpack: (config, { isServer }) => {
     // Exclude playwright from client-side bundle
     if (!isServer) {
