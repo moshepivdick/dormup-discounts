@@ -1,91 +1,96 @@
 import { prisma } from '@/lib/prisma';
 
 export const getOverviewStats = async () => {
-  const [totalDiscounts, confirmedDiscounts, activeVenues, views] =
-    await Promise.all([
-      prisma.discountUse.count(),
-      prisma.discountUse.count({ where: { status: 'confirmed' } }),
-      prisma.venue.count({ where: { isActive: true } }),
-      prisma.venueView.count(),
-    ]);
+  try {
+    const [totalDiscounts, confirmedDiscounts, activeVenues, views] =
+      await Promise.all([
+        prisma.discountUse.count(),
+        prisma.discountUse.count({ where: { status: 'confirmed' } }),
+        prisma.venue.count({ where: { isActive: true } }),
+        prisma.venueView.count(),
+      ]);
 
-  // Fixed: Conversion rate = confirmed / generated (not views)
-  const conversionRate =
-    totalDiscounts === 0 ? 0 : Number(((confirmedDiscounts / totalDiscounts) * 100).toFixed(1));
+    // Fixed: Conversion rate = confirmed / generated (not views)
+    const conversionRate =
+      totalDiscounts === 0 ? 0 : Number(((confirmedDiscounts / totalDiscounts) * 100).toFixed(1));
 
-  return {
-    totalDiscounts,
-    confirmedDiscounts,
-    activeVenues,
-    views,
-    conversionRate,
-  };
+    return {
+      totalDiscounts,
+      confirmedDiscounts,
+      activeVenues,
+      views,
+      conversionRate,
+    };
+  } catch (error: any) {
+    console.error('Error in getOverviewStats:', error);
+    // Return default values instead of throwing to prevent dashboard crash
+    return {
+      totalDiscounts: 0,
+      confirmedDiscounts: 0,
+      activeVenues: 0,
+      views: 0,
+      conversionRate: 0,
+    };
+  }
 };
 
 export const getDiscountsByVenue = async () => {
   try {
-    // Use explicit select to avoid avgStudentBill if migration not applied
-    const venues = await prisma.venue.findMany({
-      select: {
-        id: true,
-        name: true,
-        discountUses: true,
-      },
-    });
+    // Use raw SQL to avoid relation issues and avgStudentBill problems
+    const rawData = await prisma.$queryRaw<Array<{
+      venue_id: number;
+      venue_name: string;
+      total: bigint;
+      confirmed: bigint;
+    }>>`
+      SELECT 
+        v.id as venue_id,
+        v.name as venue_name,
+        COUNT(du.id) as total,
+        COUNT(CASE WHEN du.status = 'confirmed' THEN 1 END) as confirmed
+      FROM venues v
+      LEFT JOIN discount_uses du ON v.id = du."venueId"
+      WHERE v."isActive" = true
+      GROUP BY v.id, v.name
+      ORDER BY v.name ASC;
+    `;
 
-    return venues.map((venue) => ({
-      venueName: venue.name,
-      total: venue.discountUses.length,
-      confirmed: venue.discountUses.filter((d) => d.status === 'confirmed').length,
+    return rawData.map((row) => ({
+      venueName: row.venue_name,
+      total: Number(row.total),
+      confirmed: Number(row.confirmed),
     }));
   } catch (error: any) {
-    // Fallback to raw SQL if Prisma fails with P2022 (column not found)
-    if (error?.code === 'P2022' && error?.meta?.column === 'Venue.avgStudentBill') {
-      const rawData = await prisma.$queryRaw<Array<{
-        venue_id: number;
-        venue_name: string;
-        total: bigint;
-        confirmed: bigint;
-      }>>`
-        SELECT 
-          v.id as venue_id,
-          v.name as venue_name,
-          COUNT(du.id) as total,
-          COUNT(CASE WHEN du.status = 'confirmed' THEN 1 END) as confirmed
-        FROM venues v
-        LEFT JOIN discount_uses du ON v.id = du."venueId"
-        GROUP BY v.id, v.name
-        ORDER BY v.name ASC;
-      `;
-
-      return rawData.map((row) => ({
-        venueName: row.venue_name,
-        total: Number(row.total),
-        confirmed: Number(row.confirmed),
-      }));
-    }
-    throw error;
+    console.error('Error in getDiscountsByVenue:', error);
+    // Return empty array instead of throwing to prevent dashboard crash
+    return [];
   }
 };
 
 export const getDiscountsByDay = async (days = 7) => {
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+  try {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
 
-  const uses = await prisma.discountUse.findMany({
-    where: { createdAt: { gte: since } },
-    select: { createdAt: true },
-  });
+    const uses = await prisma.discountUse.findMany({
+      where: { createdAt: { gte: since } },
+      select: { createdAt: true },
+    });
 
-  const grouped = uses.reduce<Record<string, number>>((acc, use) => {
-    const key = use.createdAt.toISOString().split('T')[0];
-    acc[key] = (acc[key] ?? 0) + 1;
-    return acc;
-  }, {});
+    const grouped = uses.reduce<Record<string, number>>((acc, use) => {
+      const key = use.createdAt.toISOString().split('T')[0];
+      acc[key] = (acc[key] ?? 0) + 1;
+      return acc;
+    }, {});
 
-  return Object.entries(grouped)
-    .sort(([a], [b]) => (a > b ? 1 : -1))
-    .map(([date, total]) => ({ date, total }));
+    return Object.entries(grouped)
+      .sort(([a], [b]) => (a > b ? 1 : -1))
+      .map(([date, total]) => ({ date, total }));
+  } catch (error: any) {
+    console.error('Error in getDiscountsByDay:', error);
+    // Return empty array instead of throwing to prevent dashboard crash
+    return [];
+  }
 };
 
 // User activity statistics
@@ -658,31 +663,32 @@ export const getPartnerVenueStatsWithDateRange = async (
 
 // User Activity Overview - Founder-level metrics
 export const getUserActivityOverview = async () => {
-  const now = new Date();
-  const todayStart = new Date(now);
-  todayStart.setHours(0, 0, 0, 0);
-  
-  const yesterdayStart = new Date(todayStart);
-  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-  
-  const weekStart = new Date(todayStart);
-  weekStart.setDate(weekStart.getDate() - 7);
-  
-  const monthStart = new Date(todayStart);
-  monthStart.setDate(monthStart.getDate() - 30);
+  try {
+    const now = new Date();
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - 7);
+    
+    const monthStart = new Date(todayStart);
+    monthStart.setDate(monthStart.getDate() - 30);
 
-  // Optimized: Fetch all data in sequence to avoid connection pool exhaustion
-  // Get all views from month start (we'll filter by date in memory)
-  const allViews = await prisma.venueView.findMany({
-    where: { createdAt: { gte: monthStart } },
-    select: { user_id: true, createdAt: true },
-  });
+    // Optimized: Fetch all data in sequence to avoid connection pool exhaustion
+    // Get all views from month start (we'll filter by date in memory)
+    const allViews = await prisma.venueView.findMany({
+      where: { createdAt: { gte: monthStart } },
+      select: { user_id: true, createdAt: true },
+    });
 
-  // Get all discount uses from month start
-  const allDiscountUses = await prisma.discountUse.findMany({
-    where: { createdAt: { gte: monthStart } },
-    select: { user_id: true, createdAt: true, status: true, confirmedAt: true },
-  });
+    // Get all discount uses from month start
+    const allDiscountUses = await prisma.discountUse.findMany({
+      where: { createdAt: { gte: monthStart } },
+      select: { user_id: true, createdAt: true, status: true, confirmedAt: true },
+    });
 
   // Filter in memory by date ranges
   const viewsToday = allViews.filter(v => v.createdAt >= todayStart);
@@ -767,33 +773,47 @@ export const getUserActivityOverview = async () => {
   const avgDiscountsPerUser = activeUsersWeek.size === 0 ? 0 :
     Number((totalDiscounts7d / activeUsersWeek.size).toFixed(2));
 
-  return {
-    dau,
-    wau,
-    mau,
-    newUsersToday,
-    newUsersWeek,
-    returningPercentage,
-    avgDiscountsPerUser,
-  };
+    return {
+      dau,
+      wau,
+      mau,
+      newUsersToday,
+      newUsersWeek,
+      returningPercentage,
+      avgDiscountsPerUser,
+    };
+  } catch (error: any) {
+    console.error('Error in getUserActivityOverview:', error);
+    // Return default values instead of throwing to prevent dashboard crash
+    return {
+      dau: 0,
+      wau: 0,
+      mau: 0,
+      newUsersToday: 0,
+      newUsersWeek: 0,
+      returningPercentage: 0,
+      avgDiscountsPerUser: 0,
+    };
+  }
 };
 
 // Micro-insights: peak activity time, most active day, top cohort
 export const getMicroInsights = async () => {
-  const weekStart = new Date();
-  weekStart.setDate(weekStart.getDate() - 7);
-  weekStart.setHours(0, 0, 0, 0);
+  try {
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+    weekStart.setHours(0, 0, 0, 0);
 
-  // Get all activities in last 7 days - sequential to avoid connection pool issues
-  const views = await prisma.venueView.findMany({
-    where: { createdAt: { gte: weekStart } },
-    select: { createdAt: true },
-  });
-  
-  const allDiscountUses = await prisma.discountUse.findMany({
-    where: { createdAt: { gte: weekStart } },
-    select: { createdAt: true, status: true, confirmedAt: true },
-  });
+    // Get all activities in last 7 days - sequential to avoid connection pool issues
+    const views = await prisma.venueView.findMany({
+      where: { createdAt: { gte: weekStart } },
+      select: { createdAt: true },
+    });
+    
+    const allDiscountUses = await prisma.discountUse.findMany({
+      where: { createdAt: { gte: weekStart } },
+      select: { createdAt: true, status: true, confirmedAt: true },
+    });
   
   const qrCodes = allDiscountUses;
   const confirmed = allDiscountUses.filter(c => c.status === 'confirmed' && c.confirmedAt);
@@ -878,35 +898,52 @@ export const getMicroInsights = async () => {
   const topCohort = verifiedUsers > nonVerifiedUsers ? 'Verified students' : 
     nonVerifiedUsers > verifiedUsers ? 'Non-verified users' : 'Equal';
 
-  return {
-    peakActivityTime,
-    mostActiveDay,
-    topCohort,
-  };
+    return {
+      peakActivityTime,
+      mostActiveDay,
+      topCohort,
+    };
+  } catch (error: any) {
+    console.error('Error in getMicroInsights:', error);
+    // Return default values instead of throwing to prevent dashboard crash
+    return {
+      peakActivityTime: 'N/A',
+      mostActiveDay: 'N/A',
+      topCohort: 'N/A',
+    };
+  }
 };
 
 // Alerts / Red Flags system
 // Accepts optional activityOverview to avoid duplicate queries
 export const getAlerts = async (activityOverview?: Awaited<ReturnType<typeof getUserActivityOverview>>) => {
-  const alerts: Array<{ type: 'warning' | 'critical'; message: string; id: string }> = [];
-  
-  const now = new Date();
-  const todayStart = new Date(now);
-  todayStart.setHours(0, 0, 0, 0);
-  
-  const yesterdayStart = new Date(todayStart);
-  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-  
-  const yesterdayEnd = new Date(todayStart);
-  
-  const weekStart = new Date(todayStart);
-  weekStart.setDate(weekStart.getDate() - 7);
+  try {
+    const alerts: Array<{ type: 'warning' | 'critical'; message: string; id: string }> = [];
+    
+    const now = new Date();
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    
+    const yesterdayEnd = new Date(todayStart);
+    
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - 7);
 
-  const monthStart = new Date(todayStart);
-  monthStart.setDate(monthStart.getDate() - 30);
+    const monthStart = new Date(todayStart);
+    monthStart.setDate(monthStart.getDate() - 30);
 
-  // Get activity overview if not provided
-  const activity = activityOverview ?? await getUserActivityOverview();
+    // Get activity overview if not provided
+    let activity;
+    try {
+      activity = activityOverview ?? await getUserActivityOverview();
+    } catch (error: any) {
+      console.error('Error getting activity overview for alerts:', error);
+      // Return empty alerts if we can't get activity data
+      return [];
+    }
 
   // 1. DAU Drop: DAU today ≥30% lower than yesterday
   // Fetch yesterday data sequentially to avoid connection pool exhaustion
@@ -1021,5 +1058,10 @@ export const getAlerts = async (activityOverview?: Awaited<ReturnType<typeof get
     });
   }
 
-  return alerts;
+    return alerts;
+  } catch (error: any) {
+    console.error('Error in getAlerts:', error);
+    // Return empty alerts instead of throwing to prevent dashboard crash
+    return [];
+  }
 };
