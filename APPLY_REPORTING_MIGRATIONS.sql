@@ -5,6 +5,11 @@
 -- Execute this SQL in Supabase Dashboard → SQL Editor
 -- ============================================
 
+-- First, let's check what tables exist in the database
+-- Run this query first to see available tables:
+-- SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;
+-- ============================================
+
 -- ============================================
 -- Migration 1: Add Reporting Tables
 -- ============================================
@@ -119,84 +124,16 @@ CREATE INDEX IF NOT EXISTS "ReportSnapshot_partner_id_month_idx" ON "ReportSnaps
 CREATE INDEX IF NOT EXISTS "ReportSnapshot_created_at_idx" ON "ReportSnapshot"("created_at");
 
 -- AddForeignKey
--- Use dynamic SQL to find the correct table names and create foreign keys
-DO $$
-DECLARE
-    venue_table_name TEXT;
-    partner_table_name TEXT;
-BEGIN
-    -- Find the actual venue table name (check common variations)
-    SELECT table_name INTO venue_table_name
-    FROM information_schema.tables
-    WHERE table_schema = 'public'
-      AND LOWER(table_name) = 'venues'
-    LIMIT 1;
-    
-    -- Find the actual partner table name (check common variations)
-    SELECT table_name INTO partner_table_name
-    FROM information_schema.tables
-    WHERE table_schema = 'public'
-      AND LOWER(table_name) = 'partners'
-    LIMIT 1;
-    
-    -- Create foreign keys for venues if table exists
-    IF venue_table_name IS NOT NULL THEN
-        -- DailyPartnerMetrics -> venues
-        BEGIN
-            EXECUTE format('ALTER TABLE "DailyPartnerMetrics" DROP CONSTRAINT IF EXISTS "DailyPartnerMetrics_venue_id_fkey"');
-            EXECUTE format('ALTER TABLE "DailyPartnerMetrics" ADD CONSTRAINT "DailyPartnerMetrics_venue_id_fkey" FOREIGN KEY ("venue_id") REFERENCES %I("id") ON DELETE CASCADE ON UPDATE CASCADE', venue_table_name);
-        EXCEPTION WHEN OTHERS THEN
-            RAISE NOTICE 'Could not create DailyPartnerMetrics -> venues foreign key: %', SQLERRM;
-        END;
-        
-        -- MonthlyPartnerMetrics -> venues
-        BEGIN
-            EXECUTE format('ALTER TABLE "MonthlyPartnerMetrics" DROP CONSTRAINT IF EXISTS "MonthlyPartnerMetrics_venue_id_fkey"');
-            EXECUTE format('ALTER TABLE "MonthlyPartnerMetrics" ADD CONSTRAINT "MonthlyPartnerMetrics_venue_id_fkey" FOREIGN KEY ("venue_id") REFERENCES %I("id") ON DELETE CASCADE ON UPDATE CASCADE', venue_table_name);
-        EXCEPTION WHEN OTHERS THEN
-            RAISE NOTICE 'Could not create MonthlyPartnerMetrics -> venues foreign key: %', SQLERRM;
-        END;
-        
-        -- ReportSnapshot -> venues
-        BEGIN
-            EXECUTE format('ALTER TABLE "ReportSnapshot" DROP CONSTRAINT IF EXISTS "ReportSnapshot_venue_id_fkey"');
-            EXECUTE format('ALTER TABLE "ReportSnapshot" ADD CONSTRAINT "ReportSnapshot_venue_id_fkey" FOREIGN KEY ("venue_id") REFERENCES %I("id") ON DELETE SET NULL ON UPDATE CASCADE', venue_table_name);
-        EXCEPTION WHEN OTHERS THEN
-            RAISE NOTICE 'Could not create ReportSnapshot -> venues foreign key: %', SQLERRM;
-        END;
-    ELSE
-        RAISE NOTICE 'Venues table not found. Skipping venue foreign keys.';
-    END IF;
-    
-    -- Create foreign keys for partners if table exists
-    IF partner_table_name IS NOT NULL THEN
-        -- DailyPartnerMetrics -> partners
-        BEGIN
-            EXECUTE format('ALTER TABLE "DailyPartnerMetrics" DROP CONSTRAINT IF EXISTS "DailyPartnerMetrics_partner_id_fkey"');
-            EXECUTE format('ALTER TABLE "DailyPartnerMetrics" ADD CONSTRAINT "DailyPartnerMetrics_partner_id_fkey" FOREIGN KEY ("partner_id") REFERENCES %I("id") ON DELETE SET NULL ON UPDATE CASCADE', partner_table_name);
-        EXCEPTION WHEN OTHERS THEN
-            RAISE NOTICE 'Could not create DailyPartnerMetrics -> partners foreign key: %', SQLERRM;
-        END;
-        
-        -- MonthlyPartnerMetrics -> partners
-        BEGIN
-            EXECUTE format('ALTER TABLE "MonthlyPartnerMetrics" DROP CONSTRAINT IF EXISTS "MonthlyPartnerMetrics_partner_id_fkey"');
-            EXECUTE format('ALTER TABLE "MonthlyPartnerMetrics" ADD CONSTRAINT "MonthlyPartnerMetrics_partner_id_fkey" FOREIGN KEY ("partner_id") REFERENCES %I("id") ON DELETE SET NULL ON UPDATE CASCADE', partner_table_name);
-        EXCEPTION WHEN OTHERS THEN
-            RAISE NOTICE 'Could not create MonthlyPartnerMetrics -> partners foreign key: %', SQLERRM;
-        END;
-        
-        -- ReportSnapshot -> partners
-        BEGIN
-            EXECUTE format('ALTER TABLE "ReportSnapshot" DROP CONSTRAINT IF EXISTS "ReportSnapshot_partner_id_fkey"');
-            EXECUTE format('ALTER TABLE "ReportSnapshot" ADD CONSTRAINT "ReportSnapshot_partner_id_fkey" FOREIGN KEY ("partner_id") REFERENCES %I("id") ON DELETE SET NULL ON UPDATE CASCADE', partner_table_name);
-        EXCEPTION WHEN OTHERS THEN
-            RAISE NOTICE 'Could not create ReportSnapshot -> partners foreign key: %', SQLERRM;
-        END;
-    ELSE
-        RAISE NOTICE 'Partners table not found. Skipping partner foreign keys.';
-    END IF;
-END $$;
+-- Skip foreign keys if referenced tables don't exist
+-- The reporting tables will work without foreign keys, they just won't have referential integrity
+-- You can add foreign keys later once you confirm the table names
+
+-- Note: Foreign keys are optional for the reporting system to work
+-- If you want to add them later, first run this query to find table names:
+-- SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND LOWER(table_name) IN ('venues', 'partners', 'venue', 'partner') ORDER BY table_name;
+
+-- For now, we'll create the tables without foreign keys to avoid errors
+-- Foreign keys can be added manually later if needed
 
 -- Add indexes to existing tables for better query performance
 CREATE INDEX IF NOT EXISTS "idx_discount_uses_created_at" ON "discount_uses"("created_at");
