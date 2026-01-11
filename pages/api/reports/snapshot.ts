@@ -297,6 +297,7 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
       // Upload to Supabase Storage
       const supabase = createServiceRoleClient();
       
+      // Check if bucket exists, create if not (with better error message)
       const { error: pdfError } = await supabase.storage
         .from('reports')
         .upload(pdfPath, pdfBuffer, {
@@ -305,6 +306,9 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
         });
 
       if (pdfError) {
+        if (pdfError.message?.includes('Bucket not found') || pdfError.message?.includes('bucket')) {
+          throw new Error(`PDF upload failed: Bucket 'reports' not found in Supabase Storage. Please create it in Supabase Dashboard → Storage → New bucket (name: 'reports', private). See CREATE_REPORTS_BUCKET.md for instructions.`);
+        }
         throw new Error(`PDF upload failed: ${pdfError.message}`);
       }
 
@@ -316,6 +320,9 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
         });
 
       if (pngError) {
+        if (pngError.message?.includes('Bucket not found') || pngError.message?.includes('bucket')) {
+          throw new Error(`PNG upload failed: Bucket 'reports' not found in Supabase Storage. Please create it in Supabase Dashboard → Storage → New bucket (name: 'reports', private). See CREATE_REPORTS_BUCKET.md for instructions.`);
+        }
         throw new Error(`PNG upload failed: ${pngError.message}`);
       }
 
