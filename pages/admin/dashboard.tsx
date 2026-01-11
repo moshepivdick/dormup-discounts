@@ -1,12 +1,18 @@
 import type { ReactNode } from 'react';
 import type { GetServerSideProps } from 'next';
+import dynamic from 'next/dynamic';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { StatsCard } from '@/components/admin/StatsCard';
-import { CreateReportButton } from '@/components/admin/CreateReportButton';
 import { SimpleChart } from '@/components/charts/SimpleBarChart';
 import { getDiscountsByDay, getDiscountsByVenue, getOverviewStats } from '@/lib/stats';
 import { requireAdmin } from '@/lib/guards';
 import type { DailyStats, OverviewStats, VenueStats } from '@/types';
+
+// Dynamically import CreateReportButton to ensure it's client-side only
+const CreateReportButton = dynamic(
+  () => import('@/components/admin/CreateReportButton').then((mod) => ({ default: mod.CreateReportButton })),
+  { ssr: false }
+);
 
 type DashboardProps = {
   overview: OverviewStats;
