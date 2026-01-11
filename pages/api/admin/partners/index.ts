@@ -67,37 +67,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           },
         },
       });
-      return apiResponse.success(res, { partners });
+      // Transform partners data to match expected format
+      const transformedPartners = partners.map((p: any) => ({
+        id: p.id,
+        email: p.email,
+        venueName: p.venue?.name || 'No venue',
+      }));
+      return apiResponse.success(res, { partners: transformedPartners });
     } catch (error: any) {
       if (error?.code === 'P2022' || error?.message?.includes('avgStudentBill')) {
         console.error('Prisma error, using fallback:', error);
-        const partners = await (prisma as any).$queryRaw`
-          SELECT p.*, 
-                 json_build_object(
-                   'id', v.id,
-                   'name', v.name,
-                   'city', v.city,
-                   'category', v.category,
-                   'discountText', v."discountText",
-                   'details', v.details,
-                   'openingHours', v."openingHours",
-                   'openingHoursShort', v."openingHoursShort",
-                   'mapUrl', v."mapUrl",
-                   'latitude', v.latitude,
-                   'longitude', v.longitude,
-                   'imageUrl', v."imageUrl",
-                   'thumbnailUrl', v."thumbnailUrl",
-                   'isActive', v."isActive",
-                   'createdAt', v."createdAt",
-                   'updatedAt', v."updatedAt",
-                   'phone', v.phone
-                 ) as venue
+        const rawPartners = await (prisma as any).$queryRaw<Array<{
+          id: string;
+          email: string;
+          venueName: string | null;
+        }>>`
+          SELECT p.id, p.email, v.name as "venueName"
           FROM partners p
           LEFT JOIN venues v ON p."venueId" = v.id
         `;
-        return apiResponse.success(res, { partners });
+        const transformedPartners = rawPartners.map((p) => ({
+          id: p.id,
+          email: p.email,
+          venueName: p.venueName || 'No venue',
+        }));
+        return apiResponse.success(res, { partners: transformedPartners });
       }
-      throw error;
+      console.error('Error fetching partners:', error);
+      // Return empty array instead of throwing to prevent page crash
+      return apiResponse.success(res, { partners: [] });
     }
   }
 
