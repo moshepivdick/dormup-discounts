@@ -208,14 +208,33 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
       let chromium: any;
       try {
         // Try to use bundled chromium first (works on Vercel)
-        // @playwright/browser-chromium exports chromium as default
+        // @playwright/browser-chromium exports chromium as a namespace
         const browserChromium = await import('@playwright/browser-chromium');
-        chromium = browserChromium.default || browserChromium;
+        // The package exports chromium directly or as default
+        if (typeof browserChromium.chromium !== 'undefined') {
+          chromium = browserChromium.chromium;
+        } else if (typeof browserChromium.default?.chromium !== 'undefined') {
+          chromium = browserChromium.default.chromium;
+        } else if (typeof browserChromium.default !== 'undefined' && typeof browserChromium.default.launch === 'function') {
+          chromium = browserChromium.default;
+        } else {
+          throw new Error('Could not find chromium export in @playwright/browser-chromium');
+        }
       } catch (browserChromiumError) {
         // Fallback to regular playwright (for local development)
-        console.warn('@playwright/browser-chromium not available, falling back to playwright');
-        const playwright = await import('playwright');
-        chromium = playwright.chromium;
+        console.warn('@playwright/browser-chromium not available, falling back to playwright:', browserChromiumError);
+        try {
+          const playwright = await import('playwright');
+          chromium = playwright.chromium;
+        } catch (playwrightError) {
+          console.error('Both @playwright/browser-chromium and playwright failed:', playwrightError);
+          throw new Error('Playwright is not available');
+        }
+      }
+      
+      // Verify chromium has launch method
+      if (!chromium || typeof chromium.launch !== 'function') {
+        throw new Error('chromium.launch is not a function. Chromium export is invalid.');
       }
 
       // Generate one-time token for print route
