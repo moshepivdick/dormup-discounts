@@ -8,6 +8,7 @@ import { StatsCard } from '@/components/admin/StatsCard';
 import { SimpleChart } from '@/components/charts/SimpleBarChart';
 import { UserActivityBlock } from '@/components/admin/UserActivityBlock';
 import { AlertsBlock } from '@/components/admin/AlertsBlock';
+import { CreateReportButtonApp } from '@/components/admin/CreateReportButtonApp';
 import { 
   getDiscountsByDay, 
   getDiscountsByVenue, 
@@ -170,6 +171,9 @@ export default async function AdminControlPage({ params }: PageProps) {
             )}
           </div>
         </div>
+
+        {/* Create Report Button */}
+        <CreateReportButtonApp />
       </div>
     </AdminLayout>
   );
