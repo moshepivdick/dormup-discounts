@@ -207,6 +207,30 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
       // @ts-ignore - Playwright types may not be available during build
       const playwright = await import('playwright');
       const { chromium } = playwright;
+      
+      // Check if we're on Vercel and handle Playwright installation
+      if (process.env.VERCEL) {
+        // On Vercel, try to use system chromium or fallback
+        try {
+          await chromium.launch({ headless: true });
+        } catch (launchError: any) {
+          // If chromium is not available, return error with instructions
+          console.error('Playwright chromium not available on Vercel:', launchError);
+          await prisma.reportSnapshot.update({
+            where: { id: snapshot.id },
+            data: {
+              status: 'FAILED',
+              error_message: 'Playwright not configured on Vercel. See docs/reports.md',
+              completed_at: new Date(),
+            },
+          });
+          return apiResponse.error(res, 503, 'PDF generation not available on this server', {
+            error: 'Playwright chromium not installed',
+            message: 'PDF generation requires Playwright to be installed. On Vercel, this needs to be configured in build settings.',
+            solution: 'Add "npx playwright install chromium" to build command or use @playwright/browser-chromium package',
+          });
+        }
+      }
 
       // Generate one-time token for print route
       const printToken = generateReportToken({

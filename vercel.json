@@ -1,6 +1,11 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "prisma generate && npx playwright install chromium || true && next build",
   "outputDirectory": ".next",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "functions": {
+    "pages/api/reports/snapshot.ts": {
+      "maxDuration": 60
+    }
+  }
 }
 
