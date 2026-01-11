@@ -208,33 +208,64 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
       let chromium: any;
       try {
         // Try to use bundled chromium first (works on Vercel)
-        // @playwright/browser-chromium exports chromium as a namespace
-        const browserChromium = await import('@playwright/browser-chromium');
-        // The package exports chromium directly or as default
-        if (typeof browserChromium.chromium !== 'undefined') {
-          chromium = browserChromium.chromium;
-        } else if (typeof browserChromium.default?.chromium !== 'undefined') {
-          chromium = browserChromium.default.chromium;
-        } else if (typeof browserChromium.default !== 'undefined' && typeof browserChromium.default.launch === 'function') {
-          chromium = browserChromium.default;
+        // @playwright/browser-chromium exports chromium as a named export
+        const browserChromiumModule = await import('@playwright/browser-chromium');
+        
+        // Check different possible exports
+        if (browserChromiumModule.chromium && typeof browserChromiumModule.chromium.launch === 'function') {
+          chromium = browserChromiumModule.chromium;
+        } else if (browserChromiumModule.default?.chromium && typeof browserChromiumModule.default.chromium.launch === 'function') {
+          chromium = browserChromiumModule.default.chromium;
+        } else if (browserChromiumModule.default && typeof browserChromiumModule.default.launch === 'function') {
+          chromium = browserChromiumModule.default;
         } else {
-          throw new Error('Could not find chromium export in @playwright/browser-chromium');
+          // Try accessing the module differently
+          const mod = browserChromiumModule as any;
+          if (mod.chromium) {
+            chromium = mod.chromium;
+          } else {
+            throw new Error('Could not find valid chromium export in @playwright/browser-chromium');
+          }
         }
-      } catch (browserChromiumError) {
+      } catch (browserChromiumError: any) {
         // Fallback to regular playwright (for local development)
-        console.warn('@playwright/browser-chromium not available, falling back to playwright:', browserChromiumError);
+        console.warn('@playwright/browser-chromium not available, falling back to playwright:', browserChromiumError?.message || browserChromiumError);
         try {
           const playwright = await import('playwright');
           chromium = playwright.chromium;
-        } catch (playwrightError) {
-          console.error('Both @playwright/browser-chromium and playwright failed:', playwrightError);
-          throw new Error('Playwright is not available');
+        } catch (playwrightError: any) {
+          console.error('Both @playwright/browser-chromium and playwright failed:', playwrightError?.message || playwrightError);
+          // Mark snapshot as failed and return error
+          await prisma.reportSnapshot.update({
+            where: { id: snapshot.id },
+            data: {
+              status: 'FAILED',
+              error_message: 'Playwright not available',
+              completed_at: new Date(),
+            },
+          });
+          return apiResponse.error(res, 503, 'PDF generation not available', {
+            error: 'Playwright is not available',
+            message: 'PDF generation requires Playwright. Please ensure @playwright/browser-chromium is installed.',
+          });
         }
       }
       
       // Verify chromium has launch method
       if (!chromium || typeof chromium.launch !== 'function') {
-        throw new Error('chromium.launch is not a function. Chromium export is invalid.');
+        console.error('chromium.launch is not a function. Chromium object:', chromium);
+        await prisma.reportSnapshot.update({
+          where: { id: snapshot.id },
+          data: {
+            status: 'FAILED',
+            error_message: 'Invalid chromium export',
+            completed_at: new Date(),
+          },
+        });
+        return apiResponse.error(res, 500, 'Invalid Playwright configuration', {
+          error: 'chromium.launch is not a function',
+          message: 'Playwright chromium export is invalid. Please check package installation.',
+        });
       }
 
       // Generate one-time token for print route
