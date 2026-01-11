@@ -87,8 +87,63 @@ async function verifyReports() {
     console.log('   ⚠️  Backfill test skipped (would modify data)');
     console.log('   💡 Run manually: await backfillMonthlyMetrics(3)');
 
-    // 6. Check Playwright installation
-    console.log('\n6. Checking Playwright installation...');
+    // 6. Verify admin monthly report includes new sections
+    console.log('\n6. Verifying admin monthly report structure...');
+    try {
+      const { getMonthlyAdminReport } = await import('../lib/reports');
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const report = await getMonthlyAdminReport(currentMonth);
+      
+      const checks = [
+        { name: 'currentMonth', value: report.currentMonth },
+        { name: 'previousMonth', value: report.previousMonth },
+        { name: 'funnel', value: report.funnel },
+        { name: 'perPartner', value: Array.isArray(report.perPartner) },
+        { name: 'anomalies', value: Array.isArray(report.anomalies) },
+        { name: 'insights', value: Array.isArray(report.insights) },
+      ];
+      
+      for (const check of checks) {
+        if (check.value) {
+          console.log(`   ✅ ${check.name} present`);
+        } else {
+          console.log(`   ⚠️  ${check.name} missing or invalid`);
+        }
+      }
+      
+      // Check MoM structure
+      if (report.currentMonth?.mom) {
+        console.log('   ✅ MoM indicators present');
+      } else {
+        console.log('   ⚠️  MoM indicators missing');
+      }
+      
+      // Check perPartner has status field
+      if (report.perPartner && report.perPartner.length > 0) {
+        const hasStatus = report.perPartner.every((p: any) => 'status' in p);
+        if (hasStatus) {
+          console.log('   ✅ perPartner includes status field');
+        } else {
+          console.log('   ⚠️  perPartner missing status field');
+        }
+      }
+      
+      // Check anomalies have severity
+      if (report.anomalies && report.anomalies.length > 0) {
+        const hasSeverity = report.anomalies.every((a: any) => 'severity' in a && 'title' in a && 'description' in a);
+        if (hasSeverity) {
+          console.log('   ✅ anomalies include severity, title, description');
+        } else {
+          console.log('   ⚠️  anomalies missing severity, title, or description');
+        }
+      }
+    } catch (error: any) {
+      console.error('   ❌ Error verifying report structure:', error.message);
+    }
+
+    // 7. Check Playwright installation
+    console.log('\n7. Checking Playwright installation...');
     try {
       // @ts-ignore - Playwright types may not be available
       const playwright = await import('playwright');

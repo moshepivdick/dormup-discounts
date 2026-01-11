@@ -46,15 +46,54 @@ Added to existing tables for better query performance:
 
 ### GET `/api/reports/admin/monthly?month=YYYY-MM`
 - **Auth**: Admin only
-- **Returns**: Global metrics + per-partner table + anomalies
+- **Returns**: Global metrics with MoM indicators, funnel, per-partner table with status, anomalies, insights
 - **Response**:
   ```json
   {
     "success": true,
     "data": {
+      "currentMonth": {
+        "total_partners": number,
+        "page_views": number,
+        "qr_generated": number,
+        "qr_redeemed": number,
+        "unique_users": number,
+        "conversion_rate": number,
+        "mom": {
+          "page_views": { "delta": number | null, "pct": number | null },
+          "qr_generated": { "delta": number | null, "pct": number | null },
+          "qr_redeemed": { "delta": number | null, "pct": number | null },
+          "conversion_rate": { "delta": number | null, "pct": null }
+        }
+      },
+      "previousMonth": { ... } | null,
+      "funnel": {
+        "page_views": number,
+        "qr_generated": number,
+        "qr_redeemed": number
+      },
+      "perPartner": [
+        {
+          "partner_name": string,
+          "venue_name": string,
+          "page_views": number,
+          "qr_generated": number,
+          "qr_redeemed": number,
+          "conversion_rate": number,
+          "status": "OK" | "Low activity" | "Risk"
+        }
+      ],
+      "anomalies": [
+        {
+          "severity": "info" | "warn" | "critical",
+          "title": string,
+          "description": string
+        }
+      ],
+      "insights": [string, string, string],
+      // Legacy fields for backward compatibility
       "global": { ... },
-      "partners": [ ... ],
-      "anomalies": [ ... ]
+      "partners": [ ... ]
     }
   }
   ```

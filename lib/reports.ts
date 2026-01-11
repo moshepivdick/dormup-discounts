@@ -519,19 +519,57 @@ export async function getMonthlyAdminReport(monthStr: string) {
   const { year, month } = parseMonth(monthStr);
   const { start, end } = getMonthBounds(year, month);
 
-  // Ensure metrics are computed
+  // Ensure metrics are computed for current month
   await upsertMonthlyGlobalMetrics(monthStr);
 
-  // Get global metrics
-  const globalMetrics = await prisma.monthlyGlobalMetrics.findUnique({
+  // Get current month global metrics
+  const currentMonth = await prisma.monthlyGlobalMetrics.findUnique({
     where: { period_start: start },
   });
 
-  if (!globalMetrics) {
+  if (!currentMonth) {
     throw new Error(`No global metrics found for ${monthStr}`);
   }
 
-  // Get per-partner metrics
+  // Get previous month metrics for MoM comparison
+  const prevMonth = new Date(start);
+  prevMonth.setMonth(prevMonth.getMonth() - 1);
+  
+  // Ensure previous month metrics are computed
+  const prevYear = prevMonth.getFullYear();
+  const prevMonthNum = prevMonth.getMonth() + 1;
+  const prevMonthStr = `${prevYear}-${String(prevMonthNum).padStart(2, '0')}`;
+  await upsertMonthlyGlobalMetrics(prevMonthStr);
+  
+  const previousMonth = await prisma.monthlyGlobalMetrics.findUnique({
+    where: { period_start: prevMonth },
+  });
+
+  // Calculate MoM deltas
+  const calculateMoM = (current: number, previous: number | null) => {
+    if (previous === null || previous === 0) {
+      return { delta: null, pct: null };
+    }
+    const delta = current - previous;
+    const pct = (delta / previous) * 100;
+    return { delta, pct };
+  };
+
+  const momPageViews = calculateMoM(currentMonth.page_views, previousMonth?.page_views || null);
+  const momQrGenerated = calculateMoM(currentMonth.qr_generated, previousMonth?.qr_generated || null);
+  const momQrRedeemed = calculateMoM(currentMonth.qr_redeemed, previousMonth?.qr_redeemed || null);
+  const momConversionRate = previousMonth 
+    ? { delta: currentMonth.conversion_rate - previousMonth.conversion_rate, pct: null }
+    : { delta: null, pct: null };
+
+  // Funnel metrics (already in currentMonth)
+  const funnel = {
+    page_views: currentMonth.page_views,
+    qr_generated: currentMonth.qr_generated,
+    qr_redeemed: currentMonth.qr_redeemed,
+  };
+
+  // Get per-partner metrics with status
   const partnerMetrics = await prisma.monthlyPartnerMetrics.findMany({
     where: {
       period_start: start,
@@ -557,45 +595,117 @@ export async function getMonthlyAdminReport(monthStr: string) {
     },
   });
 
-  // Detect anomalies
-  const anomalies: Array<{ type: string; venue: string; message: string }> = [];
-
-  for (const pm of partnerMetrics) {
-    // High QR generated but low redeemed
-    if (pm.qr_generated > 10 && pm.qr_redeemed < pm.qr_generated * 0.3) {
-      anomalies.push({
-        type: 'low_conversion',
-        venue: pm.venue.name,
-        message: `Low conversion rate: ${pm.qr_generated} generated but only ${pm.qr_redeemed} redeemed (${pm.conversion_rate.toFixed(1)}%)`,
-      });
+  // Build perPartner table with status
+  const perPartner = partnerMetrics.map((pm) => {
+    let status = 'OK';
+    if (pm.page_views < 20) {
+      status = 'Low activity';
+    } else if (pm.qr_redeemed === 0 && pm.page_views >= 50) {
+      status = 'Risk';
     }
-
-    // Check for single user generating too many codes (if we had user-level data)
-    // This would require additional query, so we'll skip for now
-  }
-
-  // Compare with previous month for spikes
-  const prevMonth = new Date(start);
-  prevMonth.setMonth(prevMonth.getMonth() - 1);
-  const prevGlobal = await prisma.monthlyGlobalMetrics.findUnique({
-    where: { period_start: prevMonth },
+    
+    return {
+      partner_name: pm.partner?.email || 'Unknown',
+      venue_name: pm.venue.name,
+      page_views: pm.page_views,
+      qr_generated: pm.qr_generated,
+      qr_redeemed: pm.qr_redeemed,
+      conversion_rate: pm.conversion_rate,
+      status,
+    };
   });
 
-  if (prevGlobal) {
-    const pageViewsChange = ((globalMetrics.page_views - prevGlobal.page_views) / prevGlobal.page_views) * 100;
-    if (Math.abs(pageViewsChange) > 50) {
+  // Detect anomalies with severity
+  type AnomalySeverity = 'info' | 'warn' | 'critical';
+  const anomalies: Array<{ severity: AnomalySeverity; title: string; description: string }> = [];
+
+  // Warn: page_views >= 50 and qr_redeemed == 0
+  if (currentMonth.page_views >= 50 && currentMonth.qr_redeemed === 0) {
+    anomalies.push({
+      severity: 'warn',
+      title: 'High page views, zero redemptions',
+      description: `${currentMonth.page_views} page views but no redemptions detected.`,
+    });
+  }
+
+  // Warn: conversion rate drops by >= 10pp vs previous month
+  if (previousMonth && momConversionRate.delta !== null && momConversionRate.delta <= -10) {
+    anomalies.push({
+      severity: 'warn',
+      title: 'Conversion rate drop',
+      description: `Conversion rate dropped by ${Math.abs(momConversionRate.delta).toFixed(1)}pp compared to previous month (${previousMonth.conversion_rate.toFixed(1)}% → ${currentMonth.conversion_rate.toFixed(1)}%).`,
+    });
+  }
+
+  // Warn: any partner has qr_generated >= 10 and qr_redeemed == 0
+  for (const pm of partnerMetrics) {
+    if (pm.qr_generated >= 10 && pm.qr_redeemed === 0) {
       anomalies.push({
-        type: 'spike',
-        venue: 'Global',
-        message: `Page views ${pageViewsChange > 0 ? 'increased' : 'decreased'} by ${Math.abs(pageViewsChange).toFixed(1)}% compared to previous month`,
+        severity: 'warn',
+        title: 'Partner with zero redemptions',
+        description: `${pm.venue.name}: ${pm.qr_generated} QR codes generated but none redeemed.`,
       });
     }
+  }
+
+  // Info: conversion rate >= 25%
+  if (currentMonth.conversion_rate >= 25) {
+    anomalies.push({
+      severity: 'info',
+      title: 'High conversion rate',
+      description: `Global conversion rate is ${currentMonth.conversion_rate.toFixed(1)}%, exceeding the 25% benchmark.`,
+    });
+  }
+
+  // Generate insights (2-3 deterministic sentences)
+  const insights: string[] = [];
+
+  // Top partner by redemptions
+  if (perPartner.length > 0) {
+    const topPartner = perPartner[0];
+    insights.push(`${topPartner.venue_name} led with ${topPartner.qr_redeemed} redemptions (${topPartner.conversion_rate.toFixed(1)}% conversion rate).`);
+  }
+
+  // MoM growth/decline
+  if (momQrRedeemed.pct !== null) {
+    if (momQrRedeemed.pct > 0) {
+      insights.push(`Redemptions increased by ${Math.round(momQrRedeemed.delta || 0)} (+${momQrRedeemed.pct.toFixed(1)}%) compared to previous month.`);
+    } else if (momQrRedeemed.pct < 0) {
+      insights.push(`Redemptions decreased by ${Math.abs(Math.round(momQrRedeemed.delta || 0))} (${momQrRedeemed.pct.toFixed(1)}%) compared to previous month.`);
+    }
+  }
+
+  // If only one partner or small dataset
+  if (perPartner.length === 1) {
+    const partner = perPartner[0];
+    if (partner.qr_redeemed > 0) {
+      insights.push(`All ${partner.qr_redeemed} redemptions came from the single active partner this month.`);
+    }
+  }
+
+  // Ensure we have at least 2 insights, max 3
+  if (insights.length < 2) {
+    insights.push(`Funnel efficiency: ${((currentMonth.qr_redeemed / currentMonth.page_views) * 100).toFixed(1)}% of page views converted to redemptions.`);
   }
 
   return {
-    global: globalMetrics,
+    currentMonth: {
+      ...currentMonth,
+      mom: {
+        page_views: momPageViews,
+        qr_generated: momQrGenerated,
+        qr_redeemed: momQrRedeemed,
+        conversion_rate: momConversionRate,
+      },
+    },
+    previousMonth: previousMonth || null,
+    funnel,
+    perPartner,
+    anomalies: anomalies.length > 0 ? anomalies : [{ severity: 'info' as AnomalySeverity, title: 'No anomalies', description: 'No anomalies detected this period.' }],
+    insights: insights.slice(0, 3),
+    // Legacy fields for backward compatibility
+    global: currentMonth,
     partners: partnerMetrics,
-    anomalies,
   };
 }
 

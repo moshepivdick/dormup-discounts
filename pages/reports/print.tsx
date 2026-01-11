@@ -23,6 +23,15 @@ export default function PrintReportPage({ scope, month, reportData, venueName }:
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
+          section {
+            break-inside: avoid;
+          }
+          table {
+            break-inside: avoid;
+          }
+          tr {
+            break-inside: avoid;
+          }
         }
         .no-print {
           display: none;
@@ -44,73 +53,201 @@ export default function PrintReportPage({ scope, month, reportData, venueName }:
       </div>
 
       {/* Admin Report */}
-      {scope === 'admin' && reportData.global && (
+      {scope === 'admin' && (reportData.currentMonth || reportData.global) && (
         <div className="space-y-6">
-          {/* Global Summary */}
-          <section>
-            <h2 className="mb-4 text-2xl font-semibold text-gray-900">Global Summary</h2>
-            <div className="grid grid-cols-4 gap-4">
-              <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm font-medium text-gray-600">Total Partners</p>
-                <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.global.total_partners}</p>
-              </div>
-              <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm font-medium text-gray-600">Page Views</p>
-                <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.global.page_views.toLocaleString()}</p>
-              </div>
-              <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm font-medium text-gray-600">QR Redeemed</p>
-                <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.global.qr_redeemed.toLocaleString()}</p>
-              </div>
-              <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm font-medium text-gray-600">Conversion Rate</p>
-                <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.global.conversion_rate.toFixed(1)}%</p>
-              </div>
-            </div>
-          </section>
-
-          {/* Anomalies */}
-          {reportData.anomalies && reportData.anomalies.length > 0 && (
+          {/* Page 1: Global Summary, Funnel, Insights */}
+          <div style={{ pageBreakAfter: 'always' }} className="space-y-6">
+            {/* Global Summary with MoM */}
             <section>
-              <h2 className="mb-3 text-xl font-semibold text-gray-900">Anomalies</h2>
-              <div className="rounded-lg border-2 border-yellow-300 bg-yellow-50 p-4">
-                <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                  {reportData.anomalies.map((anomaly: any, i: number) => (
-                    <li key={i}>{anomaly.message}</li>
-                  ))}
-                </ul>
+              <h2 className="mb-4 text-2xl font-semibold text-gray-900">Global Summary</h2>
+              <div className="grid grid-cols-4 gap-4">
+                <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4" style={{ breakInside: 'avoid' }}>
+                  <p className="text-sm font-medium text-gray-600">Total Partners</p>
+                  <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.currentMonth?.total_partners || reportData.global.total_partners}</p>
+                  {reportData.currentMonth?.mom?.page_views && reportData.currentMonth.mom.page_views.pct !== null && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {reportData.currentMonth.mom.page_views.pct > 0 ? '+' : ''}
+                      {reportData.currentMonth.mom.page_views.pct.toFixed(1)}% vs last month
+                    </p>
+                  )}
+                </div>
+                <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4" style={{ breakInside: 'avoid' }}>
+                  <p className="text-sm font-medium text-gray-600">Page Views</p>
+                  <p className="mt-1 text-3xl font-bold text-gray-900">{(reportData.currentMonth?.page_views || reportData.global.page_views).toLocaleString()}</p>
+                  {reportData.currentMonth?.mom?.page_views && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {reportData.currentMonth.mom.page_views.pct !== null ? (
+                        <>
+                          {reportData.currentMonth.mom.page_views.pct > 0 ? '+' : ''}
+                          {reportData.currentMonth.mom.page_views.pct.toFixed(1)}% vs last month
+                        </>
+                      ) : (
+                        '—'
+                      )}
+                    </p>
+                  )}
+                </div>
+                <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4" style={{ breakInside: 'avoid' }}>
+                  <p className="text-sm font-medium text-gray-600">QR Redeemed</p>
+                  <p className="mt-1 text-3xl font-bold text-gray-900">{(reportData.currentMonth?.qr_redeemed || reportData.global.qr_redeemed).toLocaleString()}</p>
+                  {reportData.currentMonth?.mom?.qr_redeemed && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {reportData.currentMonth.mom.qr_redeemed.pct !== null ? (
+                        <>
+                          {reportData.currentMonth.mom.qr_redeemed.pct > 0 ? '+' : ''}
+                          {reportData.currentMonth.mom.qr_redeemed.pct.toFixed(1)}% vs last month
+                        </>
+                      ) : (
+                        '—'
+                      )}
+                    </p>
+                  )}
+                </div>
+                <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4" style={{ breakInside: 'avoid' }}>
+                  <p className="text-sm font-medium text-gray-600">Conversion Rate</p>
+                  <p className="mt-1 text-3xl font-bold text-gray-900">{(reportData.currentMonth?.conversion_rate || reportData.global.conversion_rate).toFixed(1)}%</p>
+                  {reportData.currentMonth?.mom?.conversion_rate && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {reportData.currentMonth.mom.conversion_rate.delta !== null ? (
+                        <>
+                          {reportData.currentMonth.mom.conversion_rate.delta > 0 ? '+' : ''}
+                          {reportData.currentMonth.mom.conversion_rate.delta.toFixed(1)}pp vs last month
+                        </>
+                      ) : (
+                        '—'
+                      )}
+                    </p>
+                  )}
+                </div>
               </div>
             </section>
-          )}
 
-          {/* Partner Table */}
-          {reportData.partners && reportData.partners.length > 0 && (
-            <section>
-              <h2 className="mb-4 text-2xl font-semibold text-gray-900">Per-Partner Metrics</h2>
-              <table className="w-full border-collapse border-2 border-gray-300">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border-2 border-gray-300 px-4 py-2 text-left font-semibold text-gray-900">Venue</th>
-                    <th className="border-2 border-gray-300 px-4 py-2 text-right font-semibold text-gray-900">Views</th>
-                    <th className="border-2 border-gray-300 px-4 py-2 text-right font-semibold text-gray-900">Generated</th>
-                    <th className="border-2 border-gray-300 px-4 py-2 text-right font-semibold text-gray-900">Redeemed</th>
-                    <th className="border-2 border-gray-300 px-4 py-2 text-right font-semibold text-gray-900">Conversion</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.partners.map((p: any) => (
-                    <tr key={p.venue.id} className="border-b border-gray-200">
-                      <td className="border-2 border-gray-300 px-4 py-2 text-gray-900">{p.venue.name}</td>
-                      <td className="border-2 border-gray-300 px-4 py-2 text-right text-gray-700">{p.page_views.toLocaleString()}</td>
-                      <td className="border-2 border-gray-300 px-4 py-2 text-right text-gray-700">{p.qr_generated.toLocaleString()}</td>
-                      <td className="border-2 border-gray-300 px-4 py-2 text-right text-gray-700">{p.qr_redeemed.toLocaleString()}</td>
-                      <td className="border-2 border-gray-300 px-4 py-2 text-right text-gray-700">{p.conversion_rate.toFixed(1)}%</td>
+            {/* Funnel Block */}
+            {reportData.funnel && (
+              <section style={{ breakInside: 'avoid' }}>
+                <h2 className="mb-3 text-xl font-semibold text-gray-900">Funnel Overview</h2>
+                <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="text-center flex-1">
+                      <p className="text-sm font-medium text-gray-600">Page Views</p>
+                      <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.funnel.page_views.toLocaleString()}</p>
+                    </div>
+                    <div className="text-2xl text-gray-400">→</div>
+                    <div className="text-center flex-1">
+                      <p className="text-sm font-medium text-gray-600">QR Generated</p>
+                      <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.funnel.qr_generated.toLocaleString()}</p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {reportData.funnel.page_views > 0
+                          ? `${((reportData.funnel.qr_generated / reportData.funnel.page_views) * 100).toFixed(1)}% conversion`
+                          : '—'}
+                      </p>
+                    </div>
+                    <div className="text-2xl text-gray-400">→</div>
+                    <div className="text-center flex-1">
+                      <p className="text-sm font-medium text-gray-600">QR Redeemed</p>
+                      <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.funnel.qr_redeemed.toLocaleString()}</p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {reportData.funnel.qr_generated > 0
+                          ? `${((reportData.funnel.qr_redeemed / reportData.funnel.qr_generated) * 100).toFixed(1)}% conversion`
+                          : '—'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* Top Insights */}
+            {reportData.insights && reportData.insights.length > 0 && (
+              <section style={{ breakInside: 'avoid' }}>
+                <h2 className="mb-3 text-xl font-semibold text-gray-900">Top Insights</h2>
+                <div className="rounded-lg border-2 border-blue-300 bg-blue-50 p-4">
+                  <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                    {reportData.insights.map((insight: string, i: number) => (
+                      <li key={i}>{insight}</li>
+                    ))}
+                  </ul>
+                </div>
+              </section>
+            )}
+          </div>
+
+          {/* Page 2: Partner Breakdown, Anomalies */}
+          <div className="space-y-6">
+            {/* Partner Breakdown Table */}
+            {(reportData.perPartner || reportData.partners) && (reportData.perPartner || reportData.partners).length > 0 && (
+              <section style={{ breakInside: 'avoid' }}>
+                <h2 className="mb-4 text-2xl font-semibold text-gray-900">Partner Breakdown</h2>
+                <table className="w-full border-collapse border-2 border-gray-300" style={{ breakInside: 'avoid' }}>
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border-2 border-gray-300 px-4 py-2 text-left font-semibold text-gray-900">Partner</th>
+                      <th className="border-2 border-gray-300 px-4 py-2 text-right font-semibold text-gray-900">Page Views</th>
+                      <th className="border-2 border-gray-300 px-4 py-2 text-right font-semibold text-gray-900">QR Generated</th>
+                      <th className="border-2 border-gray-300 px-4 py-2 text-right font-semibold text-gray-900">QR Redeemed</th>
+                      <th className="border-2 border-gray-300 px-4 py-2 text-right font-semibold text-gray-900">Conversion %</th>
+                      <th className="border-2 border-gray-300 px-4 py-2 text-center font-semibold text-gray-900">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          )}
+                  </thead>
+                  <tbody>
+                    {(reportData.perPartner || reportData.partners || []).map((p: any, i: number) => (
+                      <tr key={i} className="border-b border-gray-200">
+                        <td className="border-2 border-gray-300 px-4 py-2 text-gray-900">{p.venue_name || p.venue?.name || p.partner_name}</td>
+                        <td className="border-2 border-gray-300 px-4 py-2 text-right text-gray-700">{p.page_views.toLocaleString()}</td>
+                        <td className="border-2 border-gray-300 px-4 py-2 text-right text-gray-700">{p.qr_generated.toLocaleString()}</td>
+                        <td className="border-2 border-gray-300 px-4 py-2 text-right text-gray-700">{p.qr_redeemed.toLocaleString()}</td>
+                        <td className="border-2 border-gray-300 px-4 py-2 text-right text-gray-700">{p.conversion_rate.toFixed(1)}%</td>
+                        <td className="border-2 border-gray-300 px-4 py-2 text-center text-gray-700">
+                          {p.status || 'OK'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            )}
+
+            {/* Anomalies/Alerts Block */}
+            {reportData.anomalies && reportData.anomalies.length > 0 && (
+              <section style={{ breakInside: 'avoid' }}>
+                <h2 className="mb-3 text-xl font-semibold text-gray-900">Anomalies & Alerts</h2>
+                {reportData.anomalies.length === 1 && reportData.anomalies[0].title === 'No anomalies' ? (
+                  <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
+                    <p className="text-sm text-gray-800">No anomalies detected this period.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {reportData.anomalies.map((a: any, i: number) => (
+                      <div
+                        key={i}
+                        className={`rounded-lg border-2 p-3 ${
+                          a.severity === 'critical'
+                            ? 'bg-rose-50 border-rose-300'
+                            : a.severity === 'warn'
+                              ? 'bg-yellow-50 border-yellow-300'
+                              : 'bg-blue-50 border-blue-300'
+                        }`}
+                      >
+                        <p className="font-semibold text-gray-900">
+                          <span className={`rounded px-2 py-1 text-xs font-medium mr-2 ${
+                            a.severity === 'critical'
+                              ? 'bg-rose-500 text-white'
+                              : a.severity === 'warn'
+                                ? 'bg-yellow-500 text-white'
+                                : 'bg-blue-500 text-white'
+                          }`}>
+                            {a.severity?.toUpperCase() || 'INFO'}
+                          </span>
+                          {a.title || a.message}
+                        </p>
+                        {a.description && <p className="mt-1 text-sm text-gray-700">{a.description}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+          </div>
         </div>
       )}
 

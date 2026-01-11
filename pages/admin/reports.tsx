@@ -283,63 +283,201 @@ export default function ReportsPage({ currentMonth, partners }: ReportsPageProps
 
           {adminReport && (
             <div className="space-y-6">
-              {/* Global Summary */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                <div className="rounded-lg border border-white/10 bg-slate-800 p-4">
-                  <p className="text-sm text-slate-400">Total Partners</p>
-                  <p className="text-2xl font-bold text-white">{adminReport.global.total_partners}</p>
-                </div>
-                <div className="rounded-lg border border-white/10 bg-slate-800 p-4">
-                  <p className="text-sm text-slate-400">Page Views</p>
-                  <p className="text-2xl font-bold text-white">{adminReport.global.page_views.toLocaleString()}</p>
-                </div>
-                <div className="rounded-lg border border-white/10 bg-slate-800 p-4">
-                  <p className="text-sm text-slate-400">QR Redeemed</p>
-                  <p className="text-2xl font-bold text-white">{adminReport.global.qr_redeemed.toLocaleString()}</p>
-                </div>
-                <div className="rounded-lg border border-white/10 bg-slate-800 p-4">
-                  <p className="text-sm text-slate-400">Conversion Rate</p>
-                  <p className="text-2xl font-bold text-white">{adminReport.global.conversion_rate.toFixed(1)}%</p>
+              {/* Global Summary with MoM indicators */}
+              <div>
+                <h2 className="mb-4 text-xl font-semibold text-white">Global Summary</h2>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                  <div className="rounded-lg border border-white/10 bg-slate-800 p-4">
+                    <p className="text-sm text-slate-400">Total Partners</p>
+                    <p className="text-2xl font-bold text-white">{adminReport.currentMonth?.total_partners || adminReport.global.total_partners}</p>
+                    {adminReport.currentMonth?.mom?.page_views && adminReport.currentMonth.mom.page_views.pct !== null && (
+                      <p className="mt-1 text-xs text-slate-500">
+                        {adminReport.currentMonth.mom.page_views.pct > 0 ? '+' : ''}
+                        {adminReport.currentMonth.mom.page_views.pct.toFixed(1)}% vs last month
+                      </p>
+                    )}
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-slate-800 p-4">
+                    <p className="text-sm text-slate-400">Page Views</p>
+                    <p className="text-2xl font-bold text-white">{(adminReport.currentMonth?.page_views || adminReport.global.page_views).toLocaleString()}</p>
+                    {adminReport.currentMonth?.mom?.page_views && (
+                      <p className="mt-1 text-xs text-slate-500">
+                        {adminReport.currentMonth.mom.page_views.pct !== null ? (
+                          <>
+                            {adminReport.currentMonth.mom.page_views.pct > 0 ? '+' : ''}
+                            {adminReport.currentMonth.mom.page_views.pct.toFixed(1)}% vs last month
+                          </>
+                        ) : (
+                          '—'
+                        )}
+                      </p>
+                    )}
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-slate-800 p-4">
+                    <p className="text-sm text-slate-400">QR Redeemed</p>
+                    <p className="text-2xl font-bold text-white">{(adminReport.currentMonth?.qr_redeemed || adminReport.global.qr_redeemed).toLocaleString()}</p>
+                    {adminReport.currentMonth?.mom?.qr_redeemed && (
+                      <p className="mt-1 text-xs text-slate-500">
+                        {adminReport.currentMonth.mom.qr_redeemed.pct !== null ? (
+                          <>
+                            {adminReport.currentMonth.mom.qr_redeemed.pct > 0 ? '+' : ''}
+                            {adminReport.currentMonth.mom.qr_redeemed.pct.toFixed(1)}% vs last month
+                          </>
+                        ) : (
+                          '—'
+                        )}
+                      </p>
+                    )}
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-slate-800 p-4">
+                    <p className="text-sm text-slate-400">Conversion Rate</p>
+                    <p className="text-2xl font-bold text-white">{(adminReport.currentMonth?.conversion_rate || adminReport.global.conversion_rate).toFixed(1)}%</p>
+                    {adminReport.currentMonth?.mom?.conversion_rate && (
+                      <p className="mt-1 text-xs text-slate-500">
+                        {adminReport.currentMonth.mom.conversion_rate.delta !== null ? (
+                          <>
+                            {adminReport.currentMonth.mom.conversion_rate.delta > 0 ? '+' : ''}
+                            {adminReport.currentMonth.mom.conversion_rate.delta.toFixed(1)}pp vs last month
+                          </>
+                        ) : (
+                          '—'
+                        )}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Anomalies */}
-              {adminReport.anomalies && adminReport.anomalies.length > 0 && (
-                <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4">
-                  <h3 className="mb-2 font-semibold text-yellow-200">Anomalies Detected</h3>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-yellow-100">
-                    {adminReport.anomalies.map((a: any, i: number) => (
-                      <li key={i}>{a.message}</li>
+              {/* Funnel Block */}
+              {adminReport.funnel && (
+                <div className="rounded-lg border border-white/10 bg-slate-800 p-6">
+                  <h2 className="mb-4 text-xl font-semibold text-white">Funnel Overview</h2>
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="flex-1 text-center">
+                      <p className="text-sm text-slate-400">Page Views</p>
+                      <p className="text-3xl font-bold text-white">{adminReport.funnel.page_views.toLocaleString()}</p>
+                    </div>
+                    <div className="flex-shrink-0 text-center text-slate-400">→</div>
+                    <div className="flex-1 text-center">
+                      <p className="text-sm text-slate-400">QR Generated</p>
+                      <p className="text-3xl font-bold text-white">{adminReport.funnel.qr_generated.toLocaleString()}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {adminReport.funnel.page_views > 0
+                          ? `${((adminReport.funnel.qr_generated / adminReport.funnel.page_views) * 100).toFixed(1)}% conversion`
+                          : '—'}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0 text-center text-slate-400">→</div>
+                    <div className="flex-1 text-center">
+                      <p className="text-sm text-slate-400">QR Redeemed</p>
+                      <p className="text-3xl font-bold text-white">{adminReport.funnel.qr_redeemed.toLocaleString()}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {adminReport.funnel.qr_generated > 0
+                          ? `${((adminReport.funnel.qr_redeemed / adminReport.funnel.qr_generated) * 100).toFixed(1)}% conversion`
+                          : '—'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Top Insights */}
+              {adminReport.insights && adminReport.insights.length > 0 && (
+                <div className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-4">
+                  <h2 className="mb-3 text-lg font-semibold text-emerald-200">Top Insights</h2>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-emerald-100">
+                    {adminReport.insights.map((insight: string, i: number) => (
+                      <li key={i}>{insight}</li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {/* Partner Table */}
-              <div className="overflow-x-auto rounded-lg border border-white/10">
-                <table className="w-full">
-                  <thead className="bg-slate-800">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-sm font-semibold text-white">Venue</th>
-                      <th className="px-4 py-2 text-right text-sm font-semibold text-white">Views</th>
-                      <th className="px-4 py-2 text-right text-sm font-semibold text-white">Generated</th>
-                      <th className="px-4 py-2 text-right text-sm font-semibold text-white">Redeemed</th>
-                      <th className="px-4 py-2 text-right text-sm font-semibold text-white">Conversion</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {adminReport.partners.map((p: any) => (
-                      <tr key={p.venue.id} className="border-t border-white/5">
-                        <td className="px-4 py-2 text-white">{p.venue.name}</td>
-                        <td className="px-4 py-2 text-right text-slate-300">{p.page_views.toLocaleString()}</td>
-                        <td className="px-4 py-2 text-right text-slate-300">{p.qr_generated.toLocaleString()}</td>
-                        <td className="px-4 py-2 text-right text-slate-300">{p.qr_redeemed.toLocaleString()}</td>
-                        <td className="px-4 py-2 text-right text-slate-300">{p.conversion_rate.toFixed(1)}%</td>
+              {/* Partner Breakdown Table */}
+              {adminReport.perPartner && adminReport.perPartner.length > 0 && (
+                <div className="overflow-x-auto rounded-lg border border-white/10">
+                  <h2 className="mb-3 px-4 pt-4 text-lg font-semibold text-white">Partner Breakdown</h2>
+                  <table className="w-full">
+                    <thead className="bg-slate-800">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-sm font-semibold text-white">Partner</th>
+                        <th className="px-4 py-2 text-right text-sm font-semibold text-white">Page Views</th>
+                        <th className="px-4 py-2 text-right text-sm font-semibold text-white">QR Generated</th>
+                        <th className="px-4 py-2 text-right text-sm font-semibold text-white">QR Redeemed</th>
+                        <th className="px-4 py-2 text-right text-sm font-semibold text-white">Conversion %</th>
+                        <th className="px-4 py-2 text-center text-sm font-semibold text-white">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {adminReport.perPartner.map((p: any, i: number) => (
+                        <tr key={i} className="border-t border-white/5">
+                          <td className="px-4 py-2 text-white">{p.venue_name || p.partner_name}</td>
+                          <td className="px-4 py-2 text-right text-slate-300">{p.page_views.toLocaleString()}</td>
+                          <td className="px-4 py-2 text-right text-slate-300">{p.qr_generated.toLocaleString()}</td>
+                          <td className="px-4 py-2 text-right text-slate-300">{p.qr_redeemed.toLocaleString()}</td>
+                          <td className="px-4 py-2 text-right text-slate-300">{p.conversion_rate.toFixed(1)}%</td>
+                          <td className="px-4 py-2 text-center">
+                            <span
+                              className={`rounded-full px-2 py-1 text-xs font-medium ${
+                                p.status === 'OK'
+                                  ? 'bg-emerald-500/20 text-emerald-200'
+                                  : p.status === 'Risk'
+                                    ? 'bg-rose-500/20 text-rose-200'
+                                    : 'bg-yellow-500/20 text-yellow-200'
+                              }`}
+                            >
+                              {p.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Anomalies/Alerts Block */}
+              {adminReport.anomalies && adminReport.anomalies.length > 0 && (
+                <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4">
+                  <h2 className="mb-3 text-lg font-semibold text-yellow-200">Anomalies & Alerts</h2>
+                  {adminReport.anomalies.length === 1 && adminReport.anomalies[0].title === 'No anomalies' ? (
+                    <p className="text-sm text-yellow-100">No anomalies detected this period.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {adminReport.anomalies.map((a: any, i: number) => (
+                        <div
+                          key={i}
+                          className={`rounded-lg p-3 ${
+                            a.severity === 'critical'
+                              ? 'bg-rose-500/20 border border-rose-500/50'
+                              : a.severity === 'warn'
+                                ? 'bg-yellow-500/20 border border-yellow-500/50'
+                                : 'bg-blue-500/20 border border-blue-500/50'
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <span
+                              className={`rounded-full px-2 py-1 text-xs font-medium ${
+                                a.severity === 'critical'
+                                  ? 'bg-rose-500 text-white'
+                                  : a.severity === 'warn'
+                                    ? 'bg-yellow-500 text-white'
+                                    : 'bg-blue-500 text-white'
+                              }`}
+                            >
+                              {a.severity.toUpperCase()}
+                            </span>
+                            <div className="flex-1">
+                              <p className="font-semibold text-white">{a.title}</p>
+                              <p className="text-sm text-slate-200">{a.description}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
