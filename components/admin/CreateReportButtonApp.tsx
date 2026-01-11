@@ -32,10 +32,8 @@ export function CreateReportButtonApp() {
 
       if (data.success) {
         setMessage({ type: 'success', text: 'Report is being generated. Navigate to the Reports tab to view status.' });
-        // Optionally redirect to reports page after a short delay
-        setTimeout(() => {
-          router.push('/admin/reports?tab=snapshots');
-        }, 2000);
+        // No redirect needed - user stays on current page
+        // Reports can be accessed via the navigation menu
       } else {
         setMessage({ type: 'error', text: data.message || 'Error creating report' });
       }
