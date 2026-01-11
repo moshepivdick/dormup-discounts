@@ -4,10 +4,38 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { apiResponse } from '@/lib/api';
 import { partnerMutationSchema } from '@/lib/validators';
+import { createClientFromRequest } from '@/lib/supabase/pages-router';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const admin = await auth.getAdminFromRequest(req);
+  // Try cookie-based admin first (Pages Router)
+  let admin = await auth.getAdminFromRequest(req);
+  let isSupabaseAdmin = false;
+  
+  // If no admin from cookies, try Supabase auth (App Router)
   if (!admin) {
+    try {
+      const supabase = createClientFromRequest(req);
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (!userError && user) {
+        // Check if user is admin in profiles
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile?.is_admin) {
+          isSupabaseAdmin = true;
+        }
+      }
+    } catch (error) {
+      // Supabase auth failed, continue with cookie check
+      console.error('Supabase auth check failed:', error);
+    }
+  }
+  
+  if (!admin && !isSupabaseAdmin) {
     return apiResponse.error(res, 401, 'Unauthorized');
   }
 

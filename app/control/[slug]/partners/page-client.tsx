@@ -32,11 +32,26 @@ export function AdminPartnersPageClient({ slug }: AdminPartnersPageProps) {
   useEffect(() => {
     // Load partners and venues
     Promise.all([
-      fetch('/api/admin/partners').then((res) => res.json()),
-      fetch('/api/admin/venues').then((res) => res.json()),
+      fetch('/api/admin/partners').then((res) => {
+        if (!res.ok) {
+          console.error('Failed to fetch partners:', res.status, res.statusText);
+          return { success: false, data: { partners: [] } };
+        }
+        return res.json();
+      }),
+      fetch('/api/admin/venues').then((res) => {
+        if (!res.ok) {
+          console.error('Failed to fetch venues:', res.status, res.statusText);
+          return { success: false, data: { venues: [] } };
+        }
+        return res.json();
+      }),
     ]).then(([partnersData, venuesData]) => {
       if (partnersData.success) {
         setPartners(partnersData.data.partners || []);
+      } else {
+        console.error('Partners API error:', partnersData.message);
+        setPartners([]);
       }
       if (venuesData.success) {
         const venuesList = venuesData.data.venues || [];
@@ -44,9 +59,14 @@ export function AdminPartnersPageClient({ slug }: AdminPartnersPageProps) {
         if (venuesList.length > 0) {
           setForm((prev) => ({ ...prev, venueId: venuesList[0].id }));
         }
+      } else {
+        console.error('Venues API error:', venuesData.message);
+        setVenues([]);
       }
     }).catch((err) => {
       console.error('Error loading data:', err);
+      setPartners([]);
+      setVenues([]);
     });
   }, []);
 
