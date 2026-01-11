@@ -118,46 +118,67 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
     const { start } = getMonthBounds(year, monthNum);
     
     let metricsHash: string | undefined;
-    if (finalScope === 'admin') {
-      const globalMetrics = await prisma.monthlyGlobalMetrics.findUnique({
-        where: { period_start: start },
-      });
-      if (globalMetrics) {
-        metricsHash = crypto
-          .createHash('md5')
-          .update(JSON.stringify(globalMetrics))
-          .digest('hex');
+    try {
+      if (finalScope === 'admin') {
+        const globalMetrics = await prisma.monthlyGlobalMetrics.findUnique({
+          where: { period_start: start },
+        });
+        if (globalMetrics) {
+          metricsHash = crypto
+            .createHash('md5')
+            .update(JSON.stringify(globalMetrics))
+            .digest('hex');
+        }
+      } else if (venueId) {
+        const partnerMetrics = await prisma.monthlyPartnerMetrics.findFirst({
+          where: {
+            venue_id: venueId,
+            period_start: start,
+          },
+        });
+        if (partnerMetrics) {
+          metricsHash = crypto
+            .createHash('md5')
+            .update(JSON.stringify(partnerMetrics))
+            .digest('hex');
+        }
       }
-    } else if (venueId) {
-      const partnerMetrics = await prisma.monthlyPartnerMetrics.findFirst({
-        where: {
-          venue_id: venueId,
-          period_start: start,
-        },
-      });
-      if (partnerMetrics) {
-        metricsHash = crypto
-          .createHash('md5')
-          .update(JSON.stringify(partnerMetrics))
-          .digest('hex');
+    } catch (metricsError: any) {
+      // If metrics tables don't exist, continue without hash
+      if (metricsError?.code === 'P2021') {
+        console.warn('Metrics tables not found, continuing without metrics hash');
+      } else {
+        throw metricsError;
       }
     }
 
     // Create snapshot record with PENDING status
-    const snapshot = await prisma.reportSnapshot.create({
-      data: {
-        job_id: jobId,
-        scope: finalScope,
-        month: monthStr,
-        partner_id: partnerIdFinal || null,
-        venue_id: venueId || null,
-        status: 'PENDING',
-        created_by: admin?.id || partner?.id || supabaseUserId || null,
-        pdf_path: null,
-        png_path: null,
-        metrics_hash: metricsHash || null,
-      },
-    });
+    let snapshot;
+    try {
+      snapshot = await prisma.reportSnapshot.create({
+        data: {
+          job_id: jobId,
+          scope: finalScope,
+          month: monthStr,
+          partner_id: partnerIdFinal || null,
+          venue_id: venueId || null,
+          status: 'PENDING',
+          created_by: admin?.id || partner?.id || supabaseUserId || null,
+          pdf_path: null,
+          png_path: null,
+          metrics_hash: metricsHash || null,
+        },
+      });
+    } catch (snapshotError: any) {
+      // If ReportSnapshot table doesn't exist, return error with instructions
+      if (snapshotError?.code === 'P2021') {
+        return apiResponse.error(res, 503, 'Database migrations not applied. Please run: npx prisma migrate deploy', {
+          error: 'ReportSnapshot table does not exist',
+          solution: 'Run database migrations: npx prisma migrate deploy',
+        });
+      }
+      throw snapshotError;
+    }
 
     // Generate PDF and PNG using Playwright
     try {
@@ -354,8 +375,13 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
           },
         });
       }
-    } catch (updateError) {
-      console.error('Failed to update snapshot status:', updateError);
+    } catch (updateError: any) {
+      // If table doesn't exist, just log the error
+      if (updateError?.code === 'P2021') {
+        console.error('ReportSnapshot table does not exist, cannot update status');
+      } else {
+        console.error('Failed to update snapshot status:', updateError);
+      }
     }
 
     return apiResponse.error(res, 500, 'Failed to create snapshot', error);
