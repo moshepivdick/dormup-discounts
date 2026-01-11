@@ -33,14 +33,24 @@ export function AdminVenuesPageClient({ slug }: AdminVenuesPageProps) {
   useEffect(() => {
     // Load venues
     fetch('/api/admin/venues')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          console.error('Failed to fetch venues:', res.status, res.statusText);
+          return { success: false, data: { venues: [] } };
+        }
+        return res.json();
+      })
       .then((data) => {
         if (data.success) {
           setVenues(data.data.venues || []);
+        } else {
+          console.error('Venues API error:', data.message);
+          setVenues([]);
         }
       })
       .catch((err) => {
         console.error('Error loading venues:', err);
+        setVenues([]);
       });
   }, []);
 
@@ -58,9 +68,15 @@ export function AdminVenuesPageClient({ slug }: AdminVenuesPageProps) {
       setForm({ name: '', city: '', category: '', discountText: '' });
       // Reload venues
       const reloadResponse = await fetch('/api/admin/venues');
-      const reloadData = await reloadResponse.json();
-      if (reloadData.success) {
-        setVenues(reloadData.data.venues || []);
+      if (reloadResponse.ok) {
+        const reloadData = await reloadResponse.json();
+        if (reloadData.success) {
+          setVenues(reloadData.data.venues || []);
+        } else {
+          console.error('Failed to reload venues:', reloadData.message);
+        }
+      } else {
+        console.error('Failed to reload venues:', reloadResponse.status, reloadResponse.statusText);
       }
     } else {
       setMessage(payload.message ?? 'Error');

@@ -67,6 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (error: any) {
       // Fallback to raw SQL if Prisma fails with P2022 (column not found)
       if (error?.code === 'P2022' && error?.meta?.column === 'Venue.avgStudentBill') {
+        console.error('Prisma error, using fallback:', error);
         const rawVenues = await prisma.$queryRaw<Array<{
           id: number;
           name: string;
@@ -92,7 +93,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         `;
         return apiResponse.success(res, { venues: rawVenues });
       }
-      throw error;
+      console.error('Error fetching venues:', error);
+      // Return empty array instead of throwing to prevent page crash
+      return apiResponse.success(res, { venues: [] });
     }
   }
 
