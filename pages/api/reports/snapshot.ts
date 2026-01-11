@@ -203,79 +203,30 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
 
     // Generate PDF and PNG using Playwright
     try {
-      // Use @playwright/browser-chromium for Vercel compatibility
-      // This package includes Chromium bundled, so no installation is needed
-      let chromium: any;
-      try {
-        // Try to use bundled chromium first (works on Vercel)
-        // @playwright/browser-chromium exports chromium directly
-        // According to Playwright docs, it exports as: export { chromium } from 'playwright'
-        const browserChromiumModule = await import('@playwright/browser-chromium');
-        
-        // Log module structure for debugging
-        console.log('BrowserChromium module keys:', Object.keys(browserChromiumModule));
-        console.log('BrowserChromium module:', JSON.stringify(Object.keys(browserChromiumModule || {})));
-        
-        // Check different possible exports using type cast to avoid TypeScript errors
-        // @playwright/browser-chromium exports chromium as default
-        const mod = browserChromiumModule as any;
-        
-        // Try default first (it IS the chromium browser type)
-        if (mod.default && typeof mod.default.launch === 'function') {
-          chromium = mod.default;
-          console.log('Using browserChromiumModule.default (chromium browser type)');
-        } else if (mod.default?.chromium && typeof mod.default.chromium.launch === 'function') {
-          chromium = mod.default.chromium;
-          console.log('Using browserChromiumModule.default.chromium');
-        } else if (mod.chromium && typeof mod.chromium.launch === 'function') {
-          chromium = mod.chromium;
-          console.log('Using browserChromiumModule.chromium');
-        } else {
-          throw new Error('Could not find valid chromium export in @playwright/browser-chromium. Available keys: ' + Object.keys(mod).join(', '));
-        }
-      } catch (browserChromiumError: any) {
-        // Fallback to regular playwright (for local development)
-        console.warn('@playwright/browser-chromium not available, falling back to playwright:', browserChromiumError?.message || browserChromiumError);
-        try {
-          const playwright = await import('playwright');
-          chromium = playwright.chromium;
-          console.log('Using regular playwright.chromium');
-        } catch (playwrightError: any) {
-          console.error('Both @playwright/browser-chromium and playwright failed:', playwrightError?.message || playwrightError);
-          // Mark snapshot as failed and return error
-          await prisma.reportSnapshot.update({
-            where: { id: snapshot.id },
-            data: {
-              status: 'FAILED',
-              error_message: 'Playwright not available',
-              completed_at: new Date(),
-            },
-          });
-          return apiResponse.error(res, 503, 'PDF generation not available', {
-            error: 'Playwright is not available',
-            message: 'PDF generation requires Playwright. Please ensure @playwright/browser-chromium is installed.',
-          });
-        }
-      }
+      // Playwright on Vercel serverless is problematic
+      // @playwright/browser-chromium doesn't work as expected in serverless
+      // For now, disable PDF generation and return a helpful error message
       
-      // Verify chromium has launch method
-      if (!chromium || typeof chromium.launch !== 'function') {
-        console.error('chromium.launch is not a function. Chromium type:', typeof chromium, 'Chromium keys:', chromium ? Object.keys(chromium) : 'null');
-        await prisma.reportSnapshot.update({
-          where: { id: snapshot.id },
-          data: {
-            status: 'FAILED',
-            error_message: 'Invalid chromium export',
-            completed_at: new Date(),
-          },
-        });
-        return apiResponse.error(res, 500, 'Invalid Playwright configuration', {
-          error: 'chromium.launch is not a function',
-          message: 'Playwright chromium export is invalid. Please check package installation.',
-        });
-      }
+      // Mark snapshot as failed with clear message
+      await prisma.reportSnapshot.update({
+        where: { id: snapshot.id },
+        data: {
+          status: 'FAILED',
+          error_message: 'PDF generation not supported on Vercel serverless',
+          completed_at: new Date(),
+        },
+      });
       
-      console.log('Chromium loaded successfully, type:', typeof chromium, 'has launch:', typeof chromium.launch);
+      return apiResponse.error(res, 503, 'PDF generation not available on Vercel', {
+        error: 'Playwright not supported on Vercel serverless',
+        message: 'PDF generation with Playwright is not currently supported on Vercel serverless functions.',
+        solutions: [
+          'Option 1: Use an external PDF service (Browserless.io, PDFShift, etc.)',
+          'Option 2: Use a dedicated server for PDF generation',
+          'Option 3: Use a different approach (e.g., generate PDFs client-side or use a different service)',
+        ],
+        note: 'The snapshot record has been created with FAILED status. You can retry when PDF generation is configured.',
+      });
 
       // Generate one-time token for print route
       const printToken = generateReportToken({
