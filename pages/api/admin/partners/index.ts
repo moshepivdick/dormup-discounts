@@ -86,7 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           FROM partners p
           LEFT JOIN venues v ON p."venueId" = v.id
         `;
-        const transformedPartners = rawPartners.map((p) => ({
+        const transformedPartners = rawPartners.map((p: { id: string; email: string; venueName: string | null }) => ({
           id: p.id,
           email: p.email,
           venueName: p.venueName || 'No venue',

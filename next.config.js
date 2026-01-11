@@ -4,8 +4,8 @@ const nextConfig = {
   images: {
     domains: ['lh3.googleusercontent.com'],
   },
-  // Exclude playwright packages from server-side bundling
-  serverExternalPackages: ['playwright', '@playwright/browser-chromium'],
+  // Note: serverExternalPackages is not available in Next.js 14.2
+  // Playwright is handled via webpack config below
   webpack: (config, { isServer }) => {
     // Exclude playwright from client-side bundle
     if (!isServer) {
