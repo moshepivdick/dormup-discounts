@@ -136,9 +136,24 @@ CREATE INDEX IF NOT EXISTS "ReportSnapshot_created_at_idx" ON "ReportSnapshot"("
 -- Foreign keys can be added manually later if needed
 
 -- Add indexes to existing tables for better query performance
-CREATE INDEX IF NOT EXISTS "idx_discount_uses_created_at" ON "discount_uses"("created_at");
-CREATE INDEX IF NOT EXISTS "idx_discount_uses_status_confirmed" ON "discount_uses"("status", "confirmed_at");
-CREATE INDEX IF NOT EXISTS "idx_venue_views_venue_created" ON "venue_views"("venue_id", "created_at");
+-- These indexes are optional and may already exist
+-- Skip if tables don't exist or have different names
+DO $$
+BEGIN
+    -- Try to create index on discount_uses if table exists
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND LOWER(table_name) = 'discount_uses') THEN
+        CREATE INDEX IF NOT EXISTS "idx_discount_uses_created_at" ON "discount_uses"("created_at");
+        CREATE INDEX IF NOT EXISTS "idx_discount_uses_status_confirmed" ON "discount_uses"("status", "confirmed_at");
+    END IF;
+    
+    -- Try to create index on venue_views if table exists
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND LOWER(table_name) = 'venue_views') THEN
+        CREATE INDEX IF NOT EXISTS "idx_venue_views_venue_created" ON "venue_views"("venue_id", "created_at");
+    END IF;
+EXCEPTION WHEN OTHERS THEN
+    -- If indexes fail, just continue - they're optional
+    RAISE NOTICE 'Could not create some indexes: %', SQLERRM;
+END $$;
 
 -- ============================================
 -- Migration 2: Add Snapshot Status Lifecycle
