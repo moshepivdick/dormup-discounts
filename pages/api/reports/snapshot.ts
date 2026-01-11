@@ -216,31 +216,22 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
         console.log('BrowserChromium module keys:', Object.keys(browserChromiumModule));
         console.log('BrowserChromium module:', JSON.stringify(Object.keys(browserChromiumModule || {})));
         
-        // Check different possible exports
-        // The package should export { chromium } directly
-        if (browserChromiumModule.chromium && typeof browserChromiumModule.chromium.launch === 'function') {
-          chromium = browserChromiumModule.chromium;
-          console.log('Using browserChromiumModule.chromium');
-        } else if (browserChromiumModule.default) {
-          // If there's a default export, check if it has chromium or is chromium itself
-          if (browserChromiumModule.default.chromium && typeof browserChromiumModule.default.chromium.launch === 'function') {
-            chromium = browserChromiumModule.default.chromium;
-            console.log('Using browserChromiumModule.default.chromium');
-          } else if (typeof browserChromiumModule.default.launch === 'function') {
-            chromium = browserChromiumModule.default;
-            console.log('Using browserChromiumModule.default');
-          }
-        }
+        // Check different possible exports using type cast to avoid TypeScript errors
+        // @playwright/browser-chromium exports chromium as default
+        const mod = browserChromiumModule as any;
         
-        // If still not found, try accessing as any
-        if (!chromium) {
-          const mod = browserChromiumModule as any;
-          if (mod.chromium && typeof mod.chromium.launch === 'function') {
-            chromium = mod.chromium;
-            console.log('Using mod.chromium (type cast)');
-          } else {
-            throw new Error('Could not find valid chromium export in @playwright/browser-chromium. Available keys: ' + Object.keys(mod).join(', '));
-          }
+        // Try default first (it IS the chromium browser type)
+        if (mod.default && typeof mod.default.launch === 'function') {
+          chromium = mod.default;
+          console.log('Using browserChromiumModule.default (chromium browser type)');
+        } else if (mod.default?.chromium && typeof mod.default.chromium.launch === 'function') {
+          chromium = mod.default.chromium;
+          console.log('Using browserChromiumModule.default.chromium');
+        } else if (mod.chromium && typeof mod.chromium.launch === 'function') {
+          chromium = mod.chromium;
+          console.log('Using browserChromiumModule.chromium');
+        } else {
+          throw new Error('Could not find valid chromium export in @playwright/browser-chromium. Available keys: ' + Object.keys(mod).join(', '));
         }
       } catch (browserChromiumError: any) {
         // Fallback to regular playwright (for local development)
