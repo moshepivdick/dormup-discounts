@@ -13,6 +13,8 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
   // Verify admin or partner - try both methods
   let admin = await auth.getAdminFromRequest(req);
   let partner = await auth.getPartnerFromRequest(req);
+  let isSupabaseAdmin = false;
+  let supabaseUserId: string | null = null;
 
   // If no admin/partner from cookies, try Supabase auth (for App Router)
   if (!admin && !partner) {
@@ -21,6 +23,7 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (!userError && user) {
+        supabaseUserId = user.id;
         // Check if user is admin in profiles
         const { data: profile } = await supabase
           .from('profiles')
@@ -29,7 +32,8 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
           .single();
         
         if (profile?.is_admin) {
-          // Find admin record by email or create a temporary admin object
+          isSupabaseAdmin = true;
+          // Try to find admin record by email, but don't require it
           const adminRecord = await prisma.admin.findFirst({
             where: { email: user.email || '' },
           });
@@ -43,7 +47,8 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
     }
   }
 
-  if (!admin && !partner) {
+  // Allow if admin (from cookie or Supabase), partner, or Supabase admin
+  if (!admin && !partner && !isSupabaseAdmin) {
     return apiResponse.error(res, 401, 'Unauthorized');
   }
 
@@ -71,12 +76,12 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
   }
 
   // Determine scope and venue
-  let finalScope: 'admin' | 'partner' = scope || (admin ? 'admin' : 'partner');
+  let finalScope: 'admin' | 'partner' = scope || ((admin || isSupabaseAdmin) ? 'admin' : 'partner');
   let venueId: number | undefined;
   let partnerIdFinal: string | undefined;
 
   if (finalScope === 'partner') {
-    if (admin && partnerId) {
+    if ((admin || isSupabaseAdmin) && partnerId) {
       // Admin requesting partner snapshot
       const requestedPartner = await prisma.partner.findUnique({
         where: { id: partnerId },
@@ -94,7 +99,7 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
     } else {
       return apiResponse.error(res, 400, 'partnerId required for partner scope');
     }
-  } else if (finalScope === 'admin' && !admin) {
+  } else if (finalScope === 'admin' && !admin && !isSupabaseAdmin) {
     return apiResponse.error(res, 403, 'Only admins can create admin snapshots');
   }
 
@@ -147,7 +152,7 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
         partner_id: partnerIdFinal || null,
         venue_id: venueId || null,
         status: 'PENDING',
-        created_by: admin?.id || partner?.id || null,
+        created_by: admin?.id || partner?.id || supabaseUserId || null,
         pdf_path: null,
         png_path: null,
         metrics_hash: metricsHash || null,
@@ -167,8 +172,8 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
         month: monthStr,
         partnerId: partnerIdFinal,
         venueId,
-        userId: admin?.id || partner?.id || '',
-        type: admin ? 'admin' : 'partner',
+        userId: admin?.id || partner?.id || supabaseUserId || '',
+        type: (admin || isSupabaseAdmin) ? 'admin' : 'partner',
       });
 
       // Get base URL for print route
