@@ -4,14 +4,44 @@ import { apiResponse, withMethods } from '@/lib/api';
 import { prisma } from '@/lib/prisma';
 import { parseMonth, getMonthBounds } from '@/lib/reports';
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { createClientFromRequest } from '@/lib/supabase/pages-router';
 import { generateReportToken, generateReportHash } from '@/lib/report-token';
 // Playwright will be imported dynamically to avoid build errors if not installed
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiResponse) => {
-  // Verify admin or partner
-  const admin = await auth.getAdminFromRequest(req);
-  const partner = await auth.getPartnerFromRequest(req);
+  // Verify admin or partner - try both methods
+  let admin = await auth.getAdminFromRequest(req);
+  let partner = await auth.getPartnerFromRequest(req);
+
+  // If no admin/partner from cookies, try Supabase auth (for App Router)
+  if (!admin && !partner) {
+    try {
+      const supabase = createClientFromRequest(req);
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (!userError && user) {
+        // Check if user is admin in profiles
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile?.is_admin) {
+          // Find admin record by email or create a temporary admin object
+          const adminRecord = await prisma.admin.findFirst({
+            where: { email: user.email || '' },
+          });
+          if (adminRecord) {
+            admin = adminRecord;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking Supabase auth:', error);
+    }
+  }
 
   if (!admin && !partner) {
     return apiResponse.error(res, 401, 'Unauthorized');

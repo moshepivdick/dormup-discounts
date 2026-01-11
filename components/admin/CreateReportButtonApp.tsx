@@ -31,17 +31,17 @@ export function CreateReportButtonApp() {
       const data = await response.json();
 
       if (data.success) {
-        setMessage({ type: 'success', text: 'Отчет создается. Перейдите на вкладку Reports для просмотра статуса.' });
+        setMessage({ type: 'success', text: 'Report is being generated. Navigate to the Reports tab to view status.' });
         // Optionally redirect to reports page after a short delay
         setTimeout(() => {
           router.push('/admin/reports?tab=snapshots');
         }, 2000);
       } else {
-        setMessage({ type: 'error', text: data.message || 'Ошибка при создании отчета' });
+        setMessage({ type: 'error', text: data.message || 'Error creating report' });
       }
     } catch (error) {
       console.error('Error creating report:', error);
-      setMessage({ type: 'error', text: 'Произошла ошибка при создании отчета' });
+      setMessage({ type: 'error', text: 'An error occurred while creating the report' });
     } finally {
       setLoading(false);
     }
@@ -51,9 +51,9 @@ export function CreateReportButtonApp() {
     <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-white">Создать отчет</h3>
+          <h3 className="text-lg font-semibold text-white">Create Report</h3>
           <p className="mt-1 text-sm text-white/70">
-            Сгенерировать PDF и PNG отчет за текущий месяц
+            Generate PDF and PNG report for the current month
           </p>
         </div>
         <button
@@ -61,7 +61,7 @@ export function CreateReportButtonApp() {
           disabled={loading}
           className="rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:bg-emerald-800 disabled:cursor-not-allowed"
         >
-          {loading ? 'Создание...' : 'Создать отчет'}
+          {loading ? 'Generating...' : 'Create Report'}
         </button>
       </div>
       {message && (
