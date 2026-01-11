@@ -1,5 +1,5 @@
 {
-  "buildCommand": "prisma generate && npx playwright install chromium || true && next build",
+  "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "framework": "nextjs",
   "functions": {

@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && npx playwright install chromium || true && next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
@@ -31,6 +31,7 @@
     "lru-cache": "^11.2.2",
     "next": "^14.2.5",
     "playwright": "^1.48.0",
+    "@playwright/browser-chromium": "^1.48.0",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^18.3.1",

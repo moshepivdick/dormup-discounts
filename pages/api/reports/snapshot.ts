@@ -203,33 +203,18 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
 
     // Generate PDF and PNG using Playwright
     try {
-      // Dynamic import to avoid build errors if Playwright isn't installed
-      // @ts-ignore - Playwright types may not be available during build
-      const playwright = await import('playwright');
-      const { chromium } = playwright;
-      
-      // Check if we're on Vercel and handle Playwright installation
-      if (process.env.VERCEL) {
-        // On Vercel, try to use system chromium or fallback
-        try {
-          await chromium.launch({ headless: true });
-        } catch (launchError: any) {
-          // If chromium is not available, return error with instructions
-          console.error('Playwright chromium not available on Vercel:', launchError);
-          await prisma.reportSnapshot.update({
-            where: { id: snapshot.id },
-            data: {
-              status: 'FAILED',
-              error_message: 'Playwright not configured on Vercel. See docs/reports.md',
-              completed_at: new Date(),
-            },
-          });
-          return apiResponse.error(res, 503, 'PDF generation not available on this server', {
-            error: 'Playwright chromium not installed',
-            message: 'PDF generation requires Playwright to be installed. On Vercel, this needs to be configured in build settings.',
-            solution: 'Add "npx playwright install chromium" to build command or use @playwright/browser-chromium package',
-          });
-        }
+      // Use @playwright/browser-chromium for Vercel compatibility
+      // This package includes Chromium bundled, so no installation is needed
+      let chromium: any;
+      try {
+        // Try to use bundled chromium first (works on Vercel)
+        const browserChromium = await import('@playwright/browser-chromium');
+        chromium = browserChromium.chromium;
+      } catch (browserChromiumError) {
+        // Fallback to regular playwright (for local development)
+        console.warn('@playwright/browser-chromium not available, falling back to playwright');
+        const playwright = await import('playwright');
+        chromium = playwright.chromium;
       }
 
       // Generate one-time token for print route
