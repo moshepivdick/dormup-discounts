@@ -170,13 +170,34 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
         },
       });
     } catch (snapshotError: any) {
-      // If ReportSnapshot table doesn't exist, return error with instructions
+      // If ReportSnapshot table doesn't exist, return error with clear instructions
       if (snapshotError?.code === 'P2021') {
-        return apiResponse.error(res, 503, 'Database migrations not applied. Please run: npx prisma migrate deploy', {
+        console.error('ReportSnapshot table does not exist. Migrations need to be applied.');
+        return apiResponse.error(res, 503, 'Database migrations not applied', {
           error: 'ReportSnapshot table does not exist',
-          solution: 'Run database migrations: npx prisma migrate deploy',
+          message: 'Please apply database migrations to enable report creation.',
+          instructions: {
+            method1: {
+              title: 'Via Supabase Dashboard (Recommended)',
+              steps: [
+                '1. Open Supabase Dashboard → SQL Editor',
+                '2. Open file: APPLY_REPORTING_MIGRATIONS.sql',
+                '3. Copy and paste all SQL into SQL Editor',
+                '4. Click Run to execute',
+              ],
+            },
+            method2: {
+              title: 'Via Prisma CLI',
+              steps: [
+                '1. Ensure DATABASE_URL is set in environment',
+                '2. Run: npx prisma migrate deploy',
+              ],
+            },
+          },
+          file: 'See APPLY_REPORTING_MIGRATIONS.sql in repository root',
         });
       }
+      console.error('Error creating snapshot record:', snapshotError);
       throw snapshotError;
     }
 
