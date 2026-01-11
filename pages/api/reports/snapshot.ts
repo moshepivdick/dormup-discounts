@@ -208,23 +208,38 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
       let chromium: any;
       try {
         // Try to use bundled chromium first (works on Vercel)
-        // @playwright/browser-chromium exports chromium as a named export
+        // @playwright/browser-chromium exports chromium directly
+        // According to Playwright docs, it exports as: export { chromium } from 'playwright'
         const browserChromiumModule = await import('@playwright/browser-chromium');
         
+        // Log module structure for debugging
+        console.log('BrowserChromium module keys:', Object.keys(browserChromiumModule));
+        console.log('BrowserChromium module:', JSON.stringify(Object.keys(browserChromiumModule || {})));
+        
         // Check different possible exports
+        // The package should export { chromium } directly
         if (browserChromiumModule.chromium && typeof browserChromiumModule.chromium.launch === 'function') {
           chromium = browserChromiumModule.chromium;
-        } else if (browserChromiumModule.default?.chromium && typeof browserChromiumModule.default.chromium.launch === 'function') {
-          chromium = browserChromiumModule.default.chromium;
-        } else if (browserChromiumModule.default && typeof browserChromiumModule.default.launch === 'function') {
-          chromium = browserChromiumModule.default;
-        } else {
-          // Try accessing the module differently
+          console.log('Using browserChromiumModule.chromium');
+        } else if (browserChromiumModule.default) {
+          // If there's a default export, check if it has chromium or is chromium itself
+          if (browserChromiumModule.default.chromium && typeof browserChromiumModule.default.chromium.launch === 'function') {
+            chromium = browserChromiumModule.default.chromium;
+            console.log('Using browserChromiumModule.default.chromium');
+          } else if (typeof browserChromiumModule.default.launch === 'function') {
+            chromium = browserChromiumModule.default;
+            console.log('Using browserChromiumModule.default');
+          }
+        }
+        
+        // If still not found, try accessing as any
+        if (!chromium) {
           const mod = browserChromiumModule as any;
-          if (mod.chromium) {
+          if (mod.chromium && typeof mod.chromium.launch === 'function') {
             chromium = mod.chromium;
+            console.log('Using mod.chromium (type cast)');
           } else {
-            throw new Error('Could not find valid chromium export in @playwright/browser-chromium');
+            throw new Error('Could not find valid chromium export in @playwright/browser-chromium. Available keys: ' + Object.keys(mod).join(', '));
           }
         }
       } catch (browserChromiumError: any) {
@@ -233,6 +248,7 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
         try {
           const playwright = await import('playwright');
           chromium = playwright.chromium;
+          console.log('Using regular playwright.chromium');
         } catch (playwrightError: any) {
           console.error('Both @playwright/browser-chromium and playwright failed:', playwrightError?.message || playwrightError);
           // Mark snapshot as failed and return error
@@ -253,7 +269,7 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
       
       // Verify chromium has launch method
       if (!chromium || typeof chromium.launch !== 'function') {
-        console.error('chromium.launch is not a function. Chromium object:', chromium);
+        console.error('chromium.launch is not a function. Chromium type:', typeof chromium, 'Chromium keys:', chromium ? Object.keys(chromium) : 'null');
         await prisma.reportSnapshot.update({
           where: { id: snapshot.id },
           data: {
@@ -267,6 +283,8 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
           message: 'Playwright chromium export is invalid. Please check package installation.',
         });
       }
+      
+      console.log('Chromium loaded successfully, type:', typeof chromium, 'has launch:', typeof chromium.launch);
 
       // Generate one-time token for print route
       const printToken = generateReportToken({
