@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { GetServerSideProps } from 'next';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { StatsCard } from '@/components/admin/StatsCard';
+import { CreateReportButton } from '@/components/admin/CreateReportButton';
 import { SimpleChart } from '@/components/charts/SimpleBarChart';
 import { getDiscountsByDay, getDiscountsByVenue, getOverviewStats } from '@/lib/stats';
 import { requireAdmin } from '@/lib/guards';
@@ -41,6 +42,7 @@ export default function AdminDashboard({ overview, byVenue, daily }: DashboardPr
           />
         </div>
       </div>
+      <CreateReportButton />
     </div>
   );
 }

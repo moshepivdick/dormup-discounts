@@ -89,24 +89,33 @@ export const getServerSideProps = (async (ctx) => {
     return guard;
   }
 
-  const venues = await prisma.venue.findMany({
-    orderBy: { createdAt: 'desc' },
-  });
+  try {
+    const venues = await prisma.venue.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
 
-  return {
-    props: {
-      venues: venues.map((venue) => ({
-        id: venue.id,
-        name: venue.name,
-        city: venue.city,
-        category: venue.category,
-        discountText: venue.discountText,
-        isActive: venue.isActive,
-        details: venue.details,
-        openingHours: venue.openingHours,
-        mapUrl: venue.mapUrl,
-      })),
-    },
-  };
+    return {
+      props: {
+        venues: venues.map((venue) => ({
+          id: venue.id,
+          name: venue.name,
+          city: venue.city,
+          category: venue.category,
+          discountText: venue.discountText,
+          isActive: venue.isActive,
+          details: venue.details,
+          openingHours: venue.openingHours,
+          mapUrl: venue.mapUrl,
+        })),
+      },
+    };
+  } catch (error) {
+    console.error('Error loading venues:', error);
+    return {
+      props: {
+        venues: [],
+      },
+    };
+  }
 }) as GetServerSideProps<AdminVenuesProps>;
 

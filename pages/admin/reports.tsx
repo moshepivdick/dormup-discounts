@@ -1,5 +1,6 @@
 import type { GetServerSideProps } from 'next';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { requireAdmin } from '@/lib/guards';
 import { auth } from '@/lib/auth';
@@ -11,7 +12,12 @@ type ReportsPageProps = {
 };
 
 export default function ReportsPage({ currentMonth, partners }: ReportsPageProps) {
-  const [activeTab, setActiveTab] = useState<'admin' | 'partner' | 'exports' | 'snapshots'>('admin');
+  const router = useRouter();
+  const tabFromQuery = router.query.tab as string;
+  const initialTab = (tabFromQuery && ['admin', 'partner', 'exports', 'snapshots'].includes(tabFromQuery))
+    ? (tabFromQuery as 'admin' | 'partner' | 'exports' | 'snapshots')
+    : 'admin';
+  const [activeTab, setActiveTab] = useState<'admin' | 'partner' | 'exports' | 'snapshots'>(initialTab);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedPartnerId, setSelectedPartnerId] = useState<string>('');
   const [loading, setLoading] = useState(false);

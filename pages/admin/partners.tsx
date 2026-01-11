@@ -103,68 +103,46 @@ export const getServerSideProps = (async (ctx) => {
     return guard;
   }
 
-  const [partners, venues] = await Promise.all([
-    prisma.partner.findMany({
-      include: {
-        venue: {
-          select: {
-            id: true,
-            name: true,
-            city: true,
-            category: true,
-            discountText: true,
-            details: true,
-            openingHours: true,
-            openingHoursShort: true,
-            mapUrl: true,
-            latitude: true,
-            longitude: true,
-            imageUrl: true,
-            thumbnailUrl: true,
-            isActive: true,
-            createdAt: true,
-            updatedAt: true,
-            phone: true,
-            // Explicitly exclude avgStudentBill to avoid P2022 error if column doesn't exist
+  try {
+    const [partners, venues] = await Promise.all([
+      prisma.partner.findMany({
+        include: {
+          venue: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.venue.findMany({
-      select: {
-        id: true,
-        name: true,
-        city: true,
-        category: true,
-        discountText: true,
-        details: true,
-        openingHours: true,
-        openingHoursShort: true,
-        mapUrl: true,
-        latitude: true,
-        longitude: true,
-        imageUrl: true,
-        thumbnailUrl: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-        phone: true,
-        // Explicitly exclude avgStudentBill
-      },
-      orderBy: { name: 'asc' },
-    }),
-  ]);
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.venue.findMany({
+        select: {
+          id: true,
+          name: true,
+        },
+        orderBy: { name: 'asc' },
+      }),
+    ]);
 
-  return {
-    props: {
-      partners: partners.map((partner) => ({
-        id: partner.id,
-        email: partner.email,
-        venueName: partner.venue?.name ?? 'Unassigned',
-      })),
-      venues: venues.map((venue) => ({ id: venue.id, name: venue.name })),
-    },
-  };
+    return {
+      props: {
+        partners: partners.map((partner) => ({
+          id: partner.id,
+          email: partner.email,
+          venueName: partner.venue?.name ?? 'Unassigned',
+        })),
+        venues: venues.map((venue) => ({ id: venue.id, name: venue.name })),
+      },
+    };
+  } catch (error) {
+    console.error('Error loading partners/venues:', error);
+    return {
+      props: {
+        partners: [],
+        venues: [],
+      },
+    };
+  }
 }) as GetServerSideProps<AdminPartnersProps>;
 
