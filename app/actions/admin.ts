@@ -33,20 +33,39 @@ export async function verifyAdminPassword(password: string): Promise<{
     }
 
     // Verify password against hash
-    let passwordHash: string;
+    let passwordHash: string | undefined;
     try {
-      // Try to get hash directly from process.env as fallback
-      passwordHash = process.env.ADMIN_PANEL_PASSWORD_HASH?.trim() || env.adminPanelPasswordHash();
+      // Try to get hash directly from process.env first
+      const envHash = process.env.ADMIN_PANEL_PASSWORD_HASH?.trim();
+      if (envHash && envHash.length > 0) {
+        passwordHash = envHash;
+      } else {
+        // Fallback to env helper
+        passwordHash = env.adminPanelPasswordHash();
+      }
     } catch (error: any) {
       console.error('Error getting password hash from env:', error.message);
       // Try direct access as last resort
       const directHash = process.env.ADMIN_PANEL_PASSWORD_HASH?.trim();
-      if (directHash) {
+      if (directHash && directHash.length > 0) {
         console.log('Using direct process.env access for password hash');
         passwordHash = directHash;
       } else {
-        return { success: false, error: 'Server configuration error' };
+        console.error('ADMIN_PANEL_PASSWORD_HASH is not set or is empty');
+        return { 
+          success: false, 
+          error: 'Server configuration error: ADMIN_PANEL_PASSWORD_HASH is not configured. Please set it in your .env.local file.' 
+        };
       }
+    }
+    
+    // Check if hash exists and is not empty
+    if (!passwordHash || passwordHash.length === 0) {
+      console.error('ADMIN_PANEL_PASSWORD_HASH is empty or undefined');
+      return { 
+        success: false, 
+        error: 'Server configuration error: ADMIN_PANEL_PASSWORD_HASH is empty. Please generate a hash using: npm run generate-admin-hash <password>' 
+      };
     }
     
     // Debug logging
@@ -60,8 +79,11 @@ export async function verifyAdminPassword(password: string): Promise<{
     // Check if hash is valid (bcrypt hashes are always 60 characters)
     if (passwordHash.length !== 60) {
       console.error('Invalid hash length:', passwordHash.length, 'Expected: 60');
-      console.error('Hash value:', passwordHash);
-      return { success: false, error: 'Invalid password configuration' };
+      console.error('Hash value (first 30 chars):', passwordHash.substring(0, 30));
+      return { 
+        success: false, 
+        error: `Invalid password configuration: hash length is ${passwordHash.length}, expected 60. Please regenerate the hash using: npm run generate-admin-hash <password>` 
+      };
     }
     
     // Trim any whitespace that might have been added

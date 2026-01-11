@@ -11,7 +11,7 @@ datasource db {
 }
 
 model Venue {
-  id                Int           @id @default(autoincrement())
+  id                Int                     @id @default(autoincrement())
   name              String
   city              String
   category          String
@@ -24,14 +24,17 @@ model Venue {
   longitude         Float
   imageUrl          String?
   thumbnailUrl      String?
-  isActive          Boolean       @default(true)
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  isActive          Boolean                 @default(true)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
   phone             String?
   avgStudentBill    Float?
   discountUses      DiscountUse[]
   partner           Partner?
   views             VenueView[]
+  dailyMetrics      DailyPartnerMetrics[]
+  monthlyMetrics    MonthlyPartnerMetrics[]
+  reportSnapshots   ReportSnapshot[]
 
   @@index([city])
   @@index([category])
@@ -53,18 +56,23 @@ model DiscountUse {
 
   @@index([user_id], map: "idx_discount_uses_user_id")
   @@index([venueId, user_id], map: "idx_discount_uses_venue_user")
+  @@index([createdAt], map: "idx_discount_uses_created_at")
+  @@index([status, confirmedAt], map: "idx_discount_uses_status_confirmed")
   @@schema("public")
 }
 
 model Partner {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  passwordHash String
-  venueId      Int       @unique
-  createdAt    DateTime  @default(now())
-  lastLoginAt  DateTime?
-  isActive     Boolean   @default(true)
-  venue        Venue     @relation(fields: [venueId], references: [id])
+  id              String                  @id @default(uuid())
+  email           String                  @unique
+  passwordHash    String
+  venueId         Int                     @unique
+  createdAt       DateTime                @default(now())
+  lastLoginAt     DateTime?
+  isActive        Boolean                 @default(true)
+  venue           Venue                   @relation(fields: [venueId], references: [id])
+  dailyMetrics    DailyPartnerMetrics[]
+  monthlyMetrics  MonthlyPartnerMetrics[]
+  reportSnapshots ReportSnapshot[]
 
   @@schema("public")
 }
@@ -95,6 +103,7 @@ model VenueView {
   @@index([user_id], map: "idx_venue_views_user_id")
   @@index([venueId, user_id], map: "idx_venue_views_venue_user")
   @@index([dedupe_key], map: "idx_venue_views_dedupe_key")
+  @@index([venueId, createdAt], map: "idx_venue_views_venue_created")
   @@schema("public")
 }
 
@@ -580,6 +589,101 @@ model user_stats {
   updated_at                 DateTime  @default(now()) @db.Timestamptz(6)
   profiles                   Profile   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@schema("public")
+}
+
+// Daily metrics per partner (venue)
+model DailyPartnerMetrics {
+  id              Int      @id @default(autoincrement())
+  partner_id      String?  @db.Uuid
+  venue_id        Int
+  period_date     DateTime @db.Date
+  page_views      Int      @default(0)
+  qr_generated    Int      @default(0)
+  qr_redeemed     Int      @default(0)
+  unique_users    Int      @default(0)
+  conversion_rate Float    @default(0)
+  repeat_users    Int      @default(0)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @updatedAt @db.Timestamptz(6)
+  venue           Venue    @relation(fields: [venue_id], references: [id], onDelete: Cascade)
+  partner         Partner? @relation(fields: [partner_id], references: [id], onDelete: SetNull)
+
+  @@unique([venue_id, period_date])
+  @@index([partner_id, period_date])
+  @@index([venue_id, period_date])
+  @@index([period_date])
+  @@schema("public")
+}
+
+// Monthly metrics per partner (venue)
+model MonthlyPartnerMetrics {
+  id              Int      @id @default(autoincrement())
+  partner_id      String?  @db.Uuid
+  venue_id        Int
+  period_start    DateTime @db.Date
+  period_end      DateTime @db.Date
+  page_views      Int      @default(0)
+  qr_generated    Int      @default(0)
+  qr_redeemed     Int      @default(0)
+  unique_users    Int      @default(0)
+  conversion_rate Float    @default(0)
+  repeat_users    Int      @default(0)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @updatedAt @db.Timestamptz(6)
+  venue           Venue    @relation(fields: [venue_id], references: [id], onDelete: Cascade)
+  partner         Partner? @relation(fields: [partner_id], references: [id], onDelete: SetNull)
+
+  @@unique([venue_id, period_start])
+  @@index([partner_id, period_start])
+  @@index([venue_id, period_start])
+  @@index([period_start])
+  @@schema("public")
+}
+
+// Monthly global metrics (all partners combined)
+model MonthlyGlobalMetrics {
+  id              Int      @id @default(autoincrement())
+  period_start    DateTime @db.Date
+  period_end      DateTime @db.Date
+  total_partners  Int      @default(0)
+  page_views      Int      @default(0)
+  qr_generated    Int      @default(0)
+  qr_redeemed     Int      @default(0)
+  unique_users    Int      @default(0)
+  conversion_rate Float    @default(0)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @updatedAt @db.Timestamptz(6)
+
+  @@unique([period_start])
+  @@index([period_start])
+  @@schema("public")
+}
+
+// Report snapshots (PDF/PNG storage metadata)
+model ReportSnapshot {
+  id            String    @id @default(uuid())
+  job_id        String    @unique // Correlation ID for UI polling
+  scope         String // "admin" | "partner"
+  month         String // "YYYY-MM"
+  partner_id    String?   @db.Uuid
+  venue_id      Int?
+  status        String    @default("PENDING") // "PENDING" | "READY" | "FAILED"
+  created_at    DateTime  @default(now()) @db.Timestamptz(6)
+  completed_at  DateTime? @db.Timestamptz(6)
+  created_by    String?   @db.Uuid // Admin or Partner ID
+  pdf_path      String?
+  png_path      String?
+  metrics_hash  String? // Hash of metrics to detect changes
+  error_message String? // Short error message if status=FAILED
+  partner       Partner?  @relation(fields: [partner_id], references: [id], onDelete: SetNull)
+  venue         Venue?    @relation(fields: [venue_id], references: [id], onDelete: SetNull)
+
+  @@index([scope, month])
+  @@index([partner_id, month])
+  @@index([created_at])
+  @@index([status, created_at])
+  @@index([month, scope])
   @@schema("public")
 }
 

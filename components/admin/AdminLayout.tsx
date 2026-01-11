@@ -9,6 +9,7 @@ const navLinks = [
   { href: '/admin/venues', label: 'Venues' },
   { href: '/admin/partners', label: 'Partners' },
   { href: '/admin/discount-uses', label: 'Discounts' },
+  { href: '/admin/reports', label: 'Reports' },
 ];
 
 type Props = {
