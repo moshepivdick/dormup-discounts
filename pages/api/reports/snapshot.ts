@@ -203,30 +203,22 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
 
     // Generate PDF and PNG using Playwright
     try {
-      // Playwright on Vercel serverless is problematic
-      // @playwright/browser-chromium doesn't work as expected in serverless
-      // For now, disable PDF generation and return a helpful error message
-      
-      // Mark snapshot as failed with clear message
-      await prisma.reportSnapshot.update({
-        where: { id: snapshot.id },
-        data: {
-          status: 'FAILED',
-          error_message: 'PDF generation not supported on Vercel serverless',
-          completed_at: new Date(),
-        },
-      });
-      
-      return apiResponse.error(res, 503, 'PDF generation not available on Vercel', {
-        error: 'Playwright not supported on Vercel serverless',
-        message: 'PDF generation with Playwright is not currently supported on Vercel serverless functions.',
-        solutions: [
-          'Option 1: Use an external PDF service (Browserless.io, PDFShift, etc.)',
-          'Option 2: Use a dedicated server for PDF generation',
-          'Option 3: Use a different approach (e.g., generate PDFs client-side or use a different service)',
-        ],
-        note: 'The snapshot record has been created with FAILED status. You can retry when PDF generation is configured.',
-      });
+      // Use Browserless.io for PDF generation (works on Vercel)
+      const browserlessToken = process.env.BROWSERLESS_API_TOKEN;
+      if (!browserlessToken) {
+        await prisma.reportSnapshot.update({
+          where: { id: snapshot.id },
+          data: {
+            status: 'FAILED',
+            error_message: 'BROWSERLESS_API_TOKEN not configured',
+            completed_at: new Date(),
+          },
+        });
+        return apiResponse.error(res, 503, 'PDF generation not configured', {
+          error: 'BROWSERLESS_API_TOKEN environment variable is not set',
+          message: 'Please set BROWSERLESS_API_TOKEN in Vercel environment variables.',
+        });
+      }
 
       // Generate one-time token for print route
       const printToken = generateReportToken({
@@ -248,56 +240,59 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
         printUrl += `&partnerId=${partnerIdFinal}`;
       }
 
-      // Launch Playwright (headless)
-      // Use additional args for Vercel/serverless compatibility
-      const browser = await chromium.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--single-process', // Required for Vercel/serverless
-        ],
-      });
-
-      const context = await browser.newContext();
-      const page = await context.newPage();
-
-      // Set viewport for consistent rendering
-      await page.setViewportSize({ width: 1200, height: 800 });
-
-      // Navigate to print route
-      await page.goto(printUrl, {
-        waitUntil: 'networkidle',
-        timeout: 30000,
-      });
-
-      // Wait for fonts and content to be ready
-      await page.waitForLoadState('networkidle');
-      await page.evaluate(() => document.fonts && document.fonts.ready);
-
-      // Generate PDF (A4 format, print background)
-      const pdfBuffer = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        margin: {
-          top: '1cm',
-          right: '1cm',
-          bottom: '1cm',
-          left: '1cm',
+      // Generate PDF using Browserless.io
+      const pdfResponse = await fetch(`https://chrome.browserless.io/pdf?token=${browserlessToken}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          url: printUrl,
+          options: {
+            format: 'A4',
+            printBackground: true,
+            margin: {
+              top: '1cm',
+              right: '1cm',
+              bottom: '1cm',
+              left: '1cm',
+            },
+          },
+        }),
       });
 
-      // Generate PNG thumbnail (full page screenshot)
-      const pngBuffer = await page.screenshot({
-        type: 'png',
-        fullPage: true,
+      if (!pdfResponse.ok) {
+        const errorText = await pdfResponse.text();
+        throw new Error(`Browserless PDF generation failed: ${pdfResponse.status} ${errorText}`);
+      }
+
+      const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
+
+      // Generate PNG thumbnail using Browserless.io screenshot
+      const pngResponse = await fetch(`https://chrome.browserless.io/screenshot?token=${browserlessToken}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: printUrl,
+          options: {
+            fullPage: true,
+            type: 'png',
+          },
+          viewport: {
+            width: 1200,
+            height: 800,
+          },
+        }),
       });
 
-      await browser.close();
+      if (!pngResponse.ok) {
+        const errorText = await pngResponse.text();
+        throw new Error(`Browserless PNG generation failed: ${pngResponse.status} ${errorText}`);
+      }
+
+      const pngBuffer = Buffer.from(await pngResponse.arrayBuffer());
 
       // Upload to Supabase Storage
       const supabase = createServiceRoleClient();
