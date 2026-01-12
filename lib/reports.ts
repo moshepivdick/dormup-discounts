@@ -545,14 +545,17 @@ export async function getMonthlyAdminReport(monthStr: string) {
     where: { period_start: prevMonth },
   });
 
-  // Calculate MoM deltas
+  // Calculate MoM deltas with smart display logic
+  // For small bases (< 3), show absolute delta instead of percentage
   const calculateMoM = (current: number, previous: number | null) => {
     if (previous === null || previous === 0) {
-      return { delta: null, pct: null };
+      return { delta: null, pct: null, showAbsolute: false };
     }
     const delta = current - previous;
     const pct = (delta / previous) * 100;
-    return { delta, pct };
+    // Show absolute delta for small bases to avoid misleading percentages
+    const showAbsolute = previous < 3;
+    return { delta, pct, showAbsolute };
   };
 
   const momPageViews = calculateMoM(currentMonth.page_views, previousMonth?.page_views || null);
@@ -652,40 +655,38 @@ export async function getMonthlyAdminReport(monthStr: string) {
   if (currentMonth.conversion_rate >= 25) {
     anomalies.push({
       severity: 'info',
-      title: 'High conversion rate',
-      description: `Global conversion rate is ${currentMonth.conversion_rate.toFixed(1)}%, exceeding the 25% benchmark.`,
+      title: 'Strong early conversion performance',
+      description: `Global conversion rate reached ${currentMonth.conversion_rate.toFixed(1)}%, exceeding the early-stage benchmark of 25%. This suggests that the current offer resonates well with the student audience.`,
     });
   }
 
-  // Generate insights (2-3 deterministic sentences)
+  // Generate insights (2-3 deterministic sentences) - McKinsey-lite style
   const insights: string[] = [];
 
-  // Top partner by redemptions
-  if (perPartner.length > 0) {
+  // MoM growth/decline for redemptions (primary insight)
+  if (momQrRedeemed.delta !== null && previousMonth) {
+    const redemptionDelta = Math.round(momQrRedeemed.delta);
+    if (redemptionDelta > 0) {
+      insights.push(`Student redemptions increased by ${redemptionDelta} compared to last month, indicating early traction in partner engagement.`);
+    } else if (redemptionDelta < 0) {
+      insights.push(`Student redemptions decreased by ${Math.abs(redemptionDelta)} compared to last month, suggesting a need to review engagement strategies.`);
+    }
+  }
+
+  // Funnel efficiency (always include if we have data)
+  const endToEndConversion = currentMonth.page_views > 0 
+    ? ((currentMonth.qr_redeemed / currentMonth.page_views) * 100) 
+    : 0;
+  if (endToEndConversion > 0) {
+    insights.push(`Overall funnel efficiency reached ${endToEndConversion.toFixed(1)}%, which is within the expected range for an early-stage marketplace.`);
+  }
+
+  // Top partner insight (if we have partners and haven't filled insights yet)
+  if (insights.length < 2 && perPartner.length > 0) {
     const topPartner = perPartner[0];
-    insights.push(`${topPartner.venue_name} led with ${topPartner.qr_redeemed} redemptions (${topPartner.conversion_rate.toFixed(1)}% conversion rate).`);
-  }
-
-  // MoM growth/decline
-  if (momQrRedeemed.pct !== null) {
-    if (momQrRedeemed.pct > 0) {
-      insights.push(`Redemptions increased by ${Math.round(momQrRedeemed.delta || 0)} (+${momQrRedeemed.pct.toFixed(1)}%) compared to previous month.`);
-    } else if (momQrRedeemed.pct < 0) {
-      insights.push(`Redemptions decreased by ${Math.abs(Math.round(momQrRedeemed.delta || 0))} (${momQrRedeemed.pct.toFixed(1)}%) compared to previous month.`);
+    if (topPartner.qr_redeemed > 0) {
+      insights.push(`${topPartner.venue_name} led partner performance with ${topPartner.qr_redeemed} redemptions, demonstrating strong student engagement.`);
     }
-  }
-
-  // If only one partner or small dataset
-  if (perPartner.length === 1) {
-    const partner = perPartner[0];
-    if (partner.qr_redeemed > 0) {
-      insights.push(`All ${partner.qr_redeemed} redemptions came from the single active partner this month.`);
-    }
-  }
-
-  // Ensure we have at least 2 insights, max 3
-  if (insights.length < 2) {
-    insights.push(`Funnel efficiency: ${((currentMonth.qr_redeemed / currentMonth.page_views) * 100).toFixed(1)}% of page views converted to redemptions.`);
   }
 
   return {

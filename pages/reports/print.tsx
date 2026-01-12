@@ -64,42 +64,57 @@ export default function PrintReportPage({ scope, month, reportData, venueName }:
                 <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4" style={{ breakInside: 'avoid' }}>
                   <p className="text-sm font-medium text-gray-600">Total Partners</p>
                   <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.currentMonth?.total_partners || reportData.global.total_partners}</p>
-                  {reportData.currentMonth?.mom?.page_views && reportData.currentMonth.mom.page_views.pct !== null && (
+                  {reportData.currentMonth?.mom?.page_views && reportData.previousMonth && (
                     <p className="mt-1 text-xs text-gray-500">
-                      {reportData.currentMonth.mom.page_views.pct > 0 ? '+' : ''}
-                      {reportData.currentMonth.mom.page_views.pct.toFixed(1)}% vs last month
+                      {(() => {
+                        const prev = reportData.previousMonth.total_partners;
+                        const curr = reportData.currentMonth?.total_partners || reportData.global.total_partners;
+                        const delta = curr - prev;
+                        if (prev < 3 && delta !== 0) {
+                          return `${delta > 0 ? '+' : ''}${delta} vs last month`;
+                        } else if (prev >= 3 && reportData.currentMonth.mom.page_views.pct !== null) {
+                          return `${reportData.currentMonth.mom.page_views.pct > 0 ? '+' : ''}${reportData.currentMonth.mom.page_views.pct.toFixed(1)}% vs last month`;
+                        }
+                        return '—';
+                      })()}
                     </p>
                   )}
                 </div>
                 <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4" style={{ breakInside: 'avoid' }}>
                   <p className="text-sm font-medium text-gray-600">Page Views</p>
                   <p className="mt-1 text-3xl font-bold text-gray-900">{(reportData.currentMonth?.page_views || reportData.global.page_views).toLocaleString()}</p>
-                  {reportData.currentMonth?.mom?.page_views && (
+                  {reportData.currentMonth?.mom?.page_views && reportData.previousMonth && (
                     <p className="mt-1 text-xs text-gray-500">
-                      {reportData.currentMonth.mom.page_views.pct !== null ? (
-                        <>
-                          {reportData.currentMonth.mom.page_views.pct > 0 ? '+' : ''}
-                          {reportData.currentMonth.mom.page_views.pct.toFixed(1)}% vs last month
-                        </>
-                      ) : (
-                        '—'
-                      )}
+                      {(() => {
+                        const prev = reportData.previousMonth.page_views;
+                        const curr = reportData.currentMonth?.page_views || reportData.global.page_views;
+                        const delta = curr - prev;
+                        if (prev < 3 && delta !== 0) {
+                          return `${delta > 0 ? '+' : ''}${delta} vs last month`;
+                        } else if (prev >= 3 && reportData.currentMonth.mom.page_views.pct !== null) {
+                          return `${reportData.currentMonth.mom.page_views.pct > 0 ? '+' : ''}${reportData.currentMonth.mom.page_views.pct.toFixed(1)}% vs last month`;
+                        }
+                        return '—';
+                      })()}
                     </p>
                   )}
                 </div>
                 <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4" style={{ breakInside: 'avoid' }}>
                   <p className="text-sm font-medium text-gray-600">QR Redeemed</p>
                   <p className="mt-1 text-3xl font-bold text-gray-900">{(reportData.currentMonth?.qr_redeemed || reportData.global.qr_redeemed).toLocaleString()}</p>
-                  {reportData.currentMonth?.mom?.qr_redeemed && (
+                  {reportData.currentMonth?.mom?.qr_redeemed && reportData.previousMonth && (
                     <p className="mt-1 text-xs text-gray-500">
-                      {reportData.currentMonth.mom.qr_redeemed.pct !== null ? (
-                        <>
-                          {reportData.currentMonth.mom.qr_redeemed.pct > 0 ? '+' : ''}
-                          {reportData.currentMonth.mom.qr_redeemed.pct.toFixed(1)}% vs last month
-                        </>
-                      ) : (
-                        '—'
-                      )}
+                      {(() => {
+                        const prev = reportData.previousMonth.qr_redeemed;
+                        const curr = reportData.currentMonth?.qr_redeemed || reportData.global.qr_redeemed;
+                        const delta = curr - prev;
+                        if (prev < 3 && delta !== 0) {
+                          return `${delta > 0 ? '+' : ''}${delta} vs last month`;
+                        } else if (prev >= 3 && reportData.currentMonth.mom.qr_redeemed.pct !== null) {
+                          return `${reportData.currentMonth.mom.qr_redeemed.pct > 0 ? '+' : ''}${reportData.currentMonth.mom.qr_redeemed.pct.toFixed(1)}% vs last month`;
+                        }
+                        return '—';
+                      })()}
                     </p>
                   )}
                 </div>
@@ -153,6 +168,11 @@ export default function PrintReportPage({ scope, month, reportData, venueName }:
                       </p>
                     </div>
                   </div>
+                  {reportData.funnel.explanation && (
+                    <p className="mt-4 text-center text-sm text-gray-600 italic">
+                      {reportData.funnel.explanation}
+                    </p>
+                  )}
                 </div>
               </section>
             )}

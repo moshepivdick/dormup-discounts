@@ -290,42 +290,57 @@ export default function ReportsPage({ currentMonth, partners }: ReportsPageProps
                   <div className="rounded-lg border border-white/10 bg-slate-800 p-4">
                     <p className="text-sm text-slate-400">Total Partners</p>
                     <p className="text-2xl font-bold text-white">{adminReport.currentMonth?.total_partners || adminReport.global.total_partners}</p>
-                    {adminReport.currentMonth?.mom?.page_views && adminReport.currentMonth.mom.page_views.pct !== null && (
+                    {adminReport.currentMonth?.mom?.page_views && adminReport.previousMonth && (
                       <p className="mt-1 text-xs text-slate-500">
-                        {adminReport.currentMonth.mom.page_views.pct > 0 ? '+' : ''}
-                        {adminReport.currentMonth.mom.page_views.pct.toFixed(1)}% vs last month
+                        {(() => {
+                          const prev = adminReport.previousMonth.total_partners;
+                          const curr = adminReport.currentMonth?.total_partners || adminReport.global.total_partners;
+                          const delta = curr - prev;
+                          if (prev < 3 && delta !== 0) {
+                            return `${delta > 0 ? '+' : ''}${delta} vs last month`;
+                          } else if (prev >= 3 && adminReport.currentMonth.mom.page_views.pct !== null) {
+                            return `${adminReport.currentMonth.mom.page_views.pct > 0 ? '+' : ''}${adminReport.currentMonth.mom.page_views.pct.toFixed(1)}% vs last month`;
+                          }
+                          return '—';
+                        })()}
                       </p>
                     )}
                   </div>
                   <div className="rounded-lg border border-white/10 bg-slate-800 p-4">
                     <p className="text-sm text-slate-400">Page Views</p>
                     <p className="text-2xl font-bold text-white">{(adminReport.currentMonth?.page_views || adminReport.global.page_views).toLocaleString()}</p>
-                    {adminReport.currentMonth?.mom?.page_views && (
+                    {adminReport.currentMonth?.mom?.page_views && adminReport.previousMonth && (
                       <p className="mt-1 text-xs text-slate-500">
-                        {adminReport.currentMonth.mom.page_views.pct !== null ? (
-                          <>
-                            {adminReport.currentMonth.mom.page_views.pct > 0 ? '+' : ''}
-                            {adminReport.currentMonth.mom.page_views.pct.toFixed(1)}% vs last month
-                          </>
-                        ) : (
-                          '—'
-                        )}
+                        {(() => {
+                          const prev = adminReport.previousMonth.page_views;
+                          const curr = adminReport.currentMonth?.page_views || adminReport.global.page_views;
+                          const delta = curr - prev;
+                          if (prev < 3 && delta !== 0) {
+                            return `${delta > 0 ? '+' : ''}${delta} vs last month`;
+                          } else if (prev >= 3 && adminReport.currentMonth.mom.page_views.pct !== null) {
+                            return `${adminReport.currentMonth.mom.page_views.pct > 0 ? '+' : ''}${adminReport.currentMonth.mom.page_views.pct.toFixed(1)}% vs last month`;
+                          }
+                          return '—';
+                        })()}
                       </p>
                     )}
                   </div>
                   <div className="rounded-lg border border-white/10 bg-slate-800 p-4">
                     <p className="text-sm text-slate-400">QR Redeemed</p>
                     <p className="text-2xl font-bold text-white">{(adminReport.currentMonth?.qr_redeemed || adminReport.global.qr_redeemed).toLocaleString()}</p>
-                    {adminReport.currentMonth?.mom?.qr_redeemed && (
+                    {adminReport.currentMonth?.mom?.qr_redeemed && adminReport.previousMonth && (
                       <p className="mt-1 text-xs text-slate-500">
-                        {adminReport.currentMonth.mom.qr_redeemed.pct !== null ? (
-                          <>
-                            {adminReport.currentMonth.mom.qr_redeemed.pct > 0 ? '+' : ''}
-                            {adminReport.currentMonth.mom.qr_redeemed.pct.toFixed(1)}% vs last month
-                          </>
-                        ) : (
-                          '—'
-                        )}
+                        {(() => {
+                          const prev = adminReport.previousMonth.qr_redeemed;
+                          const curr = adminReport.currentMonth?.qr_redeemed || adminReport.global.qr_redeemed;
+                          const delta = curr - prev;
+                          if (prev < 3 && delta !== 0) {
+                            return `${delta > 0 ? '+' : ''}${delta} vs last month`;
+                          } else if (prev >= 3 && adminReport.currentMonth.mom.qr_redeemed.pct !== null) {
+                            return `${adminReport.currentMonth.mom.qr_redeemed.pct > 0 ? '+' : ''}${adminReport.currentMonth.mom.qr_redeemed.pct.toFixed(1)}% vs last month`;
+                          }
+                          return '—';
+                        })()}
                       </p>
                     )}
                   </div>
@@ -378,6 +393,11 @@ export default function ReportsPage({ currentMonth, partners }: ReportsPageProps
                       </p>
                     </div>
                   </div>
+                  {adminReport.funnel.explanation && (
+                    <p className="mt-4 text-center text-sm text-slate-300 italic">
+                      {adminReport.funnel.explanation}
+                    </p>
+                  )}
                 </div>
               )}
 
