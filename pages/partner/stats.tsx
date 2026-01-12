@@ -13,6 +13,7 @@ import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { AdvancedPanel } from '@/components/dashboard/AdvancedPanel';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 type PartnerStatsProps = {
   partner: {
@@ -74,6 +75,13 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
   const [avgStudentBill, setAvgStudentBill] = useState<string>('15');
   const [savingBill, setSavingBill] = useState(false);
   const [billSaved, setBillSaved] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportMonth, setReportMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -143,6 +151,49 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
     }
   };
 
+  const handleGenerateReport = async () => {
+    setGeneratingReport(true);
+    setReportError(null);
+
+    try {
+      const response = await fetch('/api/reports/snapshot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scope: 'partner',
+          month: reportMonth,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to generate report');
+      }
+
+      if (data.success && data.data?.snapshot?.pdf_url) {
+        // Download the PDF
+        const pdfUrl = data.data.snapshot.pdf_url;
+        const link = document.createElement('a');
+        link.href = pdfUrl;
+        link.download = `monthly-report-${reportMonth}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Close modal after successful download
+        setReportModalOpen(false);
+      } else {
+        throw new Error('Report generated but PDF URL not available');
+      }
+    } catch (error: any) {
+      console.error('Error generating report:', error);
+      setReportError(error.message || 'Failed to generate report. Please try again.');
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
   const getDateRangeLabel = () => {
     switch (dateRange) {
       case '7d': return 'Last 7 days';
@@ -170,6 +221,13 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
               <p className="mt-1 text-slate-600">{partner.venueName}</p>
             </div>
             <div className="flex items-center gap-4">
+              <Button
+                onClick={() => setReportModalOpen(true)}
+                variant="default"
+                className="whitespace-nowrap"
+              >
+                Download Monthly Report
+              </Button>
               <DateRangeSelector value={dateRange} onChange={setDateRange} />
               <Link
                 href="/partner"
@@ -288,6 +346,57 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
           )}
         </div>
       </main>
+
+      {/* Report Generation Modal */}
+      <Dialog open={reportModalOpen} onOpenChange={setReportModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generate Monthly Report</DialogTitle>
+            <DialogDescription>
+              Generate and download a PDF report for the selected month.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Month
+              </label>
+              <Input
+                type="month"
+                value={reportMonth}
+                onChange={(e) => setReportMonth(e.target.value)}
+                className="w-full"
+                disabled={generatingReport}
+              />
+            </div>
+
+            {reportError && (
+              <div className="rounded-lg bg-rose-50 border border-rose-200 p-3">
+                <p className="text-sm text-rose-800">{reportError}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setReportModalOpen(false);
+                  setReportError(null);
+                }}
+                disabled={generatingReport}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleGenerateReport}
+                disabled={generatingReport}
+              >
+                {generatingReport ? 'Generating report...' : 'Generate Report'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
