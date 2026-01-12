@@ -734,7 +734,6 @@ export async function getMonthlyPartnerReport(venueId: number, monthStr: string)
           name: true,
           city: true,
           category: true,
-          avgStudentBill: true,
         },
       },
     },
@@ -742,6 +741,21 @@ export async function getMonthlyPartnerReport(venueId: number, monthStr: string)
 
   if (!metrics) {
     throw new Error(`No metrics found for venue ${venueId} in ${monthStr}`);
+  }
+
+  // Get avgStudentBill separately with error handling
+  let avgTicket: number | null = null;
+  try {
+    const venueWithBill = await prisma.venue.findUnique({
+      where: { id: venueId },
+      select: { avgStudentBill: true },
+    });
+    avgTicket = venueWithBill?.avgStudentBill ?? null;
+  } catch (error: any) {
+    // If column doesn't exist (P2022), avgTicket remains null
+    if (error?.code !== 'P2022') {
+      console.warn('Error fetching avgStudentBill:', error);
+    }
   }
 
   // Calculate impact summary data
@@ -765,7 +779,6 @@ export async function getMonthlyPartnerReport(venueId: number, monthStr: string)
   const totalRedemptions = metrics.qr_redeemed;
 
   // 3. Estimated impact (redemptions * avgStudentBill if available)
-  const avgTicket = metrics.venue.avgStudentBill;
   const estimatedImpact = avgTicket && avgTicket > 0 
     ? totalRedemptions * avgTicket 
     : null;
