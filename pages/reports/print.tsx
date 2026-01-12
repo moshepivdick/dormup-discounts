@@ -274,61 +274,127 @@ export default function PrintReportPage({ scope, month, reportData, venueName }:
       {/* Partner Report */}
       {scope === 'partner' && reportData.metrics && (
         <div className="space-y-6">
-          {/* Summary Cards */}
-          <section>
-            <h2 className="mb-4 text-2xl font-semibold text-gray-900">Monthly Summary</h2>
-            <div className="grid grid-cols-4 gap-4">
-              <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm font-medium text-gray-600">Page Views</p>
-                <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.metrics.page_views.toLocaleString()}</p>
+          {/* Impact Summary */}
+          {reportData.impactSummary && (
+            <section style={{ breakInside: 'avoid' }}>
+              <h2 className="mb-4 text-2xl font-semibold text-gray-900">Impact Summary</h2>
+              <div className="grid grid-cols-4 gap-4">
+                <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
+                  <p className="text-sm font-medium text-gray-600">Unique Customers</p>
+                  <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.impactSummary.uniqueCustomers.toLocaleString()}</p>
+                </div>
+                <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
+                  <p className="text-sm font-medium text-gray-600">Total Redemptions</p>
+                  <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.impactSummary.totalRedemptions.toLocaleString()}</p>
+                </div>
+                <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
+                  <p className="text-sm font-medium text-gray-600">Estimated Impact</p>
+                  <p className="mt-1 text-3xl font-bold text-gray-900">
+                    {reportData.impactSummary.estimatedImpact
+                      ? `€${reportData.impactSummary.estimatedImpact.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : '—'}
+                  </p>
+                  {reportData.impactSummary.avgTicket && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Avg ticket: €{reportData.impactSummary.avgTicket.toFixed(2)}
+                    </p>
+                  )}
+                </div>
+                <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
+                  <p className="text-sm font-medium text-gray-600">Best Time</p>
+                  <p className="mt-1 text-xl font-bold text-gray-900">
+                    {reportData.impactSummary.bestTime || '—'}
+                  </p>
+                </div>
               </div>
-              <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm font-medium text-gray-600">QR Generated</p>
-                <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.metrics.qr_generated.toLocaleString()}</p>
-              </div>
-              <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm font-medium text-gray-600">QR Redeemed</p>
-                <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.metrics.qr_redeemed.toLocaleString()}</p>
-              </div>
-              <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm font-medium text-gray-600">Conversion Rate</p>
-                <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.metrics.conversion_rate.toFixed(1)}%</p>
+            </section>
+          )}
+
+          {/* Funnel Overview */}
+          <section style={{ breakInside: 'avoid' }}>
+            <h2 className="mb-3 text-xl font-semibold text-gray-900">Funnel Overview</h2>
+            <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-6">
+              <div className="flex items-center justify-between">
+                <div className="text-center flex-1">
+                  <p className="text-sm font-medium text-gray-600">Page Views</p>
+                  <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.metrics.page_views.toLocaleString()}</p>
+                </div>
+                <div className="text-2xl text-gray-400">→</div>
+                <div className="text-center flex-1">
+                  <p className="text-sm font-medium text-gray-600">QR Generated</p>
+                  <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.metrics.qr_generated.toLocaleString()}</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {reportData.metrics.page_views > 0
+                      ? `${((reportData.metrics.qr_generated / reportData.metrics.page_views) * 100).toFixed(1)}% conversion`
+                      : '—'}
+                  </p>
+                </div>
+                <div className="text-2xl text-gray-400">→</div>
+                <div className="text-center flex-1">
+                  <p className="text-sm font-medium text-gray-600">QR Redeemed</p>
+                  <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.metrics.qr_redeemed.toLocaleString()}</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {reportData.metrics.qr_generated > 0
+                      ? `${reportData.metrics.conversion_rate.toFixed(1)}% conversion`
+                      : '—'}
+                  </p>
+                </div>
               </div>
             </div>
           </section>
 
-          {/* Additional Metrics */}
-          <section>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm font-medium text-gray-600">Unique Users</p>
-                <p className="mt-1 text-2xl font-bold text-gray-900">{reportData.metrics.unique_users.toLocaleString()}</p>
-              </div>
-              <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm font-medium text-gray-600">Repeat Users</p>
-                <p className="mt-1 text-2xl font-bold text-gray-900">{reportData.metrics.repeat_users.toLocaleString()}</p>
-              </div>
-              <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm font-medium text-gray-600">Avg per User</p>
-                <p className="mt-1 text-2xl font-bold text-gray-900">
-                  {reportData.metrics.unique_users > 0
-                    ? (reportData.metrics.qr_redeemed / reportData.metrics.unique_users).toFixed(1)
-                    : '0'}
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Insights */}
+          {/* Top Insights */}
           {reportData.insights && reportData.insights.length > 0 && (
-            <section>
-              <h2 className="mb-3 text-xl font-semibold text-gray-900">Insights</h2>
+            <section style={{ breakInside: 'avoid' }}>
+              <h2 className="mb-3 text-xl font-semibold text-gray-900">Top Insights</h2>
               <div className="rounded-lg border-2 border-blue-300 bg-blue-50 p-4">
                 <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
                   {reportData.insights.map((insight: string, i: number) => (
                     <li key={i}>{insight}</li>
                   ))}
                 </ul>
+              </div>
+            </section>
+          )}
+
+          {/* Alerts & Recommendations */}
+          {reportData.alerts && reportData.alerts.length > 0 ? (
+            <section style={{ breakInside: 'avoid' }}>
+              <h2 className="mb-3 text-xl font-semibold text-gray-900">Alerts & Recommendations</h2>
+              <div className="space-y-2">
+                {reportData.alerts.map((alert: any, i: number) => (
+                  <div
+                    key={i}
+                    className={`rounded-lg border-2 p-3 ${
+                      alert.severity === 'critical'
+                        ? 'bg-rose-50 border-rose-300'
+                        : alert.severity === 'warn'
+                          ? 'bg-yellow-50 border-yellow-300'
+                          : 'bg-blue-50 border-blue-300'
+                    }`}
+                  >
+                    <p className="font-semibold text-gray-900">
+                      <span className={`rounded px-2 py-1 text-xs font-medium mr-2 ${
+                        alert.severity === 'critical'
+                          ? 'bg-rose-500 text-white'
+                          : alert.severity === 'warn'
+                            ? 'bg-yellow-500 text-white'
+                            : 'bg-blue-500 text-white'
+                      }`}>
+                        {alert.severity?.toUpperCase() || 'INFO'}
+                      </span>
+                      {alert.title || alert.message}
+                    </p>
+                    {alert.description && <p className="mt-1 text-sm text-gray-700">{alert.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : (
+            <section style={{ breakInside: 'avoid' }}>
+              <h2 className="mb-3 text-xl font-semibold text-gray-900">Alerts & Recommendations</h2>
+              <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
+                <p className="text-sm text-gray-800">No alerts or recommendations at this time.</p>
               </div>
             </section>
           )}

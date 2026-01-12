@@ -859,6 +859,55 @@ export async function getMonthlyPartnerReport(venueId: number, monthStr: string)
     insights.push('Keep promoting your discounts to increase engagement!');
   }
 
+  // Generate alerts and recommendations
+  type AlertSeverity = 'info' | 'warn' | 'critical';
+  const alerts: Array<{ severity: AlertSeverity; title: string; description: string }> = [];
+
+  // Warn: Low page views
+  if (metrics.page_views < 20) {
+    alerts.push({
+      severity: 'warn',
+      title: 'Low activity',
+      description: `Only ${metrics.page_views} page views this month. Consider promoting your venue on social media or student channels.`,
+    });
+  }
+
+  // Warn: High page views but no redemptions
+  if (metrics.page_views >= 50 && metrics.qr_redeemed === 0) {
+    alerts.push({
+      severity: 'warn',
+      title: 'No redemptions despite high visibility',
+      description: `${metrics.page_views} page views but no redemptions. Review your discount offer and ensure it's attractive to students.`,
+    });
+  }
+
+  // Warn: Low conversion rate
+  if (metrics.qr_generated > 0 && metrics.conversion_rate < 15) {
+    alerts.push({
+      severity: 'warn',
+      title: 'Low conversion rate',
+      description: `Conversion rate is ${metrics.conversion_rate.toFixed(1)}%. Consider making your discount more attractive or improving the redemption process.`,
+    });
+  }
+
+  // Info: Good performance
+  if (metrics.conversion_rate >= 25 && metrics.qr_redeemed > 10) {
+    alerts.push({
+      severity: 'info',
+      title: 'Strong performance',
+      description: `Great conversion rate of ${metrics.conversion_rate.toFixed(1)}% with ${metrics.qr_redeemed} redemptions. Keep up the good work!`,
+    });
+  }
+
+  // Info: No avg ticket set
+  if (!avgTicket || avgTicket === 0) {
+    alerts.push({
+      severity: 'info',
+      title: 'Average ticket not set',
+      description: 'Set your average student bill in settings to see estimated revenue impact in reports.',
+    });
+  }
+
   return {
     metrics,
     insights,
@@ -869,5 +918,6 @@ export async function getMonthlyPartnerReport(venueId: number, monthStr: string)
       avgTicket,
       bestTime,
     },
+    alerts: alerts.length > 0 ? alerts : [],
   };
 }
