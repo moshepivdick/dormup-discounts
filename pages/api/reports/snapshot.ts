@@ -110,8 +110,16 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
     const timestamp = Date.now();
     const hash = generateReportHash(finalScope, monthStr, venueId);
     
-    const pdfPath = `reports/${finalScope}/${monthStr}/${venueId ? `venue-${venueId}` : 'global'}/${timestamp}-${hash}.pdf`;
-    const pngPath = `reports/${finalScope}/${monthStr}/${venueId ? `venue-${venueId}` : 'global'}/${timestamp}-${hash}.png`;
+    // Group reports by creation date (YYYY-MM-DD) instead of report month
+    const now = new Date();
+    const creationYear = now.getFullYear();
+    const creationMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const creationDay = String(now.getDate()).padStart(2, '0');
+    const creationDate = `${creationYear}-${creationMonth}-${creationDay}`;
+    
+    // Structure: reports/{scope}/{creationDate}/{timestamp}-{hash}.pdf
+    const pdfPath = `reports/${finalScope}/${creationDate}/${timestamp}-${hash}.pdf`;
+    const pngPath = `reports/${finalScope}/${creationDate}/${timestamp}-${hash}.png`;
 
     // Compute metrics hash for change detection
     const { year, month: monthNum } = parseMonth(monthStr);

@@ -6,26 +6,31 @@ Generated report files (PDF and PNG) are stored in **Supabase Storage** in a buc
 
 ### Storage Path Structure
 
-Files are organized in the following structure:
+Files are organized by **creation date** (when the snapshot was generated), not by the report month:
 
 ```
 reports/
   {scope}/           # "admin" or "partner"
-    {YYYY-MM}/        # Month in format YYYY-MM (e.g., "2026-01")
-      {identifier}/   # "global" for admin reports, or "venue-{venueId}" for partner reports
-        {timestamp}-{hash}.pdf
-        {timestamp}-{hash}.png
+    {YYYY-MM-DD}/    # Creation date in format YYYY-MM-DD (e.g., "2026-01-15")
+      {timestamp}-{hash}.pdf
+      {timestamp}-{hash}.png
 ```
 
 ### Examples
 
-**Admin Report:**
-- Path: `reports/admin/2026-01/global/1705068000000-abc123def456.pdf`
-- Path: `reports/admin/2026-01/global/1705068000000-abc123def456.png`
+**Admin Report created on 2026-01-15:**
+- Path: `reports/admin/2026-01-15/1705068000000-abc123def456.pdf`
+- Path: `reports/admin/2026-01-15/1705068000000-abc123def456.png`
 
-**Partner Report:**
-- Path: `reports/partner/2026-01/venue-5/1705068000000-xyz789ghi012.pdf`
-- Path: `reports/partner/2026-01/venue-5/1705068000000-xyz789ghi012.png`
+**Partner Report created on 2026-01-15:**
+- Path: `reports/partner/2026-01-15/1705068000000-xyz789ghi012.pdf`
+- Path: `reports/partner/2026-01-15/1705068000000-xyz789ghi012.png`
+
+### Benefits
+
+- **Easy organization**: All reports created on the same day are grouped together
+- **Simple cleanup**: Can easily delete old reports by date
+- **Better structure**: No nested folders for venue IDs, cleaner hierarchy
 
 ### Access
 
