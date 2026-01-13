@@ -127,6 +127,12 @@ async function main() {
     throw new Error('Seed venue for partner not found.');
   }
 
+  // Update Chi Burdlaz Garden to premium price level
+  await prisma.venue.update({
+    where: { id: targetVenue.id },
+    data: { priceLevel: 'premium' },
+  });
+
   const [partnerPassword, adminPassword] = await Promise.all([
     bcrypt.hash('dormup2024', 10),
     bcrypt.hash('admin123', 10),
