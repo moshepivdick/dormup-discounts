@@ -41,34 +41,69 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
     return apiResponse.success(res, { venue });
   } catch (error: any) {
     // Fallback to raw SQL if Prisma fails with P2022 (column not found)
-    if (error?.code === 'P2022' && error?.meta?.column === 'Venue.avgStudentBill') {
+    const isColumnError = 
+      error?.code === 'P2022' || 
+      error?.message?.includes('avgStudentBill') ||
+      error?.message?.includes('priceLevel') ||
+      error?.message?.includes('typicalStudentSpend');
+    
+    if (isColumnError) {
       try {
-        const rawVenue = await prisma.$queryRaw<Array<{
-          id: number;
-          name: string;
-          city: string;
-          category: string;
-          discountText: string;
-          isActive: boolean;
-          details: string | null;
-          openingHours: string | null;
-          openingHoursShort: string | null;
-          mapUrl: string | null;
-          imageUrl: string | null;
-          thumbnailUrl: string | null;
-          latitude: number;
-          longitude: number;
-          phone: string | null;
-          priceLevel: 'budget' | 'mid' | 'premium' | null;
-          typicalStudentSpendMin: number | null;
-          typicalStudentSpendMax: number | null;
-          createdAt: Date;
-          updatedAt: Date;
-        }>>`
-          SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude, phone, "priceLevel", "typicalStudentSpendMin", "typicalStudentSpendMax", "createdAt", "updatedAt"
-          FROM public.venues
-          WHERE id = ${id} AND "isActive" = true;
-        `;
+        // Try with price fields first
+        let rawVenue;
+        try {
+          rawVenue = await prisma.$queryRaw<Array<{
+            id: number;
+            name: string;
+            city: string;
+            category: string;
+            discountText: string;
+            isActive: boolean;
+            details: string | null;
+            openingHours: string | null;
+            openingHoursShort: string | null;
+            mapUrl: string | null;
+            imageUrl: string | null;
+            thumbnailUrl: string | null;
+            latitude: number;
+            longitude: number;
+            phone: string | null;
+            priceLevel: 'budget' | 'mid' | 'premium' | null;
+            typicalStudentSpendMin: number | null;
+            typicalStudentSpendMax: number | null;
+            createdAt: Date;
+            updatedAt: Date;
+          }>>`
+            SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude, phone, "priceLevel", "typicalStudentSpendMin", "typicalStudentSpendMax", "createdAt", "updatedAt"
+            FROM public.venues
+            WHERE id = ${id} AND "isActive" = true;
+          `;
+        } catch {
+          // If price fields don't exist, query without them
+          rawVenue = await prisma.$queryRaw<Array<{
+            id: number;
+            name: string;
+            city: string;
+            category: string;
+            discountText: string;
+            isActive: boolean;
+            details: string | null;
+            openingHours: string | null;
+            openingHoursShort: string | null;
+            mapUrl: string | null;
+            imageUrl: string | null;
+            thumbnailUrl: string | null;
+            latitude: number;
+            longitude: number;
+            phone: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+          }>>`
+            SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude, phone, "createdAt", "updatedAt"
+            FROM public.venues
+            WHERE id = ${id} AND "isActive" = true;
+          `;
+        }
 
         if (!rawVenue || rawVenue.length === 0) {
           return apiResponse.error(res, 404, 'Venue not found');
@@ -78,8 +113,9 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
         return apiResponse.success(res, {
           venue: {
             ...venue,
-            typicalStudentSpendMin: venue.typicalStudentSpendMin ? Number(venue.typicalStudentSpendMin) : null,
-            typicalStudentSpendMax: venue.typicalStudentSpendMax ? Number(venue.typicalStudentSpendMax) : null,
+            priceLevel: (venue as any).priceLevel || null,
+            typicalStudentSpendMin: (venue as any).typicalStudentSpendMin ? Number((venue as any).typicalStudentSpendMin) : null,
+            typicalStudentSpendMax: (venue as any).typicalStudentSpendMax ? Number((venue as any).typicalStudentSpendMax) : null,
           },
         });
       } catch (fallbackError) {

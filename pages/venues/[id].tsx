@@ -587,31 +587,63 @@ export const getServerSideProps: GetServerSideProps<VenuePageProps> = async ({
   };
   } catch (error: any) {
     // Fallback to raw SQL if Prisma fails with P2022 (column not found)
-    if (error.code === 'P2022' && error.meta?.column === 'Venue.avgStudentBill') {
+    const isColumnError = 
+      error?.code === 'P2022' || 
+      error?.message?.includes('avgStudentBill') ||
+      error?.message?.includes('priceLevel') ||
+      error?.message?.includes('typicalStudentSpend');
+    
+    if (isColumnError) {
       try {
-        const rawVenue = await prisma.$queryRaw<Array<{
-          id: number;
-          name: string;
-          city: string;
-          category: string;
-          discountText: string;
-          isActive: boolean;
-          details: string | null;
-          openingHours: string | null;
-          openingHoursShort: string | null;
-          mapUrl: string | null;
-          imageUrl: string | null;
-          thumbnailUrl: string | null;
-          latitude: number;
-          longitude: number;
-          priceLevel: 'budget' | 'mid' | 'premium' | null;
-          typicalStudentSpendMin: number | null;
-          typicalStudentSpendMax: number | null;
-        }>>`
-          SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude, "priceLevel", "typicalStudentSpendMin", "typicalStudentSpendMax"
-          FROM public.venues
-          WHERE id = ${id} AND "isActive" = true;
-        `;
+        // Try with price fields first
+        let rawVenue;
+        try {
+          rawVenue = await prisma.$queryRaw<Array<{
+            id: number;
+            name: string;
+            city: string;
+            category: string;
+            discountText: string;
+            isActive: boolean;
+            details: string | null;
+            openingHours: string | null;
+            openingHoursShort: string | null;
+            mapUrl: string | null;
+            imageUrl: string | null;
+            thumbnailUrl: string | null;
+            latitude: number;
+            longitude: number;
+            priceLevel: 'budget' | 'mid' | 'premium' | null;
+            typicalStudentSpendMin: number | null;
+            typicalStudentSpendMax: number | null;
+          }>>`
+            SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude, "priceLevel", "typicalStudentSpendMin", "typicalStudentSpendMax"
+            FROM public.venues
+            WHERE id = ${id} AND "isActive" = true;
+          `;
+        } catch {
+          // If price fields don't exist, query without them
+          rawVenue = await prisma.$queryRaw<Array<{
+            id: number;
+            name: string;
+            city: string;
+            category: string;
+            discountText: string;
+            isActive: boolean;
+            details: string | null;
+            openingHours: string | null;
+            openingHoursShort: string | null;
+            mapUrl: string | null;
+            imageUrl: string | null;
+            thumbnailUrl: string | null;
+            latitude: number;
+            longitude: number;
+          }>>`
+            SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude
+            FROM public.venues
+            WHERE id = ${id} AND "isActive" = true;
+          `;
+        }
 
         if (!rawVenue || rawVenue.length === 0) {
           return { notFound: true };
@@ -634,9 +666,9 @@ export const getServerSideProps: GetServerSideProps<VenuePageProps> = async ({
           thumbnailUrl: venue.thumbnailUrl,
           latitude: venue.latitude,
           longitude: venue.longitude,
-          priceLevel: venue.priceLevel,
-          typicalStudentSpendMin: venue.typicalStudentSpendMin ? Number(venue.typicalStudentSpendMin) : null,
-          typicalStudentSpendMax: venue.typicalStudentSpendMax ? Number(venue.typicalStudentSpendMax) : null,
+          priceLevel: (venue as any).priceLevel || null,
+          typicalStudentSpendMin: (venue as any).typicalStudentSpendMin ? Number((venue as any).typicalStudentSpendMin) : null,
+          typicalStudentSpendMax: (venue as any).typicalStudentSpendMax ? Number((venue as any).typicalStudentSpendMax) : null,
         };
 
         return {

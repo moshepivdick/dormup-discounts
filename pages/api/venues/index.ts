@@ -7,6 +7,7 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
     // Try to fetch venues - use explicit select to avoid avgStudentBill field until migration is applied
     let venues;
     try {
+      // Try to fetch with price fields, but handle gracefully if they don't exist
       venues = await prisma.venue.findMany({
         select: {
           id: true,
@@ -20,6 +21,7 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
           openingHoursShort: true,
           latitude: true,
           longitude: true,
+          // Price fields - will be null if columns don't exist
           priceLevel: true,
           typicalStudentSpendMin: true,
           typicalStudentSpendMax: true,
@@ -30,33 +32,71 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
     } catch (prismaError: any) {
       console.error('Prisma error fetching venues:', prismaError);
       // If error is about missing column (P2022), use raw SQL
-      if (prismaError?.code === 'P2022' || prismaError?.message?.includes('avgStudentBill') || prismaError?.message?.includes('avg_student_bill')) {
-        console.log('Column avgStudentBill does not exist, using raw SQL query...');
-        // Use raw SQL to avoid Prisma schema mismatch
-        venues = await (prisma as any).$queryRaw`
-          SELECT id, name, city, category, "discountText", "isActive", 
-                 "imageUrl", "thumbnailUrl", "openingHoursShort", 
-                 latitude, longitude, "priceLevel", "typicalStudentSpendMin", "typicalStudentSpendMax"
-          FROM "public"."venues"
-          ORDER BY city ASC, name ASC
-        `;
-        // Convert raw results to match expected format
-        venues = venues.map((v: any) => ({
-          id: Number(v.id),
-          name: v.name,
-          city: v.city,
-          category: v.category,
-          discountText: v.discountText,
-          isActive: v.isActive ?? true,
-          imageUrl: v.imageUrl,
-          thumbnailUrl: v.thumbnailUrl,
-          openingHoursShort: v.openingHoursShort,
-          latitude: Number(v.latitude),
-          longitude: Number(v.longitude),
-          priceLevel: v.priceLevel,
-          typicalStudentSpendMin: v.typicalStudentSpendMin ? Number(v.typicalStudentSpendMin) : null,
-          typicalStudentSpendMax: v.typicalStudentSpendMax ? Number(v.typicalStudentSpendMax) : null,
-        }));
+      const isColumnError = 
+        prismaError?.code === 'P2022' || 
+        prismaError?.message?.includes('avgStudentBill') || 
+        prismaError?.message?.includes('avg_student_bill') ||
+        prismaError?.message?.includes('priceLevel') ||
+        prismaError?.message?.includes('price_level') ||
+        prismaError?.message?.includes('typicalStudentSpend') ||
+        prismaError?.message?.includes('typical_student_spend');
+      
+      if (isColumnError) {
+        console.log('Column error detected, using raw SQL query without new columns...');
+        // Use raw SQL to avoid Prisma schema mismatch - try with price fields first
+        try {
+          venues = await (prisma as any).$queryRaw`
+            SELECT id, name, city, category, "discountText", "isActive", 
+                   "imageUrl", "thumbnailUrl", "openingHoursShort", 
+                   latitude, longitude, "priceLevel", "typicalStudentSpendMin", "typicalStudentSpendMax"
+            FROM "public"."venues"
+            ORDER BY city ASC, name ASC
+          `;
+          // Convert raw results to match expected format
+          venues = venues.map((v: any) => ({
+            id: Number(v.id),
+            name: v.name,
+            city: v.city,
+            category: v.category,
+            discountText: v.discountText,
+            isActive: v.isActive ?? true,
+            imageUrl: v.imageUrl,
+            thumbnailUrl: v.thumbnailUrl,
+            openingHoursShort: v.openingHoursShort,
+            latitude: Number(v.latitude),
+            longitude: Number(v.longitude),
+            priceLevel: v.priceLevel || null,
+            typicalStudentSpendMin: v.typicalStudentSpendMin ? Number(v.typicalStudentSpendMin) : null,
+            typicalStudentSpendMax: v.typicalStudentSpendMax ? Number(v.typicalStudentSpendMax) : null,
+          }));
+        } catch (rawError: any) {
+          // If price fields don't exist, query without them
+          console.log('Price fields do not exist, querying without them...');
+          venues = await (prisma as any).$queryRaw`
+            SELECT id, name, city, category, "discountText", "isActive", 
+                   "imageUrl", "thumbnailUrl", "openingHoursShort", 
+                   latitude, longitude
+            FROM "public"."venues"
+            ORDER BY city ASC, name ASC
+          `;
+          // Convert raw results to match expected format
+          venues = venues.map((v: any) => ({
+            id: Number(v.id),
+            name: v.name,
+            city: v.city,
+            category: v.category,
+            discountText: v.discountText,
+            isActive: v.isActive ?? true,
+            imageUrl: v.imageUrl,
+            thumbnailUrl: v.thumbnailUrl,
+            openingHoursShort: v.openingHoursShort,
+            latitude: Number(v.latitude),
+            longitude: Number(v.longitude),
+            priceLevel: null,
+            typicalStudentSpendMin: null,
+            typicalStudentSpendMax: null,
+          }));
+        }
       } else {
         throw prismaError;
       }
