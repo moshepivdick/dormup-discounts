@@ -95,7 +95,16 @@ export function VenueCard({ venue }: Props) {
               </p>
             </div>
           )}
-          <p className="text-[11px] text-slate-500 md:text-sm">{venue.category}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-[11px] text-slate-500 md:text-sm">{venue.category}</p>
+            {venue.priceLevel && (
+              <span className="inline-flex items-center text-[11px] font-semibold text-slate-700 md:text-sm">
+                {venue.priceLevel === 'budget' && '€'}
+                {venue.priceLevel === 'mid' && '€€'}
+                {venue.priceLevel === 'premium' && '€€€'}
+              </span>
+            )}
+          </div>
           {venue.distance != null && (
             <p className="hidden text-xs text-neutral-500 md:block">
               {formatDistance(venue.distance)}
