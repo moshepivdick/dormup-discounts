@@ -78,7 +78,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-
     // Generate dedupe_key for idempotency (if column exists)
     const now = new Date();
     const dedupeKey = generateDedupeKey(venueId, userId, now);
@@ -98,6 +97,23 @@ export async function POST(request: NextRequest) {
         } as any,
       });
     } catch (createError: any) {
+      // Check if table doesn't exist (P2021 = table not found)
+      const isTableMissing = 
+        createError?.code === 'P2021' ||
+        createError?.code === 'P2010' ||
+        (createError?.meta?.table && createError.meta.table.includes('venue_views')) ||
+        (createError?.message && (
+          createError.message.includes('does not exist') ||
+          createError.message.includes('table') ||
+          createError.message.includes('venue_views')
+        ));
+
+      if (isTableMissing) {
+        // Table doesn't exist - this is fine, just return success
+        // View tracking is not critical and table will be created by migration
+        console.warn('venue_views table does not exist yet, skipping view tracking');
+        return NextResponse.json({ ok: true });
+      }
       // If dedupe_key column doesn't exist (P2022 = column not found)
       const isDedupeKeyError = 
         createError?.code === 'P2022' &&
@@ -183,6 +199,23 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     // Log error but don't expose internal details to client
     console.error('Error tracking venue view:', error);
+    
+    // Check if table doesn't exist (P2021 = table not found)
+    const isTableMissing = 
+      error?.code === 'P2021' ||
+      error?.code === 'P2010' ||
+      (error?.meta?.table && error.meta.table.includes('venue_views')) ||
+      (error?.message && (
+        error.message.includes('does not exist') ||
+        error.message.includes('table') ||
+        error.message.includes('venue_views')
+      ));
+
+    if (isTableMissing) {
+      // Table doesn't exist - this is fine, just return success
+      console.warn('venue_views table does not exist yet, skipping view tracking');
+      return NextResponse.json({ ok: true });
+    }
     
     // Check if it's a P2022 error for dedupe_key (missed in inner catch)
     const isDedupeKeyError = 

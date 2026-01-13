@@ -6,6 +6,7 @@
 -- ============================================
 
 -- Create venue_views table if it doesn't exist
+-- Note: Using "Venue" table name (with capital V) as per Prisma schema
 CREATE TABLE IF NOT EXISTS public.venue_views (
     id SERIAL PRIMARY KEY,
     venue_id INTEGER NOT NULL,
@@ -17,7 +18,7 @@ CREATE TABLE IF NOT EXISTS public.venue_views (
     
     CONSTRAINT venue_views_venue_id_fkey 
         FOREIGN KEY (venue_id) 
-        REFERENCES public.venues(id) 
+        REFERENCES "Venue"(id) 
         ON DELETE CASCADE,
     
     CONSTRAINT venue_views_user_id_fkey 
