@@ -42,61 +42,33 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
         prismaError?.message?.includes('typical_student_spend');
       
       if (isColumnError) {
-        console.log('Column error detected, using raw SQL query without new columns...');
-        // Use raw SQL to avoid Prisma schema mismatch - try with price fields first
-        try {
-          venues = await (prisma as any).$queryRaw`
-            SELECT id, name, city, category, "discountText", "isActive", 
-                   "imageUrl", "thumbnailUrl", "openingHoursShort", 
-                   latitude, longitude, "priceLevel", "typicalStudentSpendMin", "typicalStudentSpendMax"
-            FROM "Venue"
-            ORDER BY city ASC, name ASC
-          `;
-          // Convert raw results to match expected format
-          venues = venues.map((v: any) => ({
-            id: Number(v.id),
-            name: v.name,
-            city: v.city,
-            category: v.category,
-            discountText: v.discountText,
-            isActive: v.isActive ?? true,
-            imageUrl: v.imageUrl,
-            thumbnailUrl: v.thumbnailUrl,
-            openingHoursShort: v.openingHoursShort,
-            latitude: Number(v.latitude),
-            longitude: Number(v.longitude),
-            priceLevel: v.priceLevel || null,
-            typicalStudentSpendMin: v.typicalStudentSpendMin ? Number(v.typicalStudentSpendMin) : null,
-            typicalStudentSpendMax: v.typicalStudentSpendMax ? Number(v.typicalStudentSpendMax) : null,
-          }));
-        } catch (rawError: any) {
-          // If price fields don't exist, query without them
-          console.log('Price fields do not exist, querying without them...');
-          venues = await (prisma as any).$queryRaw`
-            SELECT id, name, city, category, "discountText", "isActive", 
-                   "imageUrl", "thumbnailUrl", "openingHoursShort", 
-                   latitude, longitude
-            FROM "Venue"
-            ORDER BY city ASC, name ASC
-          `;
-          // Convert raw results to match expected format
-          venues = venues.map((v: any) => ({
-            id: Number(v.id),
-            name: v.name,
-            city: v.city,
-            category: v.category,
-            discountText: v.discountText,
-            isActive: v.isActive ?? true,
-            imageUrl: v.imageUrl,
-            thumbnailUrl: v.thumbnailUrl,
-            openingHoursShort: v.openingHoursShort,
-            latitude: Number(v.latitude),
-            longitude: Number(v.longitude),
-            priceLevel: null,
-            typicalStudentSpendMin: null,
-            typicalStudentSpendMax: null,
-          }));
-        }
+        console.log('Column error detected, using raw SQL query without price fields...');
+        // Use raw SQL without price fields since they don't exist yet
+        venues = await (prisma as any).$queryRaw`
+          SELECT id, name, city, category, "discountText", "isActive", 
+                 "imageUrl", "thumbnailUrl", "openingHoursShort", 
+                 latitude, longitude
+          FROM "Venue"
+          WHERE "isActive" = true
+          ORDER BY city ASC, name ASC
+        `;
+        // Convert raw results to match expected format
+        venues = venues.map((v: any) => ({
+          id: Number(v.id),
+          name: v.name,
+          city: v.city,
+          category: v.category,
+          discountText: v.discountText,
+          isActive: v.isActive ?? true,
+          imageUrl: v.imageUrl,
+          thumbnailUrl: v.thumbnailUrl,
+          openingHoursShort: v.openingHoursShort,
+          latitude: Number(v.latitude),
+          longitude: Number(v.longitude),
+          priceLevel: null,
+          typicalStudentSpendMin: null,
+          typicalStudentSpendMax: null,
+        }));
       } else {
         throw prismaError;
       }

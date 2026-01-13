@@ -49,61 +49,30 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
     
     if (isColumnError) {
       try {
-        // Try with price fields first
-        let rawVenue;
-        try {
-          rawVenue = await prisma.$queryRaw<Array<{
-            id: number;
-            name: string;
-            city: string;
-            category: string;
-            discountText: string;
-            isActive: boolean;
-            details: string | null;
-            openingHours: string | null;
-            openingHoursShort: string | null;
-            mapUrl: string | null;
-            imageUrl: string | null;
-            thumbnailUrl: string | null;
-            latitude: number;
-            longitude: number;
-            phone: string | null;
-            priceLevel: 'budget' | 'mid' | 'premium' | null;
-            typicalStudentSpendMin: number | null;
-            typicalStudentSpendMax: number | null;
-            createdAt: Date;
-            updatedAt: Date;
-          }>>`
-            SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude, phone, "priceLevel", "typicalStudentSpendMin", "typicalStudentSpendMax", "createdAt", "updatedAt"
-            FROM "Venue"
-            WHERE id = ${id} AND "isActive" = true;
-          `;
-        } catch {
-          // If price fields don't exist, query without them
-          rawVenue = await prisma.$queryRaw<Array<{
-            id: number;
-            name: string;
-            city: string;
-            category: string;
-            discountText: string;
-            isActive: boolean;
-            details: string | null;
-            openingHours: string | null;
-            openingHoursShort: string | null;
-            mapUrl: string | null;
-            imageUrl: string | null;
-            thumbnailUrl: string | null;
-            latitude: number;
-            longitude: number;
-            phone: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-          }>>`
-            SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude, phone, "createdAt", "updatedAt"
-            FROM "Venue"
-            WHERE id = ${id} AND "isActive" = true;
-          `;
-        }
+        // Query without price fields since they don't exist yet
+        const rawVenue = await prisma.$queryRaw<Array<{
+          id: number;
+          name: string;
+          city: string;
+          category: string;
+          discountText: string;
+          isActive: boolean;
+          details: string | null;
+          openingHours: string | null;
+          openingHoursShort: string | null;
+          mapUrl: string | null;
+          imageUrl: string | null;
+          thumbnailUrl: string | null;
+          latitude: number;
+          longitude: number;
+          phone: string | null;
+          createdAt: Date;
+          updatedAt: Date;
+        }>>`
+          SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude, phone, "createdAt", "updatedAt"
+          FROM "Venue"
+          WHERE id = ${id} AND "isActive" = true;
+        `;
 
         if (!rawVenue || rawVenue.length === 0) {
           return apiResponse.error(res, 404, 'Venue not found');

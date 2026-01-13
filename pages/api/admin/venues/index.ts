@@ -69,8 +69,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return apiResponse.success(res, { venues });
     } catch (error: any) {
       // Fallback to raw SQL if Prisma fails with P2022 (column not found)
-      if (error?.code === 'P2022' && error?.meta?.column === 'Venue.avgStudentBill') {
-        console.error('Prisma error, using fallback:', error);
+      const isColumnError = 
+        error?.code === 'P2022' || 
+        error?.message?.includes('priceLevel') ||
+        error?.message?.includes('typicalStudentSpend') ||
+        error?.message?.includes('avgStudentBill');
+      
+      if (isColumnError) {
+        console.error('Prisma error, using fallback without price fields:', error);
         const rawVenues = await prisma.$queryRaw<Array<{
           id: number;
           name: string;
@@ -87,21 +93,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           imageUrl: string | null;
           thumbnailUrl: string | null;
           phone: string | null;
-          priceLevel: 'budget' | 'mid' | 'premium' | null;
-          typicalStudentSpendMin: number | null;
-          typicalStudentSpendMax: number | null;
           createdAt: Date;
           updatedAt: Date;
         }>>`
-          SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", latitude, longitude, "imageUrl", "thumbnailUrl", phone, "priceLevel", "typicalStudentSpendMin", "typicalStudentSpendMax", "createdAt", "updatedAt"
-          FROM public.venues
+          SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", latitude, longitude, "imageUrl", "thumbnailUrl", phone, "createdAt", "updatedAt"
+          FROM "Venue"
           ORDER BY city ASC, name ASC;
         `;
         return apiResponse.success(res, {
           venues: rawVenues.map((v) => ({
             ...v,
-            typicalStudentSpendMin: v.typicalStudentSpendMin ? Number(v.typicalStudentSpendMin) : null,
-            typicalStudentSpendMax: v.typicalStudentSpendMax ? Number(v.typicalStudentSpendMax) : null,
+            priceLevel: null,
+            typicalStudentSpendMin: null,
+            typicalStudentSpendMax: null,
           })),
         });
       }
