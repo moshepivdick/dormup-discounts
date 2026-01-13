@@ -19,7 +19,7 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="mb-3 text-xl font-semibold text-slate-900">1. Introduction</h2>
             <p>
-              DormUp Discounts ("we", "our", or "us") is committed to protecting your privacy.
+              DormUp Discounts (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) is committed to protecting your privacy.
               This Privacy Policy explains how we collect, use, disclose, and safeguard your
               information when you use our platform.
             </p>
@@ -109,7 +109,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-slate-900">9. Children's Privacy</h2>
+            <h2 className="mb-3 text-xl font-semibold text-slate-900">9. Children&apos;s Privacy</h2>
             <p>
               Our platform is intended for university students. We do not knowingly collect
               personal information from children under 16. If you believe we have collected
@@ -121,8 +121,8 @@ export default function PrivacyPolicyPage() {
             <h2 className="mb-3 text-xl font-semibold text-slate-900">10. Changes to This Privacy Policy</h2>
             <p>
               We may update our Privacy Policy from time to time. We will notify you of any
-              changes by posting the new Privacy Policy on this page and updating the "Last
-              updated" date.
+              changes by posting the new Privacy Policy on this page and updating the &quot;Last
+              updated&quot; date.
             </p>
           </section>
 
