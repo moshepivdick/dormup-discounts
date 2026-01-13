@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -33,32 +33,41 @@ const translations = {
 
 export function CookieBanner() {
   const pathname = usePathname();
-  // Initialize showBanner immediately based on consent check (client-side only)
-  const [showBanner, setShowBanner] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return !getConsent();
-  });
+  const [showBanner, setShowBanner] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [locale, setLocale] = useState<'en' | 'it'>(() => {
-    if (typeof window === 'undefined') return 'en';
-    return detectLocale(pathname || '/');
-  });
+  const [locale, setLocale] = useState<'en' | 'it'>('en');
+  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    // Detect locale from pathname (update if pathname changes)
+  // Use useLayoutEffect for synchronous check on mount
+  useLayoutEffect(() => {
+    // Mark as mounted to ensure we're on client side
+    setMounted(true);
+    
+    // Detect locale from pathname
     const detectedLocale = detectLocale(pathname || '/');
     setLocale(detectedLocale);
 
-    // Check if consent exists (in case it was set elsewhere)
+    // Check if consent exists - show banner if no consent
     const consent = getConsent();
+    console.log('[CookieBanner] Consent check:', consent);
     if (!consent) {
+      console.log('[CookieBanner] No consent found, showing banner');
       setShowBanner(true);
     } else {
+      console.log('[CookieBanner] Consent found, hiding banner');
       setShowBanner(false);
       // Initialize analytics if consent was given
       initAnalytics(consent);
     }
   }, [pathname]);
+
+  // Update locale if pathname changes
+  useEffect(() => {
+    if (mounted) {
+      const detectedLocale = detectLocale(pathname || '/');
+      setLocale(detectedLocale);
+    }
+  }, [pathname, mounted]);
 
   const t = translations[locale];
 
@@ -89,7 +98,8 @@ export function CookieBanner() {
     }
   };
 
-  if (!showBanner) {
+  // Don't render until mounted (prevents hydration mismatch)
+  if (!mounted || !showBanner) {
     return null;
   }
 
