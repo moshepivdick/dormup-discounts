@@ -129,6 +129,69 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
       },
     });
 
+    // Increment visit stats if user_id is present
+    if (confirmedCode?.user_id && confirmedCode?.venueId) {
+      try {
+        // Use findFirst with unique constraint fields, then upsert
+        const existing = await prisma.userPlaceStats.findFirst({
+          where: {
+            user_id: confirmedCode.user_id,
+            place_id: confirmedCode.venueId,
+          },
+        });
+
+        if (existing) {
+          await prisma.userPlaceStats.update({
+            where: { id: existing.id },
+            data: {
+              visits_count: { increment: 1 },
+              last_visit_at: now,
+            },
+          });
+        } else {
+          try {
+            await prisma.userPlaceStats.create({
+              data: {
+                user_id: confirmedCode.user_id,
+                place_id: confirmedCode.venueId,
+                visits_count: 1,
+                last_visit_at: now,
+              },
+            });
+          } catch (createError: any) {
+            // Handle race condition: if another request created the record, try to update it
+            if (createError?.code === 'P2002') {
+              // Unique constraint violation - record was created by another request
+              const retryExisting = await prisma.userPlaceStats.findFirst({
+                where: {
+                  user_id: confirmedCode.user_id,
+                  place_id: confirmedCode.venueId,
+                },
+              });
+              if (retryExisting) {
+                await prisma.userPlaceStats.update({
+                  where: { id: retryExisting.id },
+                  data: {
+                    visits_count: { increment: 1 },
+                    last_visit_at: now,
+                  },
+                });
+              }
+            } else {
+              throw createError;
+            }
+          }
+        }
+      } catch (statsError) {
+        // Log error but don't fail the confirmation
+        console.error(`[AUDIT] Failed to update visit stats`, {
+          userId: confirmedCode.user_id,
+          venueId: confirmedCode.venueId,
+          error: statsError instanceof Error ? statsError.message : String(statsError),
+        });
+      }
+    }
+
     console.info(`[AUDIT] Code confirmed successfully`, {
       code: formattedCode,
       codeId: confirmedCode?.id,
