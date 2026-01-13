@@ -71,6 +71,7 @@ const venues = [
     imageUrl:
       'https://lh3.googleusercontent.com/p/AF1QipMY3ABLMEUE8g_o6k1gHRt54T5Rogd8GvdNp7DD=w600-h400-k-no',
     thumbnailUrl: '/venues/chi-burdlaz.jpg',
+    priceLevel: 'premium',
   },
   {
     name: 'Osteria Pizzeria Le Logge',
