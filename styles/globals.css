@@ -1,6 +1,6 @@
-@tailwind base;
+/* stylelint-disable at-rule-no-unknown */`n@tailwind base;
 @tailwind components;
-@tailwind utilities;
+@tailwind utilities;`n/* stylelint-enable at-rule-no-unknown */
 
 :root {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
@@ -22,4 +22,5 @@ body {
 .pt-safe {
   padding-top: calc(env(safe-area-inset-top) + 1rem);
 }
+
 
