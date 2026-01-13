@@ -80,7 +80,7 @@ export function SiteLayout({ children, searchBarVenues }: Props) {
           </nav>
         </div>
       </header>
-      <main className="pb-24">{children}</main>
+      <main className="pb-28 sm:pb-24">{children}</main>
       <MobileNav />
     </div>
   );

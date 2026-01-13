@@ -49,12 +49,9 @@ export function CookieBanner() {
 
     // Check if consent exists - show banner if no consent
     const consent = getConsent();
-    console.log('[CookieBanner] Consent check:', consent);
     if (!consent) {
-      console.log('[CookieBanner] No consent found, showing banner');
       setShowBanner(true);
     } else {
-      console.log('[CookieBanner] Consent found, hiding banner');
       setShowBanner(false);
       // Initialize analytics if consent was given
       initAnalytics(consent);
@@ -105,36 +102,56 @@ export function CookieBanner() {
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white shadow-lg">
-        <div className="p-4 sm:p-6">
-          <h3 className="mb-2 text-base font-semibold text-slate-900">{t.title}</h3>
-          <p className="mb-4 text-sm text-slate-600">{t.text}</p>
+      {/* Subtle gradient layer for visual separation */}
+      <div
+        className="fixed bottom-0 left-0 right-0 h-24 pointer-events-none z-[9998]"
+        style={{
+          background:
+            'linear-gradient(to top, rgba(0, 0, 0, 0.1) 0%, transparent 100%)',
+        }}
+      />
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={handleAcceptAll}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
-            >
-              {t.acceptAll}
-            </button>
-            <button
-              onClick={handleRejectNonEssential}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              {t.rejectNonEssential}
-            </button>
-            <button
-              onClick={handleCustomize}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              {t.customize}
-            </button>
-            <Link
-              href="/privacy"
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              {t.privacyPolicy}
-            </Link>
+      {/* Main banner container */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-[9999] px-4 pb-4 sm:px-6"
+        style={{
+          paddingBottom: 'max(env(safe-area-inset-bottom), 1rem)',
+        }}
+      >
+        {/* Centered card container */}
+        <div className="mx-auto max-w-4xl">
+          <div className="rounded-2xl border border-black/10 bg-white/95 backdrop-blur-sm shadow-[0_10px_30px_rgba(0,0,0,0.12)] p-4 sm:p-6">
+            <h3 className="mb-2 text-base sm:text-lg font-semibold text-slate-900">
+              {t.title}
+            </h3>
+            <p className="mb-4 text-sm text-black/70">{t.text}</p>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handleAcceptAll}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+              >
+                {t.acceptAll}
+              </button>
+              <button
+                onClick={handleRejectNonEssential}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2"
+              >
+                {t.rejectNonEssential}
+              </button>
+              <button
+                onClick={handleCustomize}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2"
+              >
+                {t.customize}
+              </button>
+              <Link
+                href="/privacy"
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2"
+              >
+                {t.privacyPolicy}
+              </Link>
+            </div>
           </div>
         </div>
       </div>

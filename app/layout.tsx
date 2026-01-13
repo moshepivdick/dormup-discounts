@@ -22,7 +22,9 @@ export default function RootLayout({
         <ClientErrorBoundary>
           <AuthProvider>
             <AnalyticsInitializer />
-            {children}
+            <div className="min-h-screen pb-28 sm:pb-24">
+              {children}
+            </div>
             <Footer />
             <CookieBanner />
           </AuthProvider>
