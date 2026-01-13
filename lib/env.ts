@@ -5,7 +5,9 @@ type EnvVar =
   | 'ADMIN_JWT_SECRET'
   | 'ADMIN_PANEL_SLUG'
   | 'ADMIN_PANEL_PASSWORD_HASH'
-  | 'ADMIN_GATE_COOKIE_TTL_MINUTES';
+  | 'ADMIN_GATE_COOKIE_TTL_MINUTES'
+  | 'EXPORT_HASH_SALT'
+  | 'MAX_EXPORT_DAYS';
 
 const getEnv = (key: EnvVar, fallback?: string) => {
   // Try multiple ways to get the value
@@ -104,6 +106,12 @@ export const env = {
     const raw = getEnvOptional('ADMIN_GATE_COOKIE_TTL_MINUTES') ?? '120';
     const ttl = Number(raw);
     return Number.isFinite(ttl) ? ttl : 120;
+  },
+  exportHashSalt: () => getEnvOptional('EXPORT_HASH_SALT') ?? 'dormup-export-salt-2024',
+  maxExportDays: () => {
+    const raw = getEnvOptional('MAX_EXPORT_DAYS') ?? '31';
+    const days = Number(raw);
+    return Number.isFinite(days) && days > 0 ? days : 31;
   },
 };
 

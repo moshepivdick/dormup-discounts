@@ -687,6 +687,30 @@ model ReportSnapshot {
   @@schema("public")
 }
 
+// Export jobs for raw data exports
+model ExportJob {
+  id            String   @id @default(uuid())
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  completed_at  DateTime? @db.Timestamptz(6)
+  created_by    String?  @db.Uuid // Admin user ID
+  status        String   @default("PENDING") // "PENDING" | "READY" | "FAILED"
+  scope         String   @default("admin") // "admin"
+  export_type   String   @default("events_raw") // "events_raw"
+  format        String   // "csv" | "xlsx"
+  from_date     DateTime @db.Date
+  to_date       DateTime @db.Date
+  partner_id    String?  @db.Uuid
+  event_types   String[] @default([])
+  row_count     Int?
+  file_path     String?
+  error_message String?
+  filters_json  Json?
+
+  @@index([status, created_at])
+  @@index([created_by, created_at])
+  @@schema("public")
+}
+
 enum aal_level {
   aal1
   aal2
