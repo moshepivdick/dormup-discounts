@@ -105,7 +105,7 @@ export function CookieBanner() {
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white shadow-lg sm:left-auto sm:right-4 sm:bottom-4 sm:max-w-md sm:rounded-xl sm:border">
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white shadow-lg">
         <div className="p-4 sm:p-6">
           <h3 className="mb-2 text-base font-semibold text-slate-900">{t.title}</h3>
           <p className="mb-4 text-sm text-slate-600">{t.text}</p>
