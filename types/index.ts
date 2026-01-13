@@ -11,6 +11,9 @@ export type VenueSummary = {
   latitude: number;
   longitude: number;
   distance?: number | null;
+  priceLevel?: 'budget' | 'mid' | 'premium' | null;
+  typicalStudentSpendMin?: number | null;
+  typicalStudentSpendMax?: number | null;
 };
 
 export type VenueDetails = VenueSummary & {
@@ -18,6 +21,7 @@ export type VenueDetails = VenueSummary & {
   openingHours?: string | null;
   mapUrl?: string | null;
   phone?: string | null;
+  // Price fields are inherited from VenueSummary
 };
 
 // Discount codes are now generated client-side, no backend types needed

@@ -209,6 +209,9 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
           openingHoursShort: true,
           latitude: true,
           longitude: true,
+          priceLevel: true,
+          typicalStudentSpendMin: true,
+          typicalStudentSpendMax: true,
           // Explicitly exclude avgStudentBill to avoid P2022 error if column doesn't exist
         },
       orderBy: [{ city: 'asc' }, { name: 'asc' }],
@@ -222,7 +225,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
         venues = await (prisma as any).$queryRaw`
           SELECT id, name, city, category, "discountText", "isActive", 
                  "imageUrl", "thumbnailUrl", "openingHoursShort", 
-                 latitude, longitude
+                 latitude, longitude, "priceLevel", "typicalStudentSpendMin", "typicalStudentSpendMax"
           FROM "public"."venues"
           ORDER BY city ASC, name ASC
         `;
@@ -239,6 +242,9 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
           openingHoursShort: v.openingHoursShort,
           latitude: Number(v.latitude),
           longitude: Number(v.longitude),
+          priceLevel: v.priceLevel,
+          typicalStudentSpendMin: v.typicalStudentSpendMin ? Number(v.typicalStudentSpendMin) : null,
+          typicalStudentSpendMax: v.typicalStudentSpendMax ? Number(v.typicalStudentSpendMax) : null,
         }));
       } else {
         throw prismaError;
@@ -257,6 +263,9 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
       openingHoursShort: venue.openingHoursShort,
       latitude: venue.latitude,
       longitude: venue.longitude,
+      priceLevel: venue.priceLevel,
+      typicalStudentSpendMin: venue.typicalStudentSpendMin,
+      typicalStudentSpendMax: venue.typicalStudentSpendMax,
     }));
 
     const cities = Array.from(new Set(payload.map((venue) => venue.city))).sort();

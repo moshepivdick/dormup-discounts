@@ -21,6 +21,9 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
         isActive: true,
         details: true,
         openingHours: true,
+        priceLevel: true,
+        typicalStudentSpendMin: true,
+        typicalStudentSpendMax: true,
         openingHoursShort: true,
         mapUrl: true,
         imageUrl: true,
@@ -56,10 +59,13 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
           latitude: number;
           longitude: number;
           phone: string | null;
+          priceLevel: 'budget' | 'mid' | 'premium' | null;
+          typicalStudentSpendMin: number | null;
+          typicalStudentSpendMax: number | null;
           createdAt: Date;
           updatedAt: Date;
         }>>`
-          SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude, phone, "createdAt", "updatedAt"
+          SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude, phone, "priceLevel", "typicalStudentSpendMin", "typicalStudentSpendMax", "createdAt", "updatedAt"
           FROM public.venues
           WHERE id = ${id} AND "isActive" = true;
         `;
@@ -68,7 +74,14 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
           return apiResponse.error(res, 404, 'Venue not found');
         }
 
-        return apiResponse.success(res, { venue: rawVenue[0] });
+        const venue = rawVenue[0];
+        return apiResponse.success(res, {
+          venue: {
+            ...venue,
+            typicalStudentSpendMin: venue.typicalStudentSpendMin ? Number(venue.typicalStudentSpendMin) : null,
+            typicalStudentSpendMax: venue.typicalStudentSpendMax ? Number(venue.typicalStudentSpendMax) : null,
+          },
+        });
       } catch (fallbackError) {
         console.error('Error fetching venue with fallback:', fallbackError);
         return apiResponse.error(res, 500, 'Unable to load venue', fallbackError);

@@ -66,6 +66,13 @@ export function VenueCard({ venue }: Props) {
             <h3 className="line-clamp-2 text-[13px] font-semibold leading-snug text-slate-900 md:line-clamp-none md:text-2xl">
               {venue.name}
             </h3>
+            {venue.priceLevel && (
+              <span className="shrink-0 text-[11px] text-slate-500 transition-colors hover:text-slate-700 md:text-xs">
+                {venue.priceLevel === 'budget' && '€'}
+                {venue.priceLevel === 'mid' && '€€'}
+                {venue.priceLevel === 'premium' && '€€€'}
+              </span>
+            )}
             {openingRange && isOpen !== null && (
               <span
                 className={`hidden shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold md:inline-flex ${

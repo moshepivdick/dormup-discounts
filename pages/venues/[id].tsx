@@ -380,6 +380,28 @@ export default function VenuePage({ venue }: VenuePageProps) {
             className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-emerald-900/5"
           >
             <p className="text-sm font-semibold text-slate-500">About</p>
+            {(venue.priceLevel || (venue.typicalStudentSpendMin != null && venue.typicalStudentSpendMax != null)) && (
+              <div className="mt-3 space-y-2 border-b border-slate-100 pb-3">
+                {venue.priceLevel && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-slate-500">Price level:</span>
+                    <span className="text-sm text-slate-700">
+                      {venue.priceLevel === 'budget' && '€'}
+                      {venue.priceLevel === 'mid' && '€€'}
+                      {venue.priceLevel === 'premium' && '€€€'}
+                    </span>
+                  </div>
+                )}
+                {venue.typicalStudentSpendMin != null && venue.typicalStudentSpendMax != null && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-slate-500">Typical student spend:</span>
+                    <span className="text-sm text-slate-700">
+                      €{venue.typicalStudentSpendMin}–{venue.typicalStudentSpendMax}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
             {venue.name === 'Chi Burdlaz Garden' && (
               <a
                 href="https://www.chiburdlazgarden.com/"
@@ -527,6 +549,9 @@ export const getServerSideProps: GetServerSideProps<VenuePageProps> = async ({
         thumbnailUrl: true,
         latitude: true,
         longitude: true,
+        priceLevel: true,
+        typicalStudentSpendMin: true,
+        typicalStudentSpendMax: true,
       },
   });
 
@@ -550,6 +575,9 @@ export const getServerSideProps: GetServerSideProps<VenuePageProps> = async ({
     thumbnailUrl: venue.thumbnailUrl,
     latitude: venue.latitude,
     longitude: venue.longitude,
+    priceLevel: venue.priceLevel,
+    typicalStudentSpendMin: venue.typicalStudentSpendMin,
+    typicalStudentSpendMax: venue.typicalStudentSpendMax,
   };
 
   return {
@@ -576,8 +604,11 @@ export const getServerSideProps: GetServerSideProps<VenuePageProps> = async ({
           thumbnailUrl: string | null;
           latitude: number;
           longitude: number;
+          priceLevel: 'budget' | 'mid' | 'premium' | null;
+          typicalStudentSpendMin: number | null;
+          typicalStudentSpendMax: number | null;
         }>>`
-          SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude
+          SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude, "priceLevel", "typicalStudentSpendMin", "typicalStudentSpendMax"
           FROM public.venues
           WHERE id = ${id} AND "isActive" = true;
         `;
@@ -603,6 +634,9 @@ export const getServerSideProps: GetServerSideProps<VenuePageProps> = async ({
           thumbnailUrl: venue.thumbnailUrl,
           latitude: venue.latitude,
           longitude: venue.longitude,
+          priceLevel: venue.priceLevel,
+          typicalStudentSpendMin: venue.typicalStudentSpendMin ? Number(venue.typicalStudentSpendMin) : null,
+          typicalStudentSpendMax: venue.typicalStudentSpendMax ? Number(venue.typicalStudentSpendMax) : null,
         };
 
         return {

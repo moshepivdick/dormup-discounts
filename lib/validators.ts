@@ -34,7 +34,22 @@ export const venueMutationSchema = z.object({
   latitude: z.number(),
   longitude: z.number(),
   isActive: z.boolean().optional(),
-});
+  priceLevel: z.enum(['budget', 'mid', 'premium']).optional().nullable(),
+  typicalStudentSpendMin: z.number().int().positive().optional().nullable(),
+  typicalStudentSpendMax: z.number().int().positive().optional().nullable(),
+}).refine(
+  (data) => {
+    // If both min and max are provided, min must be <= max
+    if (data.typicalStudentSpendMin != null && data.typicalStudentSpendMax != null) {
+      return data.typicalStudentSpendMin <= data.typicalStudentSpendMax;
+    }
+    return true;
+  },
+  {
+    message: 'Typical student spend min must be less than or equal to max',
+    path: ['typicalStudentSpendMin'],
+  }
+);
 
 export const partnerMutationSchema = z.object({
   email: z.string().email(),

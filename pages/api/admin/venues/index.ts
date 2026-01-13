@@ -58,6 +58,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           imageUrl: true,
           thumbnailUrl: true,
           phone: true,
+          priceLevel: true,
+          typicalStudentSpendMin: true,
+          typicalStudentSpendMax: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -84,14 +87,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           imageUrl: string | null;
           thumbnailUrl: string | null;
           phone: string | null;
+          priceLevel: 'budget' | 'mid' | 'premium' | null;
+          typicalStudentSpendMin: number | null;
+          typicalStudentSpendMax: number | null;
           createdAt: Date;
           updatedAt: Date;
         }>>`
-          SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", latitude, longitude, "imageUrl", "thumbnailUrl", phone, "createdAt", "updatedAt"
+          SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", latitude, longitude, "imageUrl", "thumbnailUrl", phone, "priceLevel", "typicalStudentSpendMin", "typicalStudentSpendMax", "createdAt", "updatedAt"
           FROM public.venues
           ORDER BY city ASC, name ASC;
         `;
-        return apiResponse.success(res, { venues: rawVenues });
+        return apiResponse.success(res, {
+          venues: rawVenues.map((v) => ({
+            ...v,
+            typicalStudentSpendMin: v.typicalStudentSpendMin ? Number(v.typicalStudentSpendMin) : null,
+            typicalStudentSpendMax: v.typicalStudentSpendMax ? Number(v.typicalStudentSpendMax) : null,
+          })),
+        });
       }
       console.error('Error fetching venues:', error);
       // Return empty array instead of throwing to prevent page crash

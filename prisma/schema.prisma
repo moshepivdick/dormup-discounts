@@ -27,9 +27,12 @@ model Venue {
   isActive          Boolean                 @default(true)
   createdAt         DateTime                @default(now())
   updatedAt         DateTime                @updatedAt
-  phone             String?
-  avgStudentBill    Float?
-  discountUses      DiscountUse[]
+  phone                      String?
+  avgStudentBill             Float?
+  priceLevel                 PriceLevel?
+  typicalStudentSpendMin     Int?
+  typicalStudentSpendMax     Int?
+  discountUses               DiscountUse[]
   partner           Partner?
   views             VenueView[]
   dailyMetrics      DailyPartnerMetrics[]
@@ -91,12 +94,12 @@ model Admin {
 
 model VenueView {
   id         Int      @id @default(autoincrement())
-  venueId    Int
+  venueId    Int      @map("venue_id")
   city       String
-  createdAt  DateTime @default(now())
-  userAgent  String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  userAgent  String?  @map("user_agent")
   user_id    String?  @db.Uuid
-  dedupe_key String?  @unique
+  dedupe_key String?  @unique @map("dedupe_key")
   profiles   Profile? @relation(fields: [user_id], references: [id], onUpdate: NoAction)
   venue      Venue    @relation(fields: [venueId], references: [id])
 
@@ -105,6 +108,7 @@ model VenueView {
   @@index([venueId, user_id], map: "idx_venue_views_venue_user")
   @@index([dedupe_key], map: "idx_venue_views_dedupe_key")
   @@index([venueId, createdAt], map: "idx_venue_views_venue_created")
+  @@map("venue_views")
   @@schema("public")
 }
 
@@ -799,4 +803,12 @@ enum one_time_token_type {
   phone_change_token
 
   @@schema("auth")
+}
+
+enum PriceLevel {
+  budget
+  mid
+  premium
+
+  @@schema("public")
 }

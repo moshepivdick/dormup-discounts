@@ -118,6 +118,23 @@ export async function POST(request: NextRequest) {
           // Success - return early
           return NextResponse.json({ ok: true });
         } catch (fallbackError: any) {
+          // Check if table doesn't exist (P2010 or 42P01)
+          const isTableMissing = 
+            fallbackError?.code === 'P2010' || 
+            fallbackError?.code === '42P01' ||
+            (fallbackError?.message && (
+              fallbackError.message.includes('does not exist') ||
+              fallbackError.message.includes('relation') ||
+              fallbackError.message.includes('venue_views')
+            ));
+          
+          if (isTableMissing) {
+            // Table doesn't exist - this is fine, just return success
+            // View tracking is not critical and table will be created by migration
+            console.warn('venue_views table does not exist yet, skipping view tracking');
+            return NextResponse.json({ ok: true });
+          }
+          
           // If unique constraint violation or any other error, view might already be recorded
           // Return success anyway - view tracking is not critical
           if (fallbackError?.code === 'P2002' || fallbackError?.code === '23505') {
@@ -186,6 +203,22 @@ export async function POST(request: NextRequest) {
         `;
         return NextResponse.json({ ok: true });
       } catch (finalError: any) {
+        // Check if table doesn't exist (P2010 or 42P01)
+        const isTableMissing = 
+          finalError?.code === 'P2010' || 
+          finalError?.code === '42P01' ||
+          (finalError?.message && (
+            finalError.message.includes('does not exist') ||
+            finalError.message.includes('relation') ||
+            finalError.message.includes('venue_views')
+          ));
+        
+        if (isTableMissing) {
+          // Table doesn't exist - this is fine, just return success
+          console.warn('venue_views table does not exist yet, skipping view tracking');
+          return NextResponse.json({ ok: true });
+        }
+        
         // If unique constraint violation or any other error, view might already be recorded
         if (finalError?.code === 'P2002' || finalError?.code === '23505') {
           return NextResponse.json({ ok: true });
