@@ -33,20 +33,28 @@ const translations = {
 
 export function CookieBanner() {
   const pathname = usePathname();
-  const [showBanner, setShowBanner] = useState(false);
+  // Initialize showBanner immediately based on consent check (client-side only)
+  const [showBanner, setShowBanner] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !getConsent();
+  });
   const [showModal, setShowModal] = useState(false);
-  const [locale, setLocale] = useState<'en' | 'it'>('en');
+  const [locale, setLocale] = useState<'en' | 'it'>(() => {
+    if (typeof window === 'undefined') return 'en';
+    return detectLocale(pathname || '/');
+  });
 
   useEffect(() => {
-    // Detect locale from pathname
+    // Detect locale from pathname (update if pathname changes)
     const detectedLocale = detectLocale(pathname || '/');
     setLocale(detectedLocale);
 
-    // Check if consent exists
+    // Check if consent exists (in case it was set elsewhere)
     const consent = getConsent();
     if (!consent) {
       setShowBanner(true);
     } else {
+      setShowBanner(false);
       // Initialize analytics if consent was given
       initAnalytics(consent);
     }
