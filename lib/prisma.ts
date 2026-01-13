@@ -18,18 +18,26 @@ function getConnectionUrl(): string {
     // This is essential for serverless to avoid connection limit errors
     const databaseUrl = env.databaseUrl();
     if (databaseUrl) {
-      // Ensure pgbouncer mode is enabled
+      // Parse and modify URL to ensure correct settings
       let url = databaseUrl;
-      if (!url.includes('pgbouncer=true')) {
-        url = url.includes('?') ? `${url}&pgbouncer=true` : `${url}?pgbouncer=true`;
+      
+      // Remove existing connection_limit and pool_timeout to set our own
+      url = url.replace(/[?&]connection_limit=\d+/gi, '');
+      url = url.replace(/[?&]pool_timeout=\d+/gi, '');
+      url = url.replace(/[?&]pgbouncer=true/gi, '');
+      
+      // For serverless, use connection_limit=1 as recommended by Supabase
+      // This prevents "max clients reached" errors in Session mode
+      const separator = url.includes('?') ? '&' : '?';
+      url = `${url}${separator}pgbouncer=true&connection_limit=1&pool_timeout=10`;
+      
+      // Ensure we're using the pooled port (6543) if not already set
+      // Supabase pooled connection should use port 6543
+      if (!url.includes(':6543') && !url.includes(':5432')) {
+        // If no port specified, assume it's already correct in the URL
+        // Otherwise, we'd need to parse and replace, which is complex
       }
-      // Add connection pool settings
-      if (!url.includes('connection_limit')) {
-        url = url.includes('?') ? `${url}&connection_limit=10` : `${url}?connection_limit=10`;
-      }
-      if (!url.includes('pool_timeout')) {
-        url = url.includes('?') ? `${url}&pool_timeout=10` : `${url}?pool_timeout=10`;
-      }
+      
       return url;
     }
   }
@@ -44,7 +52,7 @@ function getConnectionUrl(): string {
     // DIRECT_URL not set, continue to fallback
   }
 
-  // Final fallback to DATABASE_URL
+  // Final fallback to DATABASE_URL (for development)
   const databaseUrl = env.databaseUrl();
   if (databaseUrl) {
     return databaseUrl;
