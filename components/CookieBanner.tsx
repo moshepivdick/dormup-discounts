@@ -37,6 +37,7 @@ export function CookieBanner() {
   const [showModal, setShowModal] = useState(false);
   const [locale, setLocale] = useState<'en' | 'it'>('en');
   const [mounted, setMounted] = useState(false);
+  const [animate, setAnimate] = useState(false);
 
   // Use useLayoutEffect for synchronous check on mount
   useLayoutEffect(() => {
@@ -51,6 +52,10 @@ export function CookieBanner() {
     const consent = getConsent();
     if (!consent) {
       setShowBanner(true);
+      // Trigger animation after a small delay
+      setTimeout(() => {
+        setAnimate(true);
+      }, 60);
     } else {
       setShowBanner(false);
       // Initialize analytics if consent was given
@@ -113,41 +118,43 @@ export function CookieBanner() {
 
       {/* Main banner container */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-[9999] px-4 pb-4 sm:px-6"
+        className={`fixed bottom-0 left-0 right-0 z-[9999] px-4 sm:px-6 cookie-banner-enter ${
+          animate ? 'cookie-banner-enter-active' : ''
+        }`}
         style={{
-          paddingBottom: 'max(env(safe-area-inset-bottom), 1rem)',
+          paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
         }}
       >
         {/* Centered card container */}
         <div className="mx-auto max-w-4xl">
-          <div className="rounded-2xl border border-black/10 bg-white/95 backdrop-blur-sm shadow-[0_10px_30px_rgba(0,0,0,0.12)] p-4 sm:p-6">
-            <h3 className="mb-2 text-base sm:text-lg font-semibold text-slate-900">
+          <div className="rounded-2xl border border-black/10 bg-white/90 backdrop-blur-sm shadow-[0_10px_30px_rgba(0,0,0,0.12)] p-4 sm:p-6">
+            <h3 className="mb-3 text-base sm:text-lg font-semibold text-slate-900">
               {t.title}
             </h3>
-            <p className="mb-4 text-sm text-black/70">{t.text}</p>
+            <p className="mb-5 text-sm text-black/70 leading-relaxed">{t.text}</p>
 
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={handleAcceptAll}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                className="rounded-xl bg-[#0F5A44] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0d4d38] focus:outline-none focus:ring-2 focus:ring-[#0F5A44] focus:ring-offset-2"
               >
                 {t.acceptAll}
               </button>
               <button
                 onClick={handleRejectNonEssential}
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2"
+                className="rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-black/80 transition-colors hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-black/20 focus:ring-offset-2"
               >
                 {t.rejectNonEssential}
               </button>
               <button
                 onClick={handleCustomize}
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2"
+                className="rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-black/80 transition-colors hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-black/20 focus:ring-offset-2"
               >
                 {t.customize}
               </button>
               <Link
                 href="/privacy"
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2"
+                className="rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-black/80 transition-colors hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-black/20 focus:ring-offset-2"
               >
                 {t.privacyPolicy}
               </Link>
