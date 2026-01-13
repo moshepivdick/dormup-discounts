@@ -778,10 +778,66 @@ export async function getMonthlyPartnerReport(venueId: number, monthStr: string)
   // 2. Total redemptions (already in metrics.qr_redeemed)
   const totalRedemptions = metrics.qr_redeemed;
 
+  // Calculate Month-over-Month (MoM) deltas for Unique Customers and Total Redemptions
+  const prevMonth = new Date(start);
+  prevMonth.setMonth(prevMonth.getMonth() - 1);
+  const prevYear = prevMonth.getFullYear();
+  const prevMonthNum = prevMonth.getMonth() + 1;
+  const prevMonthStr = `${prevYear}-${String(prevMonthNum).padStart(2, '0')}`;
+  const { start: prevStart, end: prevEnd } = getMonthBounds(prevYear, prevMonthNum);
+
+  // Get previous month unique customers count
+  let prevUniqueCustomers: number | null = null;
+  try {
+    const prevUniqueUsersRedeemed = await prisma.discountUse.findMany({
+      where: {
+        venueId,
+        status: 'confirmed',
+        confirmedAt: {
+          gte: prevStart,
+          lte: prevEnd,
+        },
+        user_id: { not: null },
+      },
+      select: { user_id: true },
+      distinct: ['user_id'],
+    });
+    prevUniqueCustomers = prevUniqueUsersRedeemed.length;
+  } catch (error) {
+    // If error, prevUniqueCustomers remains null
+  }
+
+  // Get previous month total redemptions
+  let prevTotalRedemptions: number | null = null;
+  try {
+    const prevMetrics = await prisma.monthlyPartnerMetrics.findFirst({
+      where: {
+        venue_id: venueId,
+        period_start: prevStart,
+      },
+    });
+    prevTotalRedemptions = prevMetrics?.qr_redeemed ?? null;
+  } catch (error) {
+    // If error, prevTotalRedemptions remains null
+  }
+
+  // Calculate MoM deltas (absolute only, no percentages)
+  const momUniqueCustomers = prevUniqueCustomers !== null
+    ? uniqueCustomersCount - prevUniqueCustomers
+    : null;
+  const momTotalRedemptions = prevTotalRedemptions !== null
+    ? totalRedemptions - prevTotalRedemptions
+    : null;
+
   // 3. Estimated impact (redemptions * avgStudentBill if available)
   const estimatedImpact = avgTicket && avgTicket > 0 
     ? totalRedemptions * avgTicket 
     : null;
+
+  // Calculate end-to-end conversion rate (Page View → Redemption)
+  const endToEndConversionRate = metrics.page_views > 0
+    ? (metrics.qr_redeemed / metrics.page_views) * 100
+    : 0;
 
   // 4. Best time: weekday + hour range with highest redemptions
   const redemptions = await prisma.discountUse.findMany({
@@ -850,26 +906,18 @@ export async function getMonthlyPartnerReport(venueId: number, monthStr: string)
     }
   }
 
-  // Generate insights
+  // Generate insights (rewritten with exact business-oriented language)
   const insights: string[] = [];
 
-  if (metrics.conversion_rate > 50) {
-    insights.push(`Excellent conversion rate of ${metrics.conversion_rate.toFixed(1)}% - students are actively using your discounts!`);
-  } else if (metrics.conversion_rate < 20) {
-    insights.push(`Conversion rate is ${metrics.conversion_rate.toFixed(1)}% - consider promoting your discounts more actively.`);
-  }
-
+  // 1) Repeat behavior insight (only if repeat_users > 0)
   if (metrics.repeat_users > 0) {
-    insights.push(`${metrics.repeat_users} returning customers this month - great customer retention!`);
+    insights.push('Student visits show repeat behavior, indicating early signs of customer retention.');
   }
 
-  if (metrics.unique_users > 0) {
-    const avgPerUser = (metrics.qr_redeemed / metrics.unique_users).toFixed(1);
-    insights.push(`Average of ${avgPerUser} redemptions per unique student.`);
-  }
-
-  if (insights.length === 0) {
-    insights.push('Keep promoting your discounts to increase engagement!');
+  // 2) Average redemptions per unique customer
+  if (uniqueCustomersCount > 0 && totalRedemptions > 0) {
+    const avgRedemptionsPerCustomer = (totalRedemptions / uniqueCustomersCount).toFixed(1);
+    insights.push(`Each unique student generated an average of ${avgRedemptionsPerCustomer} redemptions, suggesting strong engagement once activated.`);
   }
 
   // Generate alerts and recommendations
@@ -921,6 +969,23 @@ export async function getMonthlyPartnerReport(venueId: number, monthStr: string)
     });
   }
 
+  // Add "Suggested next step" recommendation
+  if (bestTime) {
+    // bestTime format is "Day HH–HH" (e.g., "Sat 12–15")
+    // Use it directly in the recommendation
+    alerts.push({
+      severity: 'info',
+      title: 'Suggested next step',
+      description: `Consider running a time-limited student offer during your peak window (${bestTime}) to further increase redemptions.`,
+    });
+  } else {
+    alerts.push({
+      severity: 'info',
+      title: 'Suggested next step',
+      description: 'Consider testing a time-limited student offer to stimulate additional demand.',
+    });
+  }
+
   return {
     metrics,
     insights,
@@ -930,6 +995,11 @@ export async function getMonthlyPartnerReport(venueId: number, monthStr: string)
       estimatedImpact,
       avgTicket,
       bestTime,
+      momUniqueCustomers,
+      momTotalRedemptions,
+    },
+    funnel: {
+      endToEndConversionRate,
     },
     alerts: alerts.length > 0 ? alerts : [],
   };

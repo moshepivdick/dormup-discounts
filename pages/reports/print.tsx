@@ -282,10 +282,28 @@ export default function PrintReportPage({ scope, month, reportData, venueName }:
                 <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
                   <p className="text-sm font-medium text-gray-600">Unique Customers</p>
                   <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.impactSummary.uniqueCustomers.toLocaleString()}</p>
+                  {reportData.impactSummary.momUniqueCustomers !== null && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {reportData.impactSummary.momUniqueCustomers > 0 ? '+' : ''}
+                      {reportData.impactSummary.momUniqueCustomers} vs last month
+                    </p>
+                  )}
+                  {reportData.impactSummary.momUniqueCustomers === null && (
+                    <p className="mt-1 text-xs text-gray-400">—</p>
+                  )}
                 </div>
                 <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
                   <p className="text-sm font-medium text-gray-600">Total Redemptions</p>
                   <p className="mt-1 text-3xl font-bold text-gray-900">{reportData.impactSummary.totalRedemptions.toLocaleString()}</p>
+                  {reportData.impactSummary.momTotalRedemptions !== null && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {reportData.impactSummary.momTotalRedemptions > 0 ? '+' : ''}
+                      {reportData.impactSummary.momTotalRedemptions} vs last month
+                    </p>
+                  )}
+                  {reportData.impactSummary.momTotalRedemptions === null && (
+                    <p className="mt-1 text-xs text-gray-400">—</p>
+                  )}
                 </div>
                 <div className="rounded-lg border-2 border-gray-200 bg-gray-50 p-4">
                   <p className="text-sm font-medium text-gray-600">Estimated Impact</p>
@@ -340,6 +358,11 @@ export default function PrintReportPage({ scope, month, reportData, venueName }:
                   </p>
                 </div>
               </div>
+              {reportData.funnel && (
+                <p className="mt-4 text-center text-sm text-gray-600">
+                  End-to-end conversion rate (Page View → Redemption): {reportData.funnel.endToEndConversionRate.toFixed(1)}%.
+                </p>
+              )}
             </div>
           </section>
 
@@ -401,10 +424,17 @@ export default function PrintReportPage({ scope, month, reportData, venueName }:
         </div>
       )}
 
+      {/* Benchmark Footnote */}
+      <div className="mt-8 border-t border-gray-200 pt-3">
+        <p className="text-xs text-gray-500 text-center">
+          Early-stage benchmarks: Typical conversion 3–7%, strong performance &gt;25%.
+        </p>
+      </div>
+
       {/* Footer */}
-      <div className="mt-12 border-t-2 border-gray-300 pt-4 text-center text-sm text-gray-500">
-        <p>DormUp Discounts - Monthly Report</p>
-        <p className="mt-1">Confidential - For internal use only</p>
+      <div className="mt-6 border-t-2 border-gray-300 pt-4 text-center text-sm text-gray-500">
+        <p>Data is aggregated and anonymized.</p>
+        <p className="mt-1">Confidential — for partner use only</p>
       </div>
     </div>
   );
