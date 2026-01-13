@@ -5,6 +5,7 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { requireAdmin } from '@/lib/guards';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { RawExportPanel } from '@/components/admin/RawExportPanel';
 
 type ReportsPageProps = {
   currentMonth: string;
@@ -610,9 +611,18 @@ export default function ReportsPage({ currentMonth, partners }: ReportsPageProps
 
       {/* Exports Tab */}
       {activeTab === 'exports' && (
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Raw Export Panel */}
           <div className="rounded-lg border border-white/10 bg-slate-800 p-6">
-            <h3 className="mb-4 text-lg font-semibold text-white">Export Data</h3>
+            <h3 className="mb-4 text-lg font-semibold text-white">Raw Export</h3>
+            <p className="mb-4 text-sm text-slate-400">Internal use only. Data is anonymized.</p>
+            
+            <RawExportPanel partners={partners} />
+          </div>
+
+          {/* Legacy Aggregated Exports */}
+          <div className="rounded-lg border border-white/10 bg-slate-800 p-6">
+            <h3 className="mb-4 text-lg font-semibold text-white">Aggregated Export</h3>
             <div className="space-y-4">
               <div>
                 <h4 className="mb-2 text-sm font-medium text-slate-300">Admin Export (All Partners)</h4>
