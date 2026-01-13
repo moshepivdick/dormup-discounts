@@ -115,61 +115,65 @@ export function CookieBanner() {
         />
       )}
 
-      {/* Subtle gradient layer for visual separation */}
-      <div
-        className="fixed bottom-0 left-0 right-0 h-24 pointer-events-none z-[9998]"
-        style={{
-          background:
-            'linear-gradient(to top, rgba(0, 0, 0, 0.1) 0%, transparent 100%)',
-        }}
-      />
+      {showBanner && (
+        <>
+          {/* Subtle gradient layer for visual separation */}
+          <div
+            className="fixed bottom-0 left-0 right-0 h-24 pointer-events-none z-[9998]"
+            style={{
+              background:
+                'linear-gradient(to top, rgba(0, 0, 0, 0.1) 0%, transparent 100%)',
+            }}
+          />
 
-      {/* Main banner container */}
-      <div
-        className={`fixed bottom-0 left-0 right-0 z-[9999] px-4 sm:px-6 cookie-banner-enter ${
-          animate ? 'cookie-banner-enter-active' : ''
-        }`}
-        style={{
-          paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
-        }}
-      >
-        {/* Centered card container */}
-        <div className="mx-auto max-w-4xl">
-          <div className="rounded-2xl border border-black/10 bg-white/90 backdrop-blur-sm shadow-[0_10px_30px_rgba(0,0,0,0.12)] p-4 sm:p-6">
-            <h3 className="mb-3 text-base sm:text-lg font-semibold text-slate-900">
-              {t.title}
-            </h3>
-            <p className="mb-5 text-sm text-black/70 leading-relaxed">{t.text}</p>
+          {/* Main banner container */}
+          <div
+            className={`fixed bottom-0 left-0 right-0 z-[9999] px-4 sm:px-6 cookie-banner-enter ${
+              animate ? 'cookie-banner-enter-active' : ''
+            }`}
+            style={{
+              paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
+            }}
+          >
+            {/* Centered card container */}
+            <div className="mx-auto max-w-4xl">
+              <div className="rounded-2xl border border-black/10 bg-white/90 backdrop-blur-sm shadow-[0_10px_30px_rgba(0,0,0,0.12)] p-4 sm:p-6">
+                <h3 className="mb-3 text-base sm:text-lg font-semibold text-slate-900">
+                  {t.title}
+                </h3>
+                <p className="mb-5 text-sm text-black/70 leading-relaxed">{t.text}</p>
 
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={handleAcceptAll}
-                className="rounded-xl bg-[#0F5A44] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0d4d38] focus:outline-none focus:ring-2 focus:ring-[#0F5A44] focus:ring-offset-2"
-              >
-                {t.acceptAll}
-              </button>
-              <button
-                onClick={handleRejectNonEssential}
-                className="rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-black/80 transition-colors hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-black/20 focus:ring-offset-2"
-              >
-                {t.rejectNonEssential}
-              </button>
-              <button
-                onClick={handleCustomize}
-                className="rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-black/80 transition-colors hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-black/20 focus:ring-offset-2"
-              >
-                {t.customize}
-              </button>
-              <Link
-                href="/privacy"
-                className="rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-black/80 transition-colors hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-black/20 focus:ring-offset-2"
-              >
-                {t.privacyPolicy}
-              </Link>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={handleAcceptAll}
+                    className="rounded-xl bg-[#0F5A44] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0d4d38] focus:outline-none focus:ring-2 focus:ring-[#0F5A44] focus:ring-offset-2"
+                  >
+                    {t.acceptAll}
+                  </button>
+                  <button
+                    onClick={handleRejectNonEssential}
+                    className="rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-black/80 transition-colors hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-black/20 focus:ring-offset-2"
+                  >
+                    {t.rejectNonEssential}
+                  </button>
+                  <button
+                    onClick={handleCustomize}
+                    className="rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-black/80 transition-colors hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-black/20 focus:ring-offset-2"
+                  >
+                    {t.customize}
+                  </button>
+                  <Link
+                    href="/privacy"
+                    className="rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-black/80 transition-colors hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-black/20 focus:ring-offset-2"
+                  >
+                    {t.privacyPolicy}
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
 
       <CookiePreferencesModal
         isOpen={showModal}
