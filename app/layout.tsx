@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import '../styles/globals.css';
 import { AuthProvider } from './providers/AuthProvider';
 import { ClientErrorBoundary } from '@/components/ClientErrorBoundary';
+import { CookieBanner } from '@/components/CookieBanner';
+import { Footer } from '@/components/Footer';
+import { AnalyticsInitializer } from '@/components/AnalyticsInitializer';
 
 export const metadata: Metadata = {
   title: 'DormUp Discounts',
@@ -17,7 +20,12 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <ClientErrorBoundary>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <AnalyticsInitializer />
+            {children}
+            <Footer />
+            <CookieBanner />
+          </AuthProvider>
         </ClientErrorBoundary>
       </body>
     </html>
