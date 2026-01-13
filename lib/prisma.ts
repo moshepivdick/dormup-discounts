@@ -60,7 +60,7 @@ export const prisma =
   new PrismaClient({
     datasources: {
       db: {
-        url: connectionUrlWithLimit,
+        url: connectionUrl,
       },
     },
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
