@@ -7,28 +7,28 @@
 
 -- Create enum type for price level
 DO $$ BEGIN
-    CREATE TYPE "PriceLevel" AS ENUM ('budget', 'mid', 'premium');
+    CREATE TYPE "public"."PriceLevel" AS ENUM ('budget', 'mid', 'premium');
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
 -- Add price level column (nullable for backward compatibility)
-ALTER TABLE "public"."venues" 
-    ADD COLUMN IF NOT EXISTS "priceLevel" "PriceLevel";
+ALTER TABLE "Venue" 
+    ADD COLUMN IF NOT EXISTS "priceLevel" "public"."PriceLevel";
 
 -- Add typical student spend columns (nullable)
-ALTER TABLE "public"."venues" 
+ALTER TABLE "Venue" 
     ADD COLUMN IF NOT EXISTS "typicalStudentSpendMin" INTEGER;
 
-ALTER TABLE "public"."venues" 
+ALTER TABLE "Venue" 
     ADD COLUMN IF NOT EXISTS "typicalStudentSpendMax" INTEGER;
 
 -- Add check constraint to ensure min <= max when both are provided
-ALTER TABLE "public"."venues"
-    DROP CONSTRAINT IF EXISTS "venues_spend_range_check";
+ALTER TABLE "Venue"
+    DROP CONSTRAINT IF EXISTS "Venue_typicalStudentSpend_check";
 
-ALTER TABLE "public"."venues"
-    ADD CONSTRAINT "venues_spend_range_check" 
+ALTER TABLE "Venue"
+    ADD CONSTRAINT "Venue_typicalStudentSpend_check" 
     CHECK (
         "typicalStudentSpendMin" IS NULL 
         OR "typicalStudentSpendMax" IS NULL 
