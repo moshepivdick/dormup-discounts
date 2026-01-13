@@ -18,27 +18,42 @@ function getConnectionUrl(): string {
     // This is essential for serverless to avoid connection limit errors
     const databaseUrl = env.databaseUrl();
     if (databaseUrl) {
-      // Parse and modify URL to ensure correct settings
-      let url = databaseUrl;
-      
-      // Remove existing connection_limit and pool_timeout to set our own
-      url = url.replace(/[?&]connection_limit=\d+/gi, '');
-      url = url.replace(/[?&]pool_timeout=\d+/gi, '');
-      url = url.replace(/[?&]pgbouncer=true/gi, '');
-      
-      // For serverless, use connection_limit=1 as recommended by Supabase
-      // This prevents "max clients reached" errors in Session mode
-      const separator = url.includes('?') ? '&' : '?';
-      url = `${url}${separator}pgbouncer=true&connection_limit=1&pool_timeout=10`;
-      
-      // Ensure we're using the pooled port (6543) if not already set
-      // Supabase pooled connection should use port 6543
-      if (!url.includes(':6543') && !url.includes(':5432')) {
-        // If no port specified, assume it's already correct in the URL
-        // Otherwise, we'd need to parse and replace, which is complex
+      try {
+        // Parse URL properly to avoid breaking it
+        const urlObj = new URL(databaseUrl);
+        
+        // Remove existing parameters we want to override
+        urlObj.searchParams.delete('connection_limit');
+        urlObj.searchParams.delete('pool_timeout');
+        urlObj.searchParams.delete('pgbouncer');
+        
+        // For serverless, use connection_limit=1 as recommended by Supabase
+        // This prevents "max clients reached" errors in Session mode
+        urlObj.searchParams.set('pgbouncer', 'true');
+        urlObj.searchParams.set('connection_limit', '1');
+        urlObj.searchParams.set('pool_timeout', '10');
+        
+        return urlObj.toString();
+      } catch (error) {
+        // If URL parsing fails, fall back to string manipulation
+        // but be more careful about it
+        let url = databaseUrl;
+        
+        // Remove existing parameters
+        url = url.replace(/[?&]connection_limit=\d+/gi, '');
+        url = url.replace(/[?&]pool_timeout=\d+/gi, '');
+        url = url.replace(/[?&]pgbouncer=[^&]*/gi, '');
+        
+        // Clean up double separators
+        url = url.replace(/[?&]+/g, (match, offset) => offset === 0 ? '?' : '&');
+        url = url.replace(/[?&]$/, '');
+        
+        // Add new parameters
+        const separator = url.includes('?') ? '&' : '?';
+        url = `${url}${separator}pgbouncer=true&connection_limit=1&pool_timeout=10`;
+        
+        return url;
       }
-      
-      return url;
     }
   }
 
