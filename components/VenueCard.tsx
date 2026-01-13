@@ -67,7 +67,7 @@ export function VenueCard({ venue }: Props) {
               {venue.name}
             </h3>
             {venue.priceLevel && (
-              <span className="shrink-0 text-[11px] text-slate-500 transition-colors hover:text-slate-700 md:text-xs">
+              <span className="shrink-0 text-[12px] font-medium text-slate-600 transition-colors hover:text-slate-800 md:text-sm md:font-semibold">
                 {venue.priceLevel === 'budget' && '€'}
                 {venue.priceLevel === 'mid' && '€€'}
                 {venue.priceLevel === 'premium' && '€€€'}
