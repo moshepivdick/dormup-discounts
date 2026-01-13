@@ -101,12 +101,20 @@ export function CookieBanner() {
   };
 
   // Don't render until mounted (prevents hydration mismatch)
-  if (!mounted || !showBanner) {
+  if (!mounted) {
     return null;
   }
 
   return (
     <>
+      {/* Dark overlay for mobile - dims the screen when banner is visible */}
+      {showBanner && (
+        <div
+          className="fixed inset-0 bg-black/40 z-[9997] transition-opacity duration-300 md:hidden"
+          aria-hidden="true"
+        />
+      )}
+
       {/* Subtle gradient layer for visual separation */}
       <div
         className="fixed bottom-0 left-0 right-0 h-24 pointer-events-none z-[9998]"
