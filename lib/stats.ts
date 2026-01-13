@@ -48,8 +48,8 @@ export const getDiscountsByVenue = async () => {
         v.name as venue_name,
         COUNT(du.id) as total,
         COUNT(CASE WHEN du.status = 'confirmed' THEN 1 END) as confirmed
-      FROM venues v
-      LEFT JOIN discount_uses du ON v.id = du."venueId"
+      FROM "public"."Venue" v
+      LEFT JOIN "public"."DiscountUse" du ON v.id = du."venueId"
       WHERE v."isActive" = true
       GROUP BY v.id, v.name
       ORDER BY v.name ASC;
@@ -137,8 +137,8 @@ export const getUserActivityStats = async (userId: string) => {
       // Try without schema prefix first (some DBs might not need it)
       const rawViews = await prisma.$queryRaw<ViewWithVenue[]>`
         SELECT 
-          v.id, v.venue_id as "venueId", v.city, v.created_at as "createdAt", 
-          v.user_agent as "userAgent", v.user_id,
+          v.id, v."venueId", v.city, v."createdAt", 
+          v."userAgent", v."user_id",
           CASE 
             WHEN ven.id IS NOT NULL THEN
               json_build_object(
@@ -148,10 +148,10 @@ export const getUserActivityStats = async (userId: string) => {
               )
             ELSE NULL
           END as venue
-        FROM venue_views v
-        LEFT JOIN venues ven ON v.venue_id = ven.id
-        WHERE v.user_id = ${userId}
-        ORDER BY v.created_at DESC
+        FROM "public"."VenueView" v
+        LEFT JOIN "public"."Venue" ven ON v."venueId" = ven.id
+        WHERE v."user_id" = ${userId}
+        ORDER BY v."createdAt" DESC
       `;
       allViews = rawViews;
     } catch (rawError: any) {
@@ -293,21 +293,21 @@ export const getPartnerVenueStats = async (venueId: number) => {
       // Try without schema prefix first (some DBs might not need it)
       const rawViews = await prisma.$queryRaw<ViewWithProfile[]>`
         SELECT 
-          v.id, v.venue_id as "venueId", v.city, v.created_at as "createdAt", 
-          v.user_agent as "userAgent", v.user_id,
+          v.id, v."venueId", v.city, v."createdAt", 
+          v."userAgent", v."user_id",
           CASE 
             WHEN p.id IS NOT NULL THEN
               json_build_object(
                 'id', p.id,
                 'email', p.email,
-                'first_name', p.first_name
+                'first_name', p."first_name"
               )
             ELSE NULL
           END as profiles
-        FROM venue_views v
-        LEFT JOIN profiles p ON v.user_id = p.id
-        WHERE v.venue_id = ${venueId}
-        ORDER BY v.created_at DESC
+        FROM "public"."VenueView" v
+        LEFT JOIN "public"."Profile" p ON v."user_id" = p.id
+        WHERE v."venueId" = ${venueId}
+        ORDER BY v."createdAt" DESC
       `;
       allViews = rawViews;
     } catch (rawError: any) {
@@ -468,24 +468,24 @@ export const getPartnerVenueStatsWithDateRange = async (
     try {
       const rawViews = await prisma.$queryRaw<ViewWithProfile[]>` 
         SELECT 
-          v.id, v.venue_id as "venueId", v.city, v.created_at as "createdAt", 
-          v.user_agent as "userAgent", v.user_id,
+          v.id, v."venueId", v.city, v."createdAt", 
+          v."userAgent", v."user_id",
           CASE 
             WHEN p.id IS NOT NULL THEN
               json_build_object(
                 'id', p.id,
                 'email', p.email,
-                'first_name', p.first_name,
-                'verified_student', p.verified_student
+                'first_name', p."first_name",
+                'verified_student', p."verified_student"
               )
             ELSE NULL
           END as profiles
-        FROM venue_views v
-        LEFT JOIN profiles p ON v.user_id = p.id
-        WHERE v.venue_id = ${venueId}
-        ${startDate ? prisma.$queryRaw`AND v.created_at >= ${startDate}` : prisma.$queryRaw``}
-        ${endDate ? prisma.$queryRaw`AND v.created_at <= ${endDate}` : prisma.$queryRaw``}
-        ORDER BY v.created_at DESC
+        FROM "public"."VenueView" v
+        LEFT JOIN "public"."Profile" p ON v."user_id" = p.id
+        WHERE v."venueId" = ${venueId}
+        ${startDate ? prisma.$queryRaw`AND v."createdAt" >= ${startDate}` : prisma.$queryRaw``}
+        ${endDate ? prisma.$queryRaw`AND v."createdAt" <= ${endDate}` : prisma.$queryRaw``}
+        ORDER BY v."createdAt" DESC
       `;
       allViews = rawViews;
     } catch (rawError: any) {
