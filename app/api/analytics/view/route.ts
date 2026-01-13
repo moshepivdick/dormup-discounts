@@ -82,20 +82,19 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const dedupeKey = generateDedupeKey(venueId, userId, now);
 
-    // Try to create with dedupe_key first (if column exists after migration)
-    // Fallback to simple create if column doesn't exist yet
+    // Try to upsert with dedupe_key first (if column exists after migration)
+    // Use raw SQL with ON CONFLICT to handle duplicates gracefully
     try {
-      // Use type assertion to bypass TypeScript check - field exists in DB schema but
-      // Prisma Client types might not be fully updated until after migration is applied
-      await prisma.venueView.create({
-        data: {
-          venueId,
-          city,
-          userAgent: parsedUserAgent,
-          user_id: userId,
-          dedupe_key: dedupeKey,
-        } as any,
-      });
+      // Use raw SQL with ON CONFLICT to handle dedupe_key uniqueness
+      // This is more efficient than create + catch P2002
+      await prisma.$executeRaw`
+        INSERT INTO public.venue_views (venue_id, city, user_agent, user_id, created_at, dedupe_key)
+        VALUES (${venueId}, ${city}, ${parsedUserAgent || null}, ${userId}, ${now}, ${dedupeKey})
+        ON CONFLICT (dedupe_key) 
+        DO UPDATE SET 
+          user_agent = EXCLUDED.user_agent,
+          created_at = EXCLUDED.created_at
+      `;
     } catch (createError: any) {
       // Check if table doesn't exist (P2021 = table not found)
       const isTableMissing = 
@@ -161,33 +160,9 @@ export async function POST(request: NextRequest) {
           console.warn('Raw SQL fallback also failed:', fallbackError?.code, fallbackError?.message?.substring(0, 100));
           return NextResponse.json({ ok: true }); // Return success anyway
         }
-      } else if (createError?.code === 'P2002') {
-        // Unique constraint violation - dedupe_key exists and duplicate found
-        // Try to update the most recent view within the same minute window
-        try {
-          const existing = await prisma.venueView.findFirst({
-            where: {
-              venueId: venueId,
-              user_id: userId,
-              createdAt: {
-                gte: new Date(now.getTime() - 60000), // Within last minute
-              },
-            },
-            orderBy: { createdAt: 'desc' },
-          });
-          if (existing) {
-            await prisma.venueView.update({
-              where: { id: existing.id },
-              data: {
-                userAgent: parsedUserAgent,
-                createdAt: now,
-              },
-            });
-          }
-        } catch {
-          // If update fails, ignore - duplicate was already prevented by unique constraint
-        }
-        // Return success since duplicate was handled
+      } else if (createError?.code === 'P2002' || createError?.code === '23505') {
+        // Unique constraint violation - dedupe_key exists (shouldn't happen with ON CONFLICT, but handle gracefully)
+        // This means the view was already recorded, which is fine
         return NextResponse.json({ ok: true });
       } else {
         // Re-throw other errors to be handled by outer catch
