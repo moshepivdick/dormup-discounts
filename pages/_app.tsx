@@ -3,6 +3,9 @@ import type { AppProps } from 'next/app';
 import type { NextPage } from 'next';
 import '@/styles/globals.css';
 import { SiteLayout } from '@/components/layout/SiteLayout';
+import { CookieBanner } from '@/components/CookieBanner';
+import { Footer } from '@/components/Footer';
+import { AnalyticsInitializer } from '@/components/AnalyticsInitializer';
 import Head from "next/head";
 
 <Head>
@@ -38,6 +41,13 @@ export default function DormUpApp({ Component, pageProps }: AppPropsWithLayout) 
     Component.getLayout ??
     ((page: ReactElement) => <SiteLayout>{page}</SiteLayout>);
 
-  return getLayout(<Component {...pageProps} />, pageProps);
+  return (
+    <>
+      <AnalyticsInitializer />
+      {getLayout(<Component {...pageProps} />, pageProps)}
+      <Footer />
+      <CookieBanner />
+    </>
+  );
 }
 
