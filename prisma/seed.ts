@@ -130,7 +130,7 @@ async function main() {
   // Update Chi Burdlaz Garden to premium price level
   await prisma.venue.update({
     where: { id: targetVenue.id },
-    data: { priceLevel: 'premium' },
+    data: { priceLevel: PriceLevel.premium },
   });
 
   const [partnerPassword, adminPassword] = await Promise.all([
