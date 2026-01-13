@@ -49,7 +49,7 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
             SELECT id, name, city, category, "discountText", "isActive", 
                    "imageUrl", "thumbnailUrl", "openingHoursShort", 
                    latitude, longitude, "priceLevel", "typicalStudentSpendMin", "typicalStudentSpendMax"
-            FROM "public"."venues"
+            FROM "Venue"
             ORDER BY city ASC, name ASC
           `;
           // Convert raw results to match expected format
@@ -76,7 +76,7 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
             SELECT id, name, city, category, "discountText", "isActive", 
                    "imageUrl", "thumbnailUrl", "openingHoursShort", 
                    latitude, longitude
-            FROM "public"."venues"
+            FROM "Venue"
             ORDER BY city ASC, name ASC
           `;
           // Convert raw results to match expected format

@@ -75,7 +75,7 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
             updatedAt: Date;
           }>>`
             SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude, phone, "priceLevel", "typicalStudentSpendMin", "typicalStudentSpendMax", "createdAt", "updatedAt"
-            FROM public.venues
+            FROM "Venue"
             WHERE id = ${id} AND "isActive" = true;
           `;
         } catch {
@@ -100,7 +100,7 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
             updatedAt: Date;
           }>>`
             SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude, phone, "createdAt", "updatedAt"
-            FROM public.venues
+            FROM "Venue"
             WHERE id = ${id} AND "isActive" = true;
           `;
         }

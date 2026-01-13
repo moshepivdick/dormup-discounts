@@ -618,7 +618,7 @@ export const getServerSideProps: GetServerSideProps<VenuePageProps> = async ({
             typicalStudentSpendMax: number | null;
           }>>`
             SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude, "priceLevel", "typicalStudentSpendMin", "typicalStudentSpendMax"
-            FROM public.venues
+            FROM "Venue"
             WHERE id = ${id} AND "isActive" = true;
           `;
         } catch {
@@ -640,7 +640,7 @@ export const getServerSideProps: GetServerSideProps<VenuePageProps> = async ({
             longitude: number;
           }>>`
             SELECT id, name, city, category, "discountText", "isActive", details, "openingHours", "openingHoursShort", "mapUrl", "imageUrl", "thumbnailUrl", latitude, longitude
-            FROM public.venues
+            FROM "Venue"
             WHERE id = ${id} AND "isActive" = true;
           `;
         }
