@@ -228,7 +228,9 @@ export function VenueFiltersMobileBar({
   };
 
   const getCategoryLabel = () => {
-    return selectedCategory === 'all' ? 'All' : selectedCategory;
+    if (selectedCategory === 'all') return 'All';
+    const label = VENUE_CATEGORY_LABELS[selectedCategory as keyof typeof VENUE_CATEGORY_LABELS];
+    return label || selectedCategory;
   };
 
   return (
@@ -322,7 +324,9 @@ export function VenueFiltersDesktop({
   };
 
   const getCategoryLabel = () => {
-    return selectedCategory === 'all' ? 'All' : selectedCategory;
+    if (selectedCategory === 'all') return 'All';
+    const label = VENUE_CATEGORY_LABELS[selectedCategory as keyof typeof VENUE_CATEGORY_LABELS];
+    return label || selectedCategory;
   };
 
   return (
@@ -429,19 +433,23 @@ export function VenueFiltersDesktop({
               >
                 All
               </FilterChip>
-              {categories.map((category) => (
-                <FilterChip
-                  key={category}
-                  active={selectedCategory === category}
-                  onClick={() => {
-                    onCategoryChange(category);
-                    setIsCategoryOpen(false);
-                  }}
-                  variant="light"
-                >
-                  {category}
-                </FilterChip>
-              ))}
+              {categories.map((category) => {
+                // Display label for canonical categories, fallback to raw value
+                const label = VENUE_CATEGORY_LABELS[category as keyof typeof VENUE_CATEGORY_LABELS] || category;
+                return (
+                  <FilterChip
+                    key={category}
+                    active={selectedCategory === category}
+                    onClick={() => {
+                      onCategoryChange(category);
+                      setIsCategoryOpen(false);
+                    }}
+                    variant="light"
+                  >
+                    {label}
+                  </FilterChip>
+                );
+              })}
             </div>
           </div>
         )}
