@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { apiResponse } from '@/lib/api';
 import { venueMutationSchema } from '@/lib/validators';
+import { mapLegacyCategory, isValidCategory } from '@/lib/constants/categories';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const admin = await auth.getAdminFromRequest(req);
@@ -24,7 +25,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       where: { id },
       data: parsed.data,
     });
-    return apiResponse.success(res, { venue });
+    // Defensive: normalize category in case of legacy data
+    const normalizedVenue = {
+      ...venue,
+      category: isValidCategory(venue.category) ? venue.category : mapLegacyCategory(venue.category),
+    };
+    return apiResponse.success(res, { venue: normalizedVenue });
   }
 
   if (req.method === 'DELETE') {

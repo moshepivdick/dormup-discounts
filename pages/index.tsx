@@ -10,6 +10,7 @@ import { MobileFiltersSheet } from '@/components/MobileFiltersSheet';
 import { haversineDistance } from '@/utils/distance';
 import type { VenueSummary } from '@/types';
 import { SiteLayout } from '@/components/layout/SiteLayout';
+import { VENUE_CATEGORY_VALUES, VENUE_CATEGORY_LABELS, mapLegacyCategory, isValidCategory } from '@/lib/constants/categories';
 
 type HomeProps = {
   venues: VenueSummary[];
@@ -262,27 +263,41 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
       }
     }
 
-    const payload: VenueSummary[] = venues.map((venue: any) => ({
-      id: venue.id,
-      name: venue.name,
-      city: venue.city,
-      category: venue.category,
-      discountText: venue.discountText,
-      isActive: venue.isActive ?? true,
-      imageUrl: venue.imageUrl,
-      thumbnailUrl: venue.thumbnailUrl,
-      openingHoursShort: venue.openingHoursShort,
-      latitude: venue.latitude,
-      longitude: venue.longitude,
-      priceLevel: venue.priceLevel,
-      typicalStudentSpendMin: venue.typicalStudentSpendMin,
-      typicalStudentSpendMax: venue.typicalStudentSpendMax,
-    }));
+    // Normalize categories to canonical values
+    const payload: VenueSummary[] = venues.map((venue: any) => {
+      const category = isValidCategory(venue.category) ? venue.category : mapLegacyCategory(venue.category);
+      return {
+        id: venue.id,
+        name: venue.name,
+        city: venue.city,
+        category,
+        discountText: venue.discountText,
+        isActive: venue.isActive ?? true,
+        imageUrl: venue.imageUrl,
+        thumbnailUrl: venue.thumbnailUrl,
+        openingHoursShort: venue.openingHoursShort,
+        latitude: venue.latitude,
+        longitude: venue.longitude,
+        priceLevel: venue.priceLevel,
+        typicalStudentSpendMin: venue.typicalStudentSpendMin,
+        typicalStudentSpendMax: venue.typicalStudentSpendMax,
+      };
+    });
 
     const cities = Array.from(new Set(payload.map((venue) => venue.city))).sort();
-    const categories = Array.from(
-      new Set(payload.map((venue) => venue.category)),
-    ).sort();
+    // Filter to only show canonical categories that exist in the data
+    const venueCategories = payload.map((venue) => {
+      const category = isValidCategory(venue.category) ? venue.category : mapLegacyCategory(venue.category);
+      return category;
+    });
+    const categories = Array.from(new Set(venueCategories))
+      .filter((cat) => VENUE_CATEGORY_VALUES.includes(cat))
+      .sort((a, b) => {
+        // Sort by canonical order
+        const indexA = VENUE_CATEGORY_VALUES.indexOf(a);
+        const indexB = VENUE_CATEGORY_VALUES.indexOf(b);
+        return indexA - indexB;
+      });
 
     console.log(`Successfully loaded ${payload.length} venues`);
 

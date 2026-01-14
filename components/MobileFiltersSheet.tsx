@@ -1,4 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react';
+import { VENUE_CATEGORY_LABELS } from '@/lib/constants/categories';
 
 type FilterChipProps = {
   children: ReactNode;
@@ -165,15 +166,19 @@ export function MobileFiltersSheet({
                   >
                     All
                   </FilterChip>
-                  {categories.map((category) => (
-                    <FilterChip
-                      key={category}
-                      active={selectedCategory === category}
-                      onClick={() => onCategoryChange(category)}
-                    >
-                      {category}
-                    </FilterChip>
-                  ))}
+                  {categories.map((category) => {
+                    // Display label for canonical categories, fallback to raw value
+                    const label = VENUE_CATEGORY_LABELS[category as keyof typeof VENUE_CATEGORY_LABELS] || category;
+                    return (
+                      <FilterChip
+                        key={category}
+                        active={selectedCategory === category}
+                        onClick={() => onCategoryChange(category)}
+                      >
+                        {label}
+                      </FilterChip>
+                    );
+                  })}
                 </div>
               </div>
             </div>

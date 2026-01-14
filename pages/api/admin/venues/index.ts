@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { apiResponse } from '@/lib/api';
 import { venueMutationSchema } from '@/lib/validators';
 import { createClientFromRequest } from '@/lib/supabase/pages-router';
+import { mapLegacyCategory, isValidCategory } from '@/lib/constants/categories';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Try cookie-based admin first (Pages Router)
@@ -66,7 +67,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         orderBy: [{ city: 'asc' }, { name: 'asc' }],
       });
-      return apiResponse.success(res, { venues });
+      // Defensive: normalize categories in case of legacy data
+      const normalizedVenues = venues.map((v) => ({
+        ...v,
+        category: isValidCategory(v.category) ? v.category : mapLegacyCategory(v.category),
+      }));
+      return apiResponse.success(res, { venues: normalizedVenues });
     } catch (error: any) {
       // Fallback to raw SQL if Prisma fails with P2022 (column not found)
       const isColumnError = 
@@ -103,6 +109,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return apiResponse.success(res, {
           venues: rawVenues.map((v) => ({
             ...v,
+            category: isValidCategory(v.category) ? v.category : mapLegacyCategory(v.category),
             priceLevel: null,
             typicalStudentSpendMin: null,
             typicalStudentSpendMax: null,

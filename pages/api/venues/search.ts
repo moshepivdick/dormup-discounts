@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '@/lib/prisma';
+import { mapLegacyCategory, isValidCategory } from '@/lib/constants/categories';
 
 type SearchResult = {
   id: number;
@@ -44,7 +45,12 @@ export default async function handler(
       },
     });
 
-    return res.status(200).json(venues);
+    // Defensive: normalize categories in case of legacy data
+    const normalizedVenues = venues.map((v) => ({
+      ...v,
+      category: isValidCategory(v.category) ? v.category : mapLegacyCategory(v.category),
+    }));
+    return res.status(200).json(normalizedVenues);
   } catch (error) {
     console.error('Error searching venues:', error);
     return res.status(500).json([]);

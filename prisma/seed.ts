@@ -1,5 +1,6 @@
 import { PrismaClient, PriceLevel } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { VENUE_CATEGORIES } from '../lib/constants/categories';
 
 const prisma = new PrismaClient();
 
@@ -7,7 +8,7 @@ const venues = [
   {
     name: 'Moka Brew Lab',
     city: 'Rimini',
-    category: 'Specialty Cafe',
+    category: VENUE_CATEGORIES.CAFE,
     discountText: '15% off specialty coffee flights + pastries.',
     details:
       'Valid daily until 18:00. Ask for the DormUp board for seasonal drinks. Address: Corso d\'Augusto, 45, 47921 Rimini RN.',
@@ -21,7 +22,7 @@ const venues = [
   {
     name: 'Tramonto Piadineria',
     city: 'Rimini',
-    category: 'Street Food',
+    category: VENUE_CATEGORIES.FAST_FOOD,
     discountText: 'Buy 1 piadina, get the second at 50% off.',
     details: 'Applies to all vegetarian options. Max 2 redemptions per day. Address: Via San Giuliano, 12, 47921 Rimini RN.',
     openingHours: 'Daily 11:00–23:00',
@@ -34,7 +35,7 @@ const venues = [
   {
     name: 'Portico Social Bar',
     city: 'Bologna',
-    category: 'Cocktail Bar',
+    category: VENUE_CATEGORIES.BAR,
     discountText: 'Free mocktail with every aperitivo board.',
     details:
       'Bring at least one friend. Available from 17:00–20:00 Monday to Friday. Address: Via del Pratello, 18, 40122 Bologna BO.',
@@ -48,7 +49,7 @@ const venues = [
   {
     name: 'Forno di Piazza',
     city: 'Bologna',
-    category: 'Bakery & Cafe',
+    category: VENUE_CATEGORIES.CAFE,
     discountText: '10% off focaccia slices and drip coffee combos.',
     details: 'Show your DormUp code before paying at the counter. Address: Via Rizzoli, 8, 40125 Bologna BO.',
     openingHours: 'Daily 07:30–19:30',
@@ -61,7 +62,7 @@ const venues = [
   {
     name: 'Chi Burdlaz Garden',
     city: 'Rimini',
-    category: 'Restaurant',
+    category: VENUE_CATEGORIES.RESTAURANT,
     discountText: '10% OFF for DormUp students',
     details: 'Present your DormUp code before ordering. Address: incrocio, Viale Vespucci, Viale Trieste, 63, 47921 Rimini RN.',
     openingHoursShort: 'Every day · 12:00–23:30',
@@ -76,7 +77,7 @@ const venues = [
   {
     name: 'Osteria Pizzeria Le Logge',
     city: 'Rimini',
-    category: 'Restaurant / Pizzeria',
+    category: VENUE_CATEGORIES.RESTAURANT,
     discountText: '10% OFF for DormUp students',
     details: 'Show your DormUp code at the counter when ordering. Valid for dine-in and takeaway. Address: Viale Trieste, 5, 47921 Rimini RN.',
     openingHours: 'Daily 12:00–23:30',
@@ -88,7 +89,7 @@ const venues = [
   {
     name: 'Caffè Letterario',
     city: 'Bologna',
-    category: 'Cafe',
+    category: VENUE_CATEGORIES.CAFE,
     discountText: '20% off all coffee drinks and croissants before 11:00 AM.',
     details: 'Perfect morning spot for students! Show your DormUp code at checkout. Valid Monday to Friday. Address: Via de\' Giudei, 15, 40126 Bologna BO.',
     openingHours: 'Mon–Fri 07:00–19:00 · Sat–Sun 08:00–20:00',
@@ -100,7 +101,7 @@ const venues = [
   {
     name: 'Espresso Bar Marina',
     city: 'Rimini',
-    category: 'Cafe',
+    category: VENUE_CATEGORIES.CAFE,
     discountText: 'Buy 2 coffees, get 1 free. Valid all day.',
     details: 'Relax by the beach with discounted coffee! Present your DormUp code. Address: Lungomare Augusto Murri, 47, 47921 Rimini RN.',
     openingHours: 'Daily 06:30–22:00',

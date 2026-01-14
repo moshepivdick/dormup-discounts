@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { VENUE_CATEGORY_VALUES } from '@/lib/constants/categories';
 
 export const authSchema = z.object({
   email: z.string().email(),
@@ -26,7 +27,9 @@ export const venueViewSchema = z.object({
 export const venueMutationSchema = z.object({
   name: z.string().min(3),
   city: z.string().min(2),
-  category: z.string().min(2),
+  category: z.enum([...VENUE_CATEGORY_VALUES] as [string, ...string[]], {
+    message: 'Category must be one of: restaurant, cafe, pizzeria, fast_food, bar',
+  }),
   discountText: z.string().min(5),
   details: z.string().optional().nullable(),
   openingHours: z.string().optional().nullable(),

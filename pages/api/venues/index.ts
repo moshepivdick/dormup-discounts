@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '@/lib/prisma';
 import { apiResponse, withMethods } from '@/lib/api';
+import { mapLegacyCategory, isValidCategory } from '@/lib/constants/categories';
 
 export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResponse) => {
   try {
@@ -29,6 +30,12 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
         },
         orderBy: [{ city: 'asc' }, { name: 'asc' }],
       });
+      
+      // Defensive: normalize categories in case of legacy data
+      venues = venues.map((v) => ({
+        ...v,
+        category: isValidCategory(v.category) ? v.category : mapLegacyCategory(v.category),
+      }));
     } catch (prismaError: any) {
       console.error('Prisma error fetching venues:', prismaError);
       // If error is about missing column (P2022), use raw SQL
@@ -53,22 +60,26 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
           ORDER BY city ASC, name ASC
         `;
         // Convert raw results to match expected format
-        venues = venues.map((v: any) => ({
-          id: Number(v.id),
-          name: v.name,
-          city: v.city,
-          category: v.category,
-          discountText: v.discountText,
-          isActive: v.isActive ?? true,
-          imageUrl: v.imageUrl,
-          thumbnailUrl: v.thumbnailUrl,
-          openingHoursShort: v.openingHoursShort,
-          latitude: Number(v.latitude),
-          longitude: Number(v.longitude),
-          priceLevel: null,
-          typicalStudentSpendMin: null,
-          typicalStudentSpendMax: null,
-        }));
+        // Defensive: map legacy categories to canonical ones
+        venues = venues.map((v: any) => {
+          const category = isValidCategory(v.category) ? v.category : mapLegacyCategory(v.category);
+          return {
+            id: Number(v.id),
+            name: v.name,
+            city: v.city,
+            category,
+            discountText: v.discountText,
+            isActive: v.isActive ?? true,
+            imageUrl: v.imageUrl,
+            thumbnailUrl: v.thumbnailUrl,
+            openingHoursShort: v.openingHoursShort,
+            latitude: Number(v.latitude),
+            longitude: Number(v.longitude),
+            priceLevel: null,
+            typicalStudentSpendMin: null,
+            typicalStudentSpendMax: null,
+          };
+        });
       } else {
         throw prismaError;
       }

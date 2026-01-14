@@ -4,6 +4,7 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/guards';
 import type { VenueDetails } from '@/types';
+import { VENUE_CATEGORY_VALUES, VENUE_CATEGORY_LABELS, mapLegacyCategory, isValidCategory } from '@/lib/constants/categories';
 
 type AdminVenuesProps = {
   venues: VenueDetails[];
@@ -116,7 +117,7 @@ export default function AdminVenuesPage({ venues }: AdminVenuesProps) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-white/10 p-4">
           <p className="text-sm uppercase tracking-[0.3em] text-white/60">Add venue</p>
-          {['name', 'city', 'category', 'discountText'].map((field) => (
+          {['name', 'city', 'discountText'].map((field) => (
             <label key={field} className="block text-sm font-medium text-white/70">
               {field}
               <input
@@ -129,6 +130,22 @@ export default function AdminVenuesPage({ venues }: AdminVenuesProps) {
               />
             </label>
           ))}
+          <label className="block text-sm font-medium text-white/70">
+            Category
+            <select
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-white"
+              value={form.category}
+              onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
+              required
+            >
+              <option value="">Select category</option>
+              {VENUE_CATEGORY_VALUES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {VENUE_CATEGORY_LABELS[cat]}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="block text-sm font-medium text-white/70">
             Price level
             <select
@@ -295,20 +312,24 @@ export const getServerSideProps = (async (ctx) => {
 
     return {
       props: {
-        venues: venues.map((venue) => ({
-          id: venue.id,
-          name: venue.name,
-          city: venue.city,
-          category: venue.category,
-          discountText: venue.discountText,
-          isActive: venue.isActive,
-          details: venue.details,
-          openingHours: venue.openingHours,
-          mapUrl: venue.mapUrl,
-          priceLevel: venue.priceLevel,
-          typicalStudentSpendMin: venue.typicalStudentSpendMin,
-          typicalStudentSpendMax: venue.typicalStudentSpendMax,
-        })),
+        venues: venues.map((venue) => {
+          // Normalize category to canonical value
+          const category = isValidCategory(venue.category) ? venue.category : mapLegacyCategory(venue.category);
+          return {
+            id: venue.id,
+            name: venue.name,
+            city: venue.city,
+            category,
+            discountText: venue.discountText,
+            isActive: venue.isActive,
+            details: venue.details,
+            openingHours: venue.openingHours,
+            mapUrl: venue.mapUrl,
+            priceLevel: venue.priceLevel,
+            typicalStudentSpendMin: venue.typicalStudentSpendMin,
+            typicalStudentSpendMax: venue.typicalStudentSpendMax,
+          };
+        }),
       },
     };
   } catch (error) {

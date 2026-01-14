@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '@/lib/prisma';
 import { apiResponse, withMethods } from '@/lib/api';
+import { mapLegacyCategory, isValidCategory } from '@/lib/constants/categories';
 
 export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResponse) => {
   // Defensive check: ensure req.query and req.query.id exist
@@ -42,7 +43,12 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
     if (!venue || !venue.isActive) {
       return apiResponse.error(res, 404, 'Venue not found');
     }
-    return apiResponse.success(res, { venue });
+    // Defensive: normalize category in case of legacy data
+    const normalizedVenue = {
+      ...venue,
+      category: isValidCategory(venue.category) ? venue.category : mapLegacyCategory(venue.category),
+    };
+    return apiResponse.success(res, { venue: normalizedVenue });
   } catch (error: any) {
     // Fallback to raw SQL if Prisma fails with P2022 (column not found)
     const isColumnError = 
@@ -83,9 +89,12 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
         }
 
         const venue = rawVenue[0];
+        // Defensive: normalize category in case of legacy data
+        const category = isValidCategory(venue.category) ? venue.category : mapLegacyCategory(venue.category);
         return apiResponse.success(res, {
           venue: {
             ...venue,
+            category,
             priceLevel: (venue as any).priceLevel || null,
             typicalStudentSpendMin: (venue as any).typicalStudentSpendMin ? Number((venue as any).typicalStudentSpendMin) : null,
             typicalStudentSpendMax: (venue as any).typicalStudentSpendMax ? Number((venue as any).typicalStudentSpendMax) : null,

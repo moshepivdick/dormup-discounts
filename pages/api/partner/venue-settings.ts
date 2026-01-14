@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { apiResponse, withMethods } from '@/lib/api';
 import { prisma } from '@/lib/prisma';
 import { partnerVenueUpdateSchema } from '@/lib/validators';
+import { mapLegacyCategory, isValidCategory } from '@/lib/constants/categories';
 
 export default withMethods(['GET', 'PUT'], async (req: NextApiRequest, res: NextApiResponse) => {
   const partner = await auth.getPartnerFromRequest(req);
@@ -27,7 +28,12 @@ export default withMethods(['GET', 'PUT'], async (req: NextApiRequest, res: Next
           return apiResponse.error(res, 404, 'Venue not found');
         }
 
-        return apiResponse.success(res, { venue });
+        // Defensive: normalize category in case of legacy data
+        const normalizedVenue = {
+          ...venue,
+          category: isValidCategory(venue.category) ? venue.category : mapLegacyCategory(venue.category),
+        };
+        return apiResponse.success(res, { venue: normalizedVenue });
       } catch (error: any) {
         // Fallback: if price fields don't exist, query without them
         if (error?.code === 'P2022' || error?.message?.includes('avgStudentBill') || error?.message?.includes('priceLevel')) {
@@ -58,10 +64,14 @@ export default withMethods(['GET', 'PUT'], async (req: NextApiRequest, res: Next
             return apiResponse.error(res, 404, 'Venue not found');
           }
 
+          // Defensive: normalize category in case of legacy data
+          const category = isValidCategory(venue.category) ? venue.category : mapLegacyCategory(venue.category);
+          
           // Add null values for missing fields
           return apiResponse.success(res, { 
             venue: {
               ...venue,
+              category,
               priceLevel: null,
               typicalStudentSpendMin: null,
               typicalStudentSpendMax: null,
@@ -125,9 +135,12 @@ export default withMethods(['GET', 'PUT'], async (req: NextApiRequest, res: Next
       }
 
       // Safely get price fields (may not exist)
+      // Defensive: normalize category in case of legacy data
+      const category = isValidCategory(venue.category) ? venue.category : mapLegacyCategory(venue.category);
       const venueResponse: any = {
         id: venue.id,
         name: venue.name,
+        category,
         discountText: venue.discountText,
         details: venue.details,
         openingHours: venue.openingHours,
