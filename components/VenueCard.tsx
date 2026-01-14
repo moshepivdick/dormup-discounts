@@ -10,6 +10,7 @@ import {
   formatTimeLabel,
 } from '@/utils/opening';
 import type { VenueSummary } from '@/types';
+import { VENUE_CATEGORY_LABELS } from '@/lib/constants/categories';
 
 type Props = {
   venue: VenueSummary;
@@ -89,7 +90,9 @@ export function VenueCard({ venue }: Props) {
             </div>
           )}
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-[11px] text-slate-500 md:text-sm">{venue.category}</p>
+            <p className="text-[11px] text-slate-500 md:text-sm">
+              {VENUE_CATEGORY_LABELS[venue.category as keyof typeof VENUE_CATEGORY_LABELS] || venue.category}
+            </p>
             {venue.priceLevel && (
               <span className="inline-flex items-center text-[11px] font-semibold text-slate-700 md:text-sm">
                 {venue.priceLevel === 'budget' && '€'}

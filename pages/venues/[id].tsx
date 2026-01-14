@@ -18,6 +18,7 @@ import {
   removeAddressFromDetails,
   buildFullAddress,
 } from '@/utils/address';
+import { VENUE_CATEGORY_LABELS } from '@/lib/constants/categories';
 
 type VenuePageProps = {
   venue: VenueDetails;
@@ -250,7 +251,7 @@ export default function VenuePage({ venue }: VenuePageProps) {
           </Link>
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-[0.4em] text-emerald-100">
-              {venue.city} · {venue.category}
+              {venue.city} · {VENUE_CATEGORY_LABELS[venue.category as keyof typeof VENUE_CATEGORY_LABELS] || venue.category}
             </p>
             <h1 className="text-4xl font-bold sm:text-5xl">{venue.name}</h1>
             <p className="text-lg text-emerald-50">{venue.discountText}</p>
