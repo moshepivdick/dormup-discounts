@@ -32,7 +32,7 @@ export const VENUE_CATEGORY_LABELS: Record<VenueCategory, string> = {
   [VENUE_CATEGORIES.RESTAURANT]: 'Restaurant',
   [VENUE_CATEGORIES.CAFE]: 'Cafe',
   [VENUE_CATEGORIES.PIZZERIA]: 'Pizzeria',
-  [VENUE_CATEGORIES.FAST_FOOD]: 'Fast Food',
+  [VENUE_CATEGORIES.FAST_FOOD]: 'Fast food',
   [VENUE_CATEGORIES.BAR]: 'Bar',
 } as const;
 
