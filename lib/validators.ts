@@ -57,6 +57,37 @@ export const partnerMutationSchema = z.object({
   venueId: z.number().int(),
 });
 
+// Schema for partner updating their venue (limited fields)
+export const partnerVenueUpdateSchema = z.object({
+  name: z.string().min(3).max(100).optional(),
+  discountText: z.string().min(5).max(500).optional(),
+  details: z.string().max(2000).optional().nullable(),
+  openingHours: z.string().max(200).optional().nullable(),
+  openingHoursShort: z.string().max(50).optional().nullable(),
+  phone: z.string().max(20).optional().nullable(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  priceLevel: z.enum(['budget', 'mid', 'premium']).optional().nullable(),
+  typicalStudentSpendMin: z.number().int().positive().max(1000).optional().nullable(),
+  typicalStudentSpendMax: z.number().int().positive().max(1000).optional().nullable(),
+  avgStudentBill: z.number().min(0).max(1000).optional().nullable(),
+  imageUrl: z.string().url().max(500).optional().nullable(),
+  thumbnailUrl: z.string().url().max(500).optional().nullable(),
+  mapUrl: z.string().url().max(500).optional().nullable(),
+}).refine(
+  (data) => {
+    // If both min and max are provided, min must be <= max
+    if (data.typicalStudentSpendMin != null && data.typicalStudentSpendMax != null) {
+      return data.typicalStudentSpendMin <= data.typicalStudentSpendMax;
+    }
+    return true;
+  },
+  {
+    message: 'Typical student spend min must be less than or equal to max',
+    path: ['typicalStudentSpendMin'],
+  }
+);
+
 // Student auth schemas
 export const studentSignupSchema = z.object({
   email: z.string().email('Please enter a valid email address'),

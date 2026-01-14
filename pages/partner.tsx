@@ -106,18 +106,24 @@ export default function PartnerPage({ partner }: PartnerPageProps) {
               Log out
             </button>
           </div>
-          <div className="mb-4 flex gap-3">
+          <div className="mb-4 grid grid-cols-3 gap-3">
             <Link
               href="/partner/scan"
-              className="flex-1 inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+              className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
             >
-              Open scanner
+              Scanner
             </Link>
             <Link
               href="/partner/stats"
-              className="flex-1 inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
             >
-              View statistics
+              Statistics
+            </Link>
+            <Link
+              href="/partner/settings"
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              Settings
             </Link>
           </div>
           <p className="text-sm uppercase tracking-[0.2em] text-slate-500">
