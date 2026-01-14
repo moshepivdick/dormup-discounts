@@ -22,10 +22,13 @@ export default function PartnerScanPage() {
     const reader = new BrowserMultiFormatReader();
     readerRef.current = reader;
     
+    // Capture video element at effect start to avoid stale ref in cleanup
+    const videoElement = videoRef.current as HTMLVideoElement;
+    
     reader
       .decodeFromVideoDevice(
         undefined,
-        videoRef.current as HTMLVideoElement,
+        videoElement,
         async (result, err) => {
           if (result) {
             // Stop scanning when QR code is detected
@@ -50,12 +53,12 @@ export default function PartnerScanPage() {
       .catch(() => setPermissionDenied(true));
     return () => {
       // Cleanup: stop scanning when component unmounts
+      // Use captured videoElement to avoid stale ref warning
       try {
-        const video = videoRef.current;
-        if (video && video.srcObject) {
-          const stream = video.srcObject as MediaStream;
+        if (videoElement && videoElement.srcObject) {
+          const stream = videoElement.srcObject as MediaStream;
           stream.getTracks().forEach((track) => track.stop());
-          video.srcObject = null;
+          videoElement.srcObject = null;
         }
       } catch (e) {
         // Ignore cleanup errors

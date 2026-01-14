@@ -172,8 +172,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (error: any) {
-    // Log error but don't expose internal details to client
-    console.error('Error tracking venue view:', error);
+    // Log error with structured data for debugging (non-breaking, still returns success)
+    console.error('[Analytics] Error tracking venue view:', {
+      errorCode: error?.code,
+      errorMessage: error?.message?.substring(0, 200),
+      venueId,
+      userId: userId || 'anon',
+      hasTable: error?.meta?.table ? 'yes' : 'unknown',
+      hasColumn: error?.meta?.column || null,
+    });
     
     // Check if table doesn't exist (P2021 = table not found)
     const isTableMissing = 
@@ -232,7 +239,11 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ ok: true });
         }
         // Log but don't fail - view tracking is not critical
-        console.warn('Final raw SQL fallback also failed:', finalError?.code, finalError?.message?.substring(0, 100));
+        console.warn('[Analytics] Final raw SQL fallback also failed:', {
+          errorCode: finalError?.code,
+          errorMessage: finalError?.message?.substring(0, 200),
+          venueId,
+        });
         return NextResponse.json({ ok: true }); // Return success anyway to not break user experience
       }
     }
@@ -245,7 +256,12 @@ export async function POST(request: NextRequest) {
     
     // For any other error, return success anyway to not break user experience
     // View tracking is not critical for the app to function
-    console.warn('Non-critical view tracking error, returning success:', error?.code, error?.message?.substring(0, 100));
+    console.warn('[Analytics] Non-critical view tracking error, returning success:', {
+      errorCode: error?.code,
+      errorMessage: error?.message?.substring(0, 200),
+      venueId,
+      userId: userId || 'anon',
+    });
     return NextResponse.json({ ok: true });
   }
 }

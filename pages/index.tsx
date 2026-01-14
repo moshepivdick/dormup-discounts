@@ -110,7 +110,7 @@ export default function HomePage({ venues, cities, categories }: HomeProps) {
       if (b.distance == null) return -1;
       return a.distance - b.distance;
     });
-  }, [sortedVenues, selectedCity, selectedCategory]);
+  }, [sortedVenues, selectedCity, selectedCategory, searchQuery]);
 
   return (
     <>

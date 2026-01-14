@@ -40,6 +40,7 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
   try {
     // ATOMIC UPDATE: Use updateMany with status check to prevent race conditions
     // This ensures only one confirmation can succeed even with concurrent requests
+    // IDEMPOTENT: Safe to call multiple times - only updates if status is still 'generated'
     const updateResult = await prisma.discountUse.updateMany({
       where: {
         generatedCode: formattedCode,

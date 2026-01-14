@@ -14,7 +14,11 @@ type Handler = (req: NextApiRequest, res: NextApiResponse) => Promise<unknown> |
 
 export const withMethods = (methods: string[], handler: Handler) => {
   return async (req: NextApiRequest, res: NextApiResponse) => {
-    if (!methods.includes(req.method ?? '')) {
+    // Defensive check: ensure req and req.method exist
+    if (!req || !req.method) {
+      return apiResponse.error(res, 400, 'Invalid request');
+    }
+    if (!methods.includes(req.method)) {
       res.setHeader('Allow', methods);
       return apiResponse.error(res, 405, 'Method not allowed');
     }

@@ -71,6 +71,7 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
 
     // Step 1: Deactivate all existing active codes for this venue
     // Mark all 'generated' status codes as 'cancelled' before creating a new one
+    // IDEMPOTENT: Safe to call multiple times - only affects codes with status 'generated'
     await prisma.discountUse.updateMany({
       where: {
         venueId: venue.id,

@@ -3,8 +3,12 @@ import { prisma } from '@/lib/prisma';
 import { apiResponse, withMethods } from '@/lib/api';
 
 export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResponse) => {
+  // Defensive check: ensure req.query and req.query.id exist
+  if (!req.query || !req.query.id) {
+    return apiResponse.error(res, 400, 'Venue id is required');
+  }
   const id = Number(req.query.id);
-  if (Number.isNaN(id)) {
+  if (Number.isNaN(id) || id <= 0) {
     return apiResponse.error(res, 400, 'Invalid venue id');
   }
 
