@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       // This is more efficient than create + catch P2002
       await prisma.$executeRaw`
         INSERT INTO public.venue_views (venue_id, city, user_agent, user_id, created_at, dedupe_key)
-        VALUES (${venueId}, ${city}, ${parsedUserAgent || null}, ${userId}, ${now}, ${dedupeKey})
+        VALUES (${venueId}, ${city}, ${parsedUserAgent || null}, ${userId}::uuid, ${now}, ${dedupeKey})
         ON CONFLICT (dedupe_key) 
         DO UPDATE SET 
           user_agent = EXCLUDED.user_agent,
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
         try {
           await prisma.$executeRaw`
             INSERT INTO public.venue_views (venue_id, city, user_agent, user_id, created_at)
-            VALUES (${venueId}, ${city}, ${parsedUserAgent || null}, ${userId}, ${now})
+            VALUES (${venueId}, ${city}, ${parsedUserAgent || null}, ${userId}::uuid, ${now})
             ON CONFLICT DO NOTHING
           `;
           // Success - return early
@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
       try {
         await prisma.$executeRaw`
           INSERT INTO public.venue_views (venue_id, city, user_agent, user_id, created_at)
-          VALUES (${venueId}, ${city}, ${parsedUserAgent || null}, ${userId}, ${new Date()})
+          VALUES (${venueId}, ${city}, ${parsedUserAgent || null}, ${userId}::uuid, ${new Date()})
           ON CONFLICT DO NOTHING
         `;
         return NextResponse.json({ ok: true });
