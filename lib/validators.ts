@@ -81,7 +81,7 @@ export const adminPlaceCreateSchema = z.object({
   mapUrl: z.preprocess(emptyToUndefined, z.string().url('Enter a valid URL')).optional(),
   imageUrl: z.preprocess(
     emptyToUndefined,
-    z.string().url('Enter a valid URL').max(500, 'Image URL is too long'),
+    z.string().url('Enter a valid URL').max(2000, 'Image URL is too long'),
   ).optional(),
   latitude: z.preprocess(
     numberFromString,
