@@ -83,6 +83,14 @@ export const adminPlaceCreateSchema = z.object({
     emptyToUndefined,
     z.string().url('Enter a valid URL').max(5000, 'Image URL is too long'),
   ).optional(),
+  openingHours: z.preprocess(
+    emptyToUndefined,
+    z.string().max(200, 'Opening hours are too long'),
+  ).optional(),
+  openingHoursShort: z.preprocess(
+    emptyToUndefined,
+    z.string().max(50, 'Short hours are too long'),
+  ).optional(),
   latitude: z.preprocess(
     numberFromString,
     z.number().min(-90, 'Latitude must be >= -90').max(90, 'Latitude must be <= 90'),

@@ -41,6 +41,7 @@ export default async function EditPlacePage({ params }: PageProps) {
       imageUrl: true,
       thumbnailUrl: true,
       openingHoursShort: true,
+      openingHours: true,
       isActive: true,
       priceLevel: true,
       typicalStudentSpendMin: true,
@@ -62,6 +63,8 @@ export default async function EditPlacePage({ params }: PageProps) {
     phone: venue.phone ?? '',
     mapUrl: venue.mapUrl ?? '',
     imageUrl: venue.imageUrl ?? '',
+    openingHours: venue.openingHours ?? '',
+    openingHoursShort: venue.openingHoursShort ?? '',
     latitude: String(venue.latitude),
     longitude: String(venue.longitude),
   };

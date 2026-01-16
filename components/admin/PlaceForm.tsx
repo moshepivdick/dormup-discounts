@@ -21,6 +21,8 @@ export type PlaceFormValues = {
   phone: string;
   mapUrl: string;
   imageUrl: string;
+  openingHours: string;
+  openingHoursShort: string;
   latitude: string;
   longitude: string;
 };
@@ -44,6 +46,8 @@ const initialValues: PlaceFormValues = {
   phone: '',
   mapUrl: '',
   imageUrl: '',
+  openingHours: '',
+  openingHoursShort: '',
   latitude: '',
   longitude: '',
 };
@@ -249,6 +253,34 @@ export function PlaceForm({ slug, mode = 'create', placeId, initialValues: overr
             />
             {fieldErrors.imageUrl && (
               <span className="text-xs text-rose-300">{fieldErrors.imageUrl}</span>
+            )}
+          </label>
+
+          <label className="space-y-2 text-sm font-medium text-white/80 lg:col-span-2">
+            Opening hours (optional)
+            <input
+              value={values.openingHours}
+              onChange={(event) => handleChange('openingHours', event.target.value)}
+              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-white focus:border-emerald-400 focus:outline-none"
+              placeholder="Mon-Sun 08:00–22:00"
+              maxLength={200}
+            />
+            {fieldErrors.openingHours && (
+              <span className="text-xs text-rose-300">{fieldErrors.openingHours}</span>
+            )}
+          </label>
+
+          <label className="space-y-2 text-sm font-medium text-white/80">
+            Short hours (optional)
+            <input
+              value={values.openingHoursShort}
+              onChange={(event) => handleChange('openingHoursShort', event.target.value)}
+              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-white focus:border-emerald-400 focus:outline-none"
+              placeholder="08:00–22:00"
+              maxLength={50}
+            />
+            {fieldErrors.openingHoursShort && (
+              <span className="text-xs text-rose-300">{fieldErrors.openingHoursShort}</span>
             )}
           </label>
 
