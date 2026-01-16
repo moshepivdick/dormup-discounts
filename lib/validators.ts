@@ -54,6 +54,41 @@ export const venueMutationSchema = z.object({
   }
 );
 
+const emptyToUndefined = (value: unknown) => {
+  if (typeof value === 'string' && value.trim().length === 0) {
+    return undefined;
+  }
+  return value;
+};
+
+const numberFromString = (value: unknown) => {
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return Number(value);
+  }
+  return value;
+};
+
+export const adminPlaceCreateSchema = z.object({
+  name: z.string().min(2, 'Name is required').max(100, 'Name is too long'),
+  category: z.enum([...VENUE_CATEGORY_VALUES] as [string, ...string[]], {
+    message: 'Category must be one of: restaurant, cafe, pizzeria, fast_food, bar',
+  }),
+  address: z.string().min(3, 'Address is required').max(200, 'Address is too long'),
+  city: z.string().min(2, 'City is required').max(100, 'City is too long'),
+  about: z.string().min(5, 'About is required').max(200, 'About is too long'),
+  status: z.enum(['draft', 'published']),
+  phone: z.preprocess(emptyToUndefined, z.string().max(30, 'Phone is too long')).optional(),
+  mapUrl: z.preprocess(emptyToUndefined, z.string().url('Enter a valid URL')).optional(),
+  latitude: z.preprocess(
+    numberFromString,
+    z.number().min(-90, 'Latitude must be >= -90').max(90, 'Latitude must be <= 90'),
+  ),
+  longitude: z.preprocess(
+    numberFromString,
+    z.number().min(-180, 'Longitude must be >= -180').max(180, 'Longitude must be <= 180'),
+  ),
+});
+
 export const partnerMutationSchema = z.object({
   email: z.string().email(),
   password: z.string().optional(),
