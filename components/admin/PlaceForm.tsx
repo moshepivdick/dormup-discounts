@@ -168,6 +168,7 @@ export function PlaceForm({ slug, mode = 'create', placeId, initialValues: overr
               onChange={(event) => handleChange('address', event.target.value)}
               className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-white focus:border-emerald-400 focus:outline-none"
               placeholder="Via Roma, 10"
+              maxLength={500}
               required
             />
             {fieldErrors.address && (

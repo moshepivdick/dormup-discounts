@@ -73,7 +73,7 @@ export const adminPlaceCreateSchema = z.object({
   category: z.enum([...VENUE_CATEGORY_VALUES] as [string, ...string[]], {
     message: 'Category must be one of: restaurant, cafe, pizzeria, fast_food, bar',
   }),
-  address: z.string().min(3, 'Address is required').max(200, 'Address is too long'),
+  address: z.string().min(3, 'Address is required').max(500, 'Address is too long'),
   city: z.string().min(2, 'City is required').max(100, 'City is too long'),
   about: z.string().min(5, 'About is required').max(200, 'About is too long'),
   status: z.enum(['draft', 'published']),
