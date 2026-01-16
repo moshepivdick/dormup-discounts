@@ -9,9 +9,9 @@ import {
   type VenueCategory,
 } from '@/lib/constants/categories';
 import { adminPlaceCreateSchema } from '@/lib/validators';
-import { createPlace } from '@/app/control/[slug]/places/actions';
+import { createPlace, updatePlace } from '@/app/control/[slug]/places/actions';
 
-type PlaceFormValues = {
+export type PlaceFormValues = {
   name: string;
   category: VenueCategory;
   address: string;
@@ -20,6 +20,7 @@ type PlaceFormValues = {
   status: 'draft' | 'published';
   phone: string;
   mapUrl: string;
+  imageUrl: string;
   latitude: string;
   longitude: string;
 };
@@ -28,6 +29,9 @@ type FieldErrors = Partial<Record<keyof PlaceFormValues, string>>;
 
 type PlaceFormProps = {
   slug: string;
+  mode?: 'create' | 'edit';
+  placeId?: number;
+  initialValues?: Partial<PlaceFormValues>;
 };
 
 const initialValues: PlaceFormValues = {
@@ -39,6 +43,7 @@ const initialValues: PlaceFormValues = {
   status: 'draft',
   phone: '',
   mapUrl: '',
+  imageUrl: '',
   latitude: '',
   longitude: '',
 };
@@ -52,9 +57,12 @@ const getFirstError = (errors: Record<string, string[] | undefined>): FieldError
   }, {});
 };
 
-export function PlaceForm({ slug }: PlaceFormProps) {
+export function PlaceForm({ slug, mode = 'create', placeId, initialValues: overrides }: PlaceFormProps) {
   const router = useRouter();
-  const [values, setValues] = useState<PlaceFormValues>(initialValues);
+  const [values, setValues] = useState<PlaceFormValues>(() => ({
+    ...initialValues,
+    ...overrides,
+  }));
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string>('');
@@ -79,6 +87,23 @@ export function PlaceForm({ slug }: PlaceFormProps) {
     }
 
     startTransition(async () => {
+      if (mode === 'edit') {
+        if (!placeId) {
+          setFormError('Missing place ID.');
+          return;
+        }
+        const result = await updatePlace(slug, placeId, parsed.data);
+        if (!result.success) {
+          setFieldErrors(result.fieldErrors ?? {});
+          setFormError(result.formError ?? 'Unable to update place.');
+          return;
+        }
+
+        setToastMessage('Changes saved');
+        router.refresh();
+        return;
+      }
+
       const result = await createPlace(slug, parsed.data);
       if (!result.success) {
         setFieldErrors(result.fieldErrors ?? {});
@@ -88,7 +113,7 @@ export function PlaceForm({ slug }: PlaceFormProps) {
 
       setToastMessage('Place created');
       setTimeout(() => {
-        router.push(`/control/${slug}/venues`);
+        router.push(`/control/${slug}/places/${result.placeId}`);
       }, 700);
     });
   };
@@ -212,6 +237,19 @@ export function PlaceForm({ slug }: PlaceFormProps) {
             {fieldErrors.mapUrl && <span className="text-xs text-rose-300">{fieldErrors.mapUrl}</span>}
           </label>
 
+          <label className="space-y-2 text-sm font-medium text-white/80 lg:col-span-2">
+            Photo URL (optional)
+            <input
+              value={values.imageUrl}
+              onChange={(event) => handleChange('imageUrl', event.target.value)}
+              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-white focus:border-emerald-400 focus:outline-none"
+              placeholder="https://images.example.com/venue.jpg"
+            />
+            {fieldErrors.imageUrl && (
+              <span className="text-xs text-rose-300">{fieldErrors.imageUrl}</span>
+            )}
+          </label>
+
           <label className="space-y-2 text-sm font-medium text-white/80">
             Latitude
             <input
@@ -254,7 +292,13 @@ export function PlaceForm({ slug }: PlaceFormProps) {
             disabled={isPending}
             className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-6 py-2 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-emerald-700"
           >
-            {isPending ? 'Creating…' : 'Create place'}
+            {isPending
+              ? mode === 'edit'
+                ? 'Saving…'
+                : 'Creating…'
+              : mode === 'edit'
+                ? 'Save changes'
+                : 'Create place'}
           </button>
         </div>
       </form>

@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAdminAccess } from '@/lib/admin-guards-app-router';
 import { z } from 'zod';
 import { adminPlaceCreateSchema } from '@/lib/validators';
-import { extractAddressFromDetails } from '@/utils/address';
+import { extractAddressFromDetails, removeAddressFromDetails } from '@/utils/address';
 import { ensureUniqueSlug, slugify } from '@/lib/slug';
 
 type CreatePlaceInput = z.input<typeof adminPlaceCreateSchema>;
@@ -15,6 +15,14 @@ type FieldErrors = Partial<Record<keyof CreatePlaceInput, string>>;
 type CreatePlaceResult =
   | { success: true; placeId: number; slug: string }
   | { success: false; fieldErrors?: FieldErrors; formError?: string };
+
+type UpdatePlaceResult =
+  | { success: true; placeId: number }
+  | { success: false; fieldErrors?: FieldErrors; formError?: string };
+
+type DeletePlaceResult =
+  | { success: true }
+  | { success: false; formError?: string };
 
 const toFieldErrors = (errors: Record<string, string[] | undefined>): FieldErrors => {
   return Object.entries(errors).reduce<FieldErrors>((acc, [key, messages]) => {
@@ -28,6 +36,7 @@ const toFieldErrors = (errors: Record<string, string[] | undefined>): FieldError
 const findDuplicateByNameAndAddress = async (
   name: string,
   address: string,
+  excludeId?: number,
 ): Promise<boolean> => {
   const candidates = await prisma.venue.findMany({
     where: {
@@ -35,6 +44,7 @@ const findDuplicateByNameAndAddress = async (
         equals: name,
         mode: 'insensitive',
       },
+      ...(excludeId ? { id: { not: excludeId } } : {}),
     },
     select: {
       id: true,
@@ -62,6 +72,14 @@ const generateUniqueSlugFromName = async (name: string): Promise<string> => {
 
 const buildDetailsWithAddress = (address: string): string => {
   return `Address: ${address.trim()}.`;
+};
+
+const mergeDetailsWithAddress = (existingDetails: string | null, address: string): string => {
+  const cleaned = removeAddressFromDetails(existingDetails)?.trim();
+  if (cleaned) {
+    return `${cleaned} Address: ${address.trim()}.`;
+  }
+  return buildDetailsWithAddress(address);
 };
 
 export async function createPlace(
@@ -104,6 +122,7 @@ export async function createPlace(
       details: buildDetailsWithAddress(normalizedAddress),
       phone: data.phone ?? null,
       mapUrl: data.mapUrl ?? null,
+      imageUrl: data.imageUrl ?? null,
       latitude: data.latitude,
       longitude: data.longitude,
       isActive: data.status === 'published',
@@ -115,4 +134,94 @@ export async function createPlace(
     placeId: venue.id,
     slug: uniqueSlug,
   };
+}
+
+export async function updatePlace(
+  slug: string,
+  placeId: number,
+  input: CreatePlaceInput,
+): Promise<UpdatePlaceResult> {
+  await requireAdminAccess(slug);
+
+  const parsed = adminPlaceCreateSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      fieldErrors: toFieldErrors(parsed.error.flatten().fieldErrors),
+      formError: 'Please fix the highlighted fields.',
+    };
+  }
+
+  const data: CreatePlaceData = parsed.data;
+  const normalizedName = data.name.trim();
+  const normalizedAddress = data.address.trim();
+
+  const existingVenue = await prisma.venue.findUnique({
+    where: { id: placeId },
+    select: {
+      id: true,
+      details: true,
+      thumbnailUrl: true,
+    },
+  });
+
+  if (!existingVenue) {
+    return { success: false, formError: 'Venue not found.' };
+  }
+
+  const isDuplicate = await findDuplicateByNameAndAddress(
+    normalizedName,
+    normalizedAddress,
+    placeId,
+  );
+  if (isDuplicate) {
+    return {
+      success: false,
+      fieldErrors: {
+        address: 'A place with the same name and address already exists.',
+      },
+    };
+  }
+
+  await prisma.venue.update({
+    where: { id: placeId },
+    data: {
+      name: normalizedName,
+      city: data.city.trim(),
+      category: data.category,
+      discountText: data.about.trim(),
+      details: mergeDetailsWithAddress(existingVenue.details, normalizedAddress),
+      phone: data.phone ?? null,
+      mapUrl: data.mapUrl ?? null,
+      imageUrl: data.imageUrl ?? null,
+      thumbnailUrl: existingVenue.thumbnailUrl,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      isActive: data.status === 'published',
+    },
+  });
+
+  return { success: true, placeId };
+}
+
+export async function deletePlace(
+  slug: string,
+  placeId: number,
+): Promise<DeletePlaceResult> {
+  await requireAdminAccess(slug);
+
+  const venue = await prisma.venue.findUnique({
+    where: { id: placeId },
+    select: { id: true },
+  });
+
+  if (!venue) {
+    return { success: false, formError: 'Venue not found.' };
+  }
+
+  await prisma.venue.delete({
+    where: { id: placeId },
+  });
+
+  return { success: true };
 }

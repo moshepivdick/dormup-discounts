@@ -62,7 +62,15 @@ export function AdminVenuesPageClient({ slug }: AdminVenuesPageProps) {
         <div className="space-y-3 rounded-2xl border border-white/10 p-4">
           {venues.map((venue) => (
             <div key={venue.id} className="rounded-xl bg-white/5 p-3">
-              <p className="text-lg font-semibold">{venue.name}</p>
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-lg font-semibold">{venue.name}</p>
+                <Link
+                  href={`/control/${slug}/places/${venue.id}`}
+                  className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300 hover:text-emerald-200"
+                >
+                  Edit
+                </Link>
+              </div>
               <p className="text-sm text-white/70">
                 {venue.city} · {venue.category}
               </p>
