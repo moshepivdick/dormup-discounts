@@ -104,46 +104,14 @@ export const getPartnerVenueStatsWithDateRange = async (
     orderBy: { createdAt: 'desc' },
   });
 
-  const scanAt = (use: { confirmedAt: Date | null; createdAt: Date }) =>
-    use.confirmedAt ?? use.createdAt;
-  const hasDateRange = Boolean(startDate || endDate);
-  const isInRange = (date: Date) =>
-    (!startDate || date >= startDate) && (!endDate || date <= endDate);
-
-  const confirmedUsesAll = hasDateRange
-    ? await prisma.discountUse.findMany({
-        where: { venueId, status: 'confirmed', user_id: { not: null } },
-        select: { user_id: true, confirmedAt: true, createdAt: true },
-      })
-    : discountUses
-        .filter((use) => use.status === 'confirmed' && use.user_id)
-        .map((use) => ({
-          user_id: use.user_id,
-          confirmedAt: use.confirmedAt,
-          createdAt: use.createdAt,
-        }));
-
-  const firstScanByUser = new Map<string, Date>();
-  const confirmedCountsByUser = new Map<string, number>();
-  for (const use of confirmedUsesAll) {
-    if (!use.user_id) continue;
-    const scanDate = scanAt(use);
-    const existing = firstScanByUser.get(use.user_id);
-    if (!existing || scanDate < existing) {
-      firstScanByUser.set(use.user_id, scanDate);
-    }
-    confirmedCountsByUser.set(use.user_id, (confirmedCountsByUser.get(use.user_id) || 0) + 1);
-  }
-
-  const activeUsersInRange = new Set<string>();
-  if (hasDateRange) {
-    for (const use of confirmedUsesAll) {
-      if (!use.user_id) continue;
-      if (isInRange(scanAt(use))) {
-        activeUsersInRange.add(use.user_id);
-      }
-    }
-  }
+  const confirmedUsesInRange = discountUses.filter(
+    (use) => use.status === 'confirmed' && use.user_id,
+  );
+  const confirmedCountsByUser = confirmedUsesInRange.reduce<Record<string, number>>((acc, use) => {
+    acc[use.user_id!] = (acc[use.user_id!] || 0) + 1;
+    return acc;
+  }, {});
+  const uniqueConfirmedUsers = new Set(confirmedUsesInRange.map((use) => use.user_id)).size;
 
   // Calculate metrics
   const pageViews = views.length;
@@ -155,23 +123,9 @@ export const getPartnerVenueStatsWithDateRange = async (
     (d) => d.status === 'confirmed' && d.profiles?.verified_student === true
   ).length;
 
-  // Returning students: users who scanned before and returned in range
-  // New students: users whose first confirmed scan is in range
-  const userConfirmedCounts = discountUses
-    .filter((d) => d.status === 'confirmed' && d.user_id)
-    .reduce<Record<string, number>>((acc, use) => {
-      acc[use.user_id!] = (acc[use.user_id!] || 0) + 1;
-      return acc;
-    }, {});
-  const returningStudentsCount = hasDateRange
-    ? Array.from(activeUsersInRange).filter((userId) => {
-        const firstScan = firstScanByUser.get(userId);
-        return firstScan ? !isInRange(firstScan) : false;
-      }).length
-    : Array.from(confirmedCountsByUser.values()).filter((count) => count >= 2).length;
-  const newStudentsCount = Array.from(firstScanByUser.values()).filter((date) =>
-    hasDateRange ? isInRange(date) : true
-  ).length;
+  // Returning students: users with 2+ confirmed scans in range
+  const returningStudentsCount = Object.values(confirmedCountsByUser).filter((count) => count >= 2).length;
+  const newStudentsCount = Math.max(0, uniqueConfirmedUsers - returningStudentsCount);
 
   // Visits by day of week (0 = Sunday, 6 = Saturday)
   const visitsByDayOfWeek = [0, 1, 2, 3, 4, 5, 6].map((day) => {
@@ -220,9 +174,9 @@ export const getPartnerVenueStatsWithDateRange = async (
   };
 
   // Avg visits per student
-  const totalConfirmedByUser = Object.values(userConfirmedCounts).reduce((sum, count) => sum + count, 0);
-  const avgVisitsPerStudent = uniqueStudents > 0
-    ? Number((totalConfirmedByUser / uniqueStudents).toFixed(1))
+  const totalConfirmedByUser = Object.values(confirmedCountsByUser).reduce((sum, count) => sum + count, 0);
+  const avgVisitsPerStudent = uniqueConfirmedUsers > 0
+    ? Number((totalConfirmedByUser / uniqueConfirmedUsers).toFixed(1))
     : 0;
 
   return {
