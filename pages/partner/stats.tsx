@@ -212,26 +212,28 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
       <Head>
         <title>Restaurant Dashboard | DormUp Discounts</title>
       </Head>
-      <main className="min-h-screen bg-slate-100 px-4 py-8">
+      <main className="min-h-screen bg-slate-100 px-4 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl">
           {/* Top Bar */}
-          <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-semibold text-slate-900">Restaurant Dashboard</h1>
+              <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">Restaurant Dashboard</h1>
               <p className="mt-1 text-slate-600">{partner.venueName}</p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
               <Button
                 onClick={() => setReportModalOpen(true)}
                 variant="default"
-                className="whitespace-nowrap"
+                className="whitespace-nowrap sm:w-auto"
               >
                 Download Monthly Report
               </Button>
-              <DateRangeSelector value={dateRange} onChange={setDateRange} />
+              <div className="sm:order-none">
+                <DateRangeSelector value={dateRange} onChange={setDateRange} />
+              </div>
               <Link
                 href="/partner"
-                className="text-sm text-slate-600 hover:text-slate-900 transition"
+                className="text-sm text-slate-600 hover:text-slate-900 transition sm:text-right"
               >
                 Back to Console
               </Link>
@@ -249,7 +251,7 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
           ) : (
             <div className="space-y-8">
               {/* Executive Summary - KPI Cards */}
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <KPICard
                   title="Verified Student Visits"
                   value={stats.verifiedStudentVisits}
@@ -286,7 +288,7 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
               </div>
 
               {/* Revenue Input - Compact Inline */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <label className="text-sm font-medium text-slate-700 whitespace-nowrap">
                   Avg student bill (€):
                 </label>
@@ -294,7 +296,7 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                   type="number"
                   value={avgStudentBill}
                   onChange={(e) => setAvgStudentBill(e.target.value)}
-                  className="w-20 h-9"
+                  className="h-9 w-20"
                   min="0"
                   step="0.01"
                 />

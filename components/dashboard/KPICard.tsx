@@ -16,14 +16,14 @@ export function KPICard({ title, value, subtitle, highlight, tooltip, hero }: KP
       'transition-shadow hover:shadow-lg border-0 shadow-sm',
       hero && 'md:col-span-2'
     )}>
-      <CardContent className="p-8">
+      <CardContent className="p-4 sm:p-6 lg:p-8">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-3">
-              <p className="text-sm font-medium text-slate-600">{title}</p>
+            <div className="flex items-center gap-2 mb-2 sm:mb-3">
+              <p className="text-xs font-medium text-slate-600 sm:text-sm">{title}</p>
               {tooltip && (
                 <div className="group relative">
-                  <div className="w-4 h-4 rounded-full bg-slate-300 text-slate-600 text-xs flex items-center justify-center cursor-help">
+                  <div className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-300 text-xs text-slate-600 cursor-help">
                     i
                   </div>
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
@@ -36,13 +36,13 @@ export function KPICard({ title, value, subtitle, highlight, tooltip, hero }: KP
               )}
             </div>
             <p className={cn(
-              'text-4xl font-semibold',
+              'text-2xl font-semibold sm:text-3xl lg:text-4xl',
               highlight ? 'text-[#014D40]' : 'text-slate-900'
             )}>
               {typeof value === 'number' ? value.toLocaleString() : value}
             </p>
             {subtitle && (
-              <p className="text-xs text-slate-500 mt-2">{subtitle}</p>
+              <p className="text-[11px] text-slate-500 mt-2 sm:text-xs">{subtitle}</p>
             )}
           </div>
         </div>
