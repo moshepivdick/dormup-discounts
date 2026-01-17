@@ -219,22 +219,30 @@ export const getUserActivityStats = async (userId: string) => {
     {}
   );
 
-  // Get first and return visits
+  // Get first and return visits based on confirmed scans (not just views)
   const firstVisits = new Set<number>();
   const returnVisits: Array<{ venueId: number; venueName: string; date: Date }> = [];
+  const confirmedUses = discountUses
+    .filter((use) => use.status === 'confirmed')
+    .map((use) => ({
+      ...use,
+      scanAt: use.confirmedAt ?? use.createdAt,
+    }))
+    .sort((a, b) => a.scanAt.getTime() - b.scanAt.getTime());
 
-  views.forEach((view, index) => {
-    const previousViews = views.slice(0, index).filter((v) => v.venueId === view.venueId);
-    if (previousViews.length === 0) {
-      firstVisits.add(view.venueId);
+  const seenVenues = new Set<number>();
+  for (const use of confirmedUses) {
+    if (!seenVenues.has(use.venueId)) {
+      seenVenues.add(use.venueId);
+      firstVisits.add(use.venueId);
     } else {
       returnVisits.push({
-        venueId: view.venueId,
-        venueName: view.venue?.name || 'Unknown Venue',
-        date: view.createdAt,
+        venueId: use.venueId,
+        venueName: use.venue?.name || 'Unknown Venue',
+        date: use.scanAt,
       });
     }
-  });
+  }
 
   return {
     totalViews: views.length,
@@ -540,6 +548,47 @@ export const getPartnerVenueStatsWithDateRange = async (
     profiles: { id: string; email: string; first_name: string | null; verified_student: boolean } | null;
   }>;
 
+  const scanAt = (use: { confirmedAt: Date | null; createdAt: Date }) =>
+    use.confirmedAt ?? use.createdAt;
+  const hasDateRange = Boolean(startDate || endDate);
+  const isInRange = (date: Date) =>
+    (!startDate || date >= startDate) && (!endDate || date <= endDate);
+
+  const confirmedUsesAll = hasDateRange
+    ? await prisma.discountUse.findMany({
+        where: { venueId, status: 'confirmed', user_id: { not: null } },
+        select: { user_id: true, confirmedAt: true, createdAt: true },
+      })
+    : discountUses
+        .filter((use) => use.status === 'confirmed' && use.user_id)
+        .map((use) => ({
+          user_id: use.user_id,
+          confirmedAt: use.confirmedAt,
+          createdAt: use.createdAt,
+        }));
+
+  const firstScanByUser = new Map<string, Date>();
+  const confirmedCountsByUser = new Map<string, number>();
+  for (const use of confirmedUsesAll) {
+    if (!use.user_id) continue;
+    const scanDate = scanAt(use);
+    const existing = firstScanByUser.get(use.user_id);
+    if (!existing || scanDate < existing) {
+      firstScanByUser.set(use.user_id, scanDate);
+    }
+    confirmedCountsByUser.set(use.user_id, (confirmedCountsByUser.get(use.user_id) || 0) + 1);
+  }
+
+  const activeUsersInRange = new Set<string>();
+  if (hasDateRange) {
+    for (const use of confirmedUsesAll) {
+      if (!use.user_id) continue;
+      if (isInRange(scanAt(use))) {
+        activeUsersInRange.add(use.user_id);
+      }
+    }
+  }
+
   // Calculate metrics
   const pageViews = views.length;
   const uniqueStudents = new Set(views.map((v) => v.user_id).filter(Boolean)).size;
@@ -550,15 +599,23 @@ export const getPartnerVenueStatsWithDateRange = async (
     (d: any) => d.status === 'confirmed' && d.profiles?.verified_student === true
   ).length;
 
-  // Returning students: users with >=2 confirmed discounts in range
+  // Returning students: users who scanned before and returned in range
+  // New students: users whose first confirmed scan is in range
   const userConfirmedCounts = discountUses
     .filter((d) => d.status === 'confirmed' && d.user_id)
     .reduce<Record<string, number>>((acc, use) => {
       acc[use.user_id!] = (acc[use.user_id!] || 0) + 1;
       return acc;
     }, {});
-  const returningStudentsCount = Object.values(userConfirmedCounts).filter((count) => count >= 2).length;
-  const newStudentsCount = uniqueStudents - returningStudentsCount;
+  const returningStudentsCount = hasDateRange
+    ? Array.from(activeUsersInRange).filter((userId) => {
+        const firstScan = firstScanByUser.get(userId);
+        return firstScan ? !isInRange(firstScan) : false;
+      }).length
+    : Array.from(confirmedCountsByUser.values()).filter((count) => count >= 2).length;
+  const newStudentsCount = Array.from(firstScanByUser.values()).filter((date) =>
+    hasDateRange ? isInRange(date) : true
+  ).length;
 
   // Visits by day of week (0 = Sunday, 6 = Saturday)
   const visitsByDayOfWeek = [0, 1, 2, 3, 4, 5, 6].map((day) => {

@@ -411,12 +411,12 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                       {
                         label: 'New students',
                         value: Math.max(0, stats.newStudentsCount).toLocaleString(),
-                        tooltip: 'Students who redeemed their first discount.',
+                        tooltip: 'Students whose first confirmed scan at your venue is in this period.',
                       },
                       {
                         label: 'Returning students',
                         value: stats.returningStudentsCount.toLocaleString(),
-                        tooltip: 'Students who redeemed two or more discounts.',
+                        tooltip: 'Students who scanned before and returned during this period.',
                       },
                       {
                         label: 'Avg visits / student',
@@ -565,7 +565,7 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                     title="Returning Students"
                     value={stats.returningStudentsCount}
                     subtitle={getDateRangeLabel()}
-                    tooltip="Students who have redeemed 2 or more discounts"
+                    tooltip="Students who scanned before and returned during this period"
                   />
                   <KPICard
                     title="Estimated Revenue"
