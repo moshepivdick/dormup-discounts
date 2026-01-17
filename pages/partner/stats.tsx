@@ -76,6 +76,10 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
   const [savingBill, setSavingBill] = useState(false);
   const [billSaved, setBillSaved] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [showAllDays, setShowAllDays] = useState(false);
+  const [showAllTimes, setShowAllTimes] = useState(false);
+  const [showAdvancedMobile, setShowAdvancedMobile] = useState(false);
+  const [confirmAdvancedOpen, setConfirmAdvancedOpen] = useState(false);
   const [reportMonth, setReportMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -221,13 +225,6 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
               <p className="mt-1 text-slate-600">{partner.venueName}</p>
             </div>
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
-              <Button
-                onClick={() => setReportModalOpen(true)}
-                variant="default"
-                className="whitespace-nowrap sm:w-auto"
-              >
-                Download Monthly Report
-              </Button>
               <div className="sm:order-none">
                 <DateRangeSelector value={dateRange} onChange={setDateRange} />
               </div>
@@ -250,100 +247,407 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
             </div>
           ) : (
             <div className="space-y-8">
-              {/* Executive Summary - KPI Cards */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <KPICard
-                  title="Verified Student Visits"
-                  value={stats.verifiedStudentVisits}
-                  subtitle={getDateRangeLabel()}
-                  highlight
-                  hero
-                  tooltip="Number of confirmed discount redemptions by verified students"
-                />
-                <KPICard
-                  title="Unique Students"
-                  value={stats.uniqueStudents}
-                  subtitle={getDateRangeLabel()}
-                  tooltip="Number of unique students who viewed your venue page"
-                />
-                <KPICard
-                  title="Discounts Redeemed"
-                  value={stats.discountsRedeemed}
-                  subtitle={getDateRangeLabel()}
-                  tooltip="Total number of discount codes confirmed/redeemed"
-                />
-                <KPICard
-                  title="Returning Students"
-                  value={stats.returningStudentsCount}
-                  subtitle={getDateRangeLabel()}
-                  tooltip="Students who have redeemed 2 or more discounts"
-                />
-                <KPICard
-                  title="Estimated Revenue"
-                  value={`€${estimatedRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                  subtitle={getDateRangeLabel()}
-                  highlight
-                  tooltip="Estimated revenue based on redeemed discounts and average student bill"
-                />
+              <div className="md:hidden">
+                <div className="rounded-2xl bg-white p-5 shadow-sm">
+                  <p className="text-2xl font-semibold text-slate-900">{partner.venueName}</p>
+                  <p className="mt-1 text-xs text-slate-500">Select reporting period</p>
+                  <div className="mt-3">
+                    <DateRangeSelector value={dateRange} onChange={setDateRange} />
+                  </div>
+                  <Link
+                    href="/partner"
+                    className="mt-3 inline-flex text-sm text-slate-600 hover:text-slate-900"
+                  >
+                    Back to Console
+                  </Link>
+                </div>
+
+                <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <p className="text-lg font-semibold text-slate-900">Key results</p>
+                    <p className="text-xs text-slate-500">{getDateRangeLabel()}</p>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-4">
+                    {[
+                      {
+                        label: 'Verified visits',
+                        value: stats.verifiedStudentVisits.toLocaleString(),
+                        tooltip: 'Confirmed discount redemptions by verified students.',
+                      },
+                      {
+                        label: 'Discounts redeemed',
+                        value: stats.discountsRedeemed.toLocaleString(),
+                        tooltip: 'Total number of confirmed discount codes.',
+                      },
+                      {
+                        label: 'Unique students',
+                        value: stats.uniqueStudents.toLocaleString(),
+                        tooltip: 'Students who viewed your venue page.',
+                      },
+                      {
+                        label: 'Estimated revenue',
+                        value: `€${estimatedRevenue.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}`,
+                        tooltip: 'Based on redeemed discounts and average bill.',
+                      },
+                    ].map((item) => (
+                      <div key={item.label} className="rounded-2xl bg-slate-50 px-3 py-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-[12px] font-medium uppercase tracking-wide text-slate-500">
+                            {item.label}
+                          </p>
+                          <span
+                            className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-50 text-[11px] font-semibold text-emerald-600"
+                            title={item.tooltip}
+                          >
+                            i
+                          </span>
+                        </div>
+                        <p className="mt-2 text-2xl font-semibold text-slate-900">{item.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-xs text-slate-500">Last selected period.</p>
+                </div>
+
+                <div className="mt-6 space-y-4">
+                  <p className="text-2xl font-semibold text-slate-900">When students come</p>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    {(() => {
+                      const sortedDays = [...stats.visitsByDayOfWeek].sort(
+                        (a, b) => b.confirmed - a.confirmed,
+                      );
+                      const topDays = showAllDays ? sortedDays : sortedDays.slice(0, 3);
+                      const topDay = sortedDays[0];
+                      const maxValue = Math.max(1, ...sortedDays.map((day) => day.confirmed));
+
+                      return (
+                        <>
+                          <p className="text-sm font-semibold text-slate-900">Peak day</p>
+                          <p className="mt-1 text-sm text-slate-600">
+                            {topDay.dayName} — {topDay.confirmed} visits
+                          </p>
+                          <div className="mt-4 space-y-3">
+                            {topDays.map((day) => (
+                              <div key={day.day} className="space-y-2">
+                                <div className="flex items-center justify-between text-xs text-slate-600">
+                                  <span>{day.dayName}</span>
+                                  <span>{day.confirmed}</span>
+                                </div>
+                                <div className="h-2 w-full rounded-full bg-slate-100">
+                                  <div
+                                    className="h-2 rounded-full bg-emerald-500"
+                                    style={{ width: `${(day.confirmed / maxValue) * 100}%` }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowAllDays((prev) => !prev)}
+                            className="mt-4 text-xs font-semibold text-emerald-600"
+                          >
+                            {showAllDays ? 'Show top days' : 'Show all days'}
+                          </button>
+                        </>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    {(() => {
+                      const timeBuckets = [
+                        { key: 'lunch', label: 'Lunch (12–15)', value: stats.visitsByTimeRange.lunch },
+                        { key: 'dinner', label: 'Dinner (18–22)', value: stats.visitsByTimeRange.dinner },
+                        { key: 'other', label: 'Other times', value: stats.visitsByTimeRange.other },
+                      ];
+                      const sortedTimes = [...timeBuckets].sort((a, b) => b.value - a.value);
+                      const topTimes = showAllTimes ? sortedTimes : sortedTimes.slice(0, 3);
+                      const topTime = sortedTimes[0];
+                      const maxValue = Math.max(1, ...sortedTimes.map((item) => item.value));
+
+                      return (
+                        <>
+                          <p className="text-sm font-semibold text-slate-900">Peak time</p>
+                          <p className="mt-1 text-sm text-slate-600">
+                            {topTime.label} — {topTime.value} visits
+                          </p>
+                          <div className="mt-4 space-y-3">
+                            {topTimes.map((item) => (
+                              <div key={item.key} className="space-y-2">
+                                <div className="flex items-center justify-between text-xs text-slate-600">
+                                  <span>{item.label}</span>
+                                  <span>{item.value}</span>
+                                </div>
+                                <div className="h-2 w-full rounded-full bg-slate-100">
+                                  <div
+                                    className="h-2 rounded-full bg-emerald-500"
+                                    style={{ width: `${(item.value / maxValue) * 100}%` }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowAllTimes((prev) => !prev)}
+                            className="mt-4 text-xs font-semibold text-emerald-600"
+                          >
+                            {showAllTimes ? 'Show top times' : 'Show all times'}
+                          </button>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <p className="text-2xl font-semibold text-slate-900">Loyalty</p>
+                  <div className="mt-4 grid grid-cols-1 gap-4">
+                    {[
+                      {
+                        label: 'New students',
+                        value: Math.max(0, stats.newStudentsCount).toLocaleString(),
+                        tooltip: 'Students who redeemed their first discount.',
+                      },
+                      {
+                        label: 'Returning students',
+                        value: stats.returningStudentsCount.toLocaleString(),
+                        tooltip: 'Students who redeemed two or more discounts.',
+                      },
+                      {
+                        label: 'Avg visits / student',
+                        value: stats.avgVisitsPerStudent.toLocaleString(),
+                        tooltip: 'Average number of visits per student.',
+                      },
+                    ].map((item) => (
+                      <div key={item.label} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                        <div>
+                          <p className="text-sm font-medium text-slate-700">{item.label}</p>
+                          <p className="text-2xl font-semibold text-slate-900">{item.value}</p>
+                        </div>
+                        <span
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-[11px] font-semibold text-emerald-600"
+                          title={item.tooltip}
+                        >
+                          i
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <p className="text-2xl font-semibold text-slate-900">Recent discount activity</p>
+                  <div className="mt-4 space-y-4">
+                    {stats.recentQrCodes.map((code) => {
+                      const dateLabel = new Date(code.confirmedAt ?? code.createdAt).toLocaleString();
+                      const confirmed = Boolean(code.confirmedAt) || code.status === 'confirmed';
+                      return (
+                        <div key={code.id} className="flex gap-3">
+                          <div className="mt-1 h-3 w-3 rounded-full bg-emerald-500" />
+                          <div className="flex-1 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-slate-900">QR {code.generatedCode}</p>
+                              {confirmed ? (
+                                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                                  Confirmed
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="text-xs text-slate-500">{dateLabel}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                  <p className="text-lg font-semibold text-amber-900">Advanced (internal)</p>
+                  <p className="mt-1 text-xs text-amber-700">
+                    Contains raw QR codes, user emails, and debug data.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="mt-4 w-full border-amber-300 text-amber-900 hover:bg-amber-100"
+                    onClick={() => setConfirmAdvancedOpen(true)}
+                  >
+                    {showAdvancedMobile ? 'Hide advanced data' : 'Show advanced data'}
+                  </Button>
+                  {showAdvancedMobile ? (
+                    <div className="mt-4">
+                      <AdvancedPanel
+                        allDiscountUses={stats.allDiscountUses}
+                        userQrCounts={stats.userQrCounts}
+                        userViewCounts={stats.userViewCounts}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <p className="text-2xl font-semibold text-slate-900">Settings</p>
+                  <p className="mt-1 text-xs text-slate-500">Used to estimate revenue.</p>
+                  <div className="mt-4 flex items-center gap-2">
+                    <label className="text-sm font-medium text-slate-700 whitespace-nowrap">
+                      Avg student bill (€)
+                    </label>
+                    <Input
+                      type="number"
+                      value={avgStudentBill}
+                      onChange={(e) => setAvgStudentBill(e.target.value)}
+                      className="h-9 w-20"
+                      min="0"
+                      step="0.01"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleSaveBill}
+                      disabled={savingBill}
+                      className="h-9"
+                    >
+                      {savingBill ? 'Saving...' : billSaved ? 'Saved!' : 'Save'}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <p className="text-sm font-medium text-slate-900">
+                    Download a full summary for the selected period.
+                  </p>
+                  <Button
+                    onClick={() => setReportModalOpen(true)}
+                    variant="outline"
+                    className="mt-4 w-full gap-2"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="h-4 w-4"
+                    >
+                      <path d="M10 3a1 1 0 0 1 1 1v7.586l2.293-2.293a1 1 0 1 1 1.414 1.414l-4.004 4.004a1 1 0 0 1-1.414 0l-4.004-4.004a1 1 0 1 1 1.414-1.414L9 11.586V4a1 1 0 0 1 1-1Z" />
+                      <path d="M4 13a1 1 0 0 1 1 1v2h10v-2a1 1 0 1 1 2 0v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1Z" />
+                    </svg>
+                    Download Monthly Report
+                  </Button>
+                </div>
               </div>
 
-              {/* Revenue Input - Compact Inline */}
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="text-sm font-medium text-slate-700 whitespace-nowrap">
-                  Avg student bill (€):
-                </label>
-                <Input
-                  type="number"
-                  value={avgStudentBill}
-                  onChange={(e) => setAvgStudentBill(e.target.value)}
-                  className="h-9 w-20"
-                  min="0"
-                  step="0.01"
+              <div className="hidden md:block">
+                {/* Executive Summary - KPI Cards */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <KPICard
+                    title="Verified Student Visits"
+                    value={stats.verifiedStudentVisits}
+                    subtitle={getDateRangeLabel()}
+                    highlight
+                    hero
+                    tooltip="Number of confirmed discount redemptions by verified students"
+                  />
+                  <KPICard
+                    title="Unique Students"
+                    value={stats.uniqueStudents}
+                    subtitle={getDateRangeLabel()}
+                    tooltip="Number of unique students who viewed your venue page"
+                  />
+                  <KPICard
+                    title="Discounts Redeemed"
+                    value={stats.discountsRedeemed}
+                    subtitle={getDateRangeLabel()}
+                    tooltip="Total number of discount codes confirmed/redeemed"
+                  />
+                  <KPICard
+                    title="Returning Students"
+                    value={stats.returningStudentsCount}
+                    subtitle={getDateRangeLabel()}
+                    tooltip="Students who have redeemed 2 or more discounts"
+                  />
+                  <KPICard
+                    title="Estimated Revenue"
+                    value={`€${estimatedRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    subtitle={getDateRangeLabel()}
+                    highlight
+                    tooltip="Estimated revenue based on redeemed discounts and average student bill"
+                  />
+                </div>
+
+                {/* Revenue Input - Compact Inline */}
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="text-sm font-medium text-slate-700 whitespace-nowrap">
+                    Avg student bill (€):
+                  </label>
+                  <Input
+                    type="number"
+                    value={avgStudentBill}
+                    onChange={(e) => setAvgStudentBill(e.target.value)}
+                    className="h-9 w-20"
+                    min="0"
+                    step="0.01"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleSaveBill}
+                    disabled={savingBill}
+                    className="h-9"
+                  >
+                    {savingBill ? 'Saving...' : billSaved ? 'Saved!' : 'Save'}
+                  </Button>
+                </div>
+
+                {/* Student Journey */}
+                <StudentJourney
+                  pageViews={stats.pageViews}
+                  uniqueStudents={stats.uniqueStudents}
+                  discountsRedeemed={stats.discountsRedeemed}
+                  verifiedVisits={stats.verifiedStudentVisits}
                 />
-                <Button
-                  size="sm"
-                  onClick={handleSaveBill}
-                  disabled={savingBill}
-                  className="h-9"
-                >
-                  {savingBill ? 'Saving...' : billSaved ? 'Saved!' : 'Save'}
-                </Button>
-              </div>
 
-              {/* Student Journey */}
-              <StudentJourney
-                pageViews={stats.pageViews}
-                uniqueStudents={stats.uniqueStudents}
-                discountsRedeemed={stats.discountsRedeemed}
-                verifiedVisits={stats.verifiedStudentVisits}
-              />
+                {/* Operational Insights */}
+                <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                  <VisitsByDayOfWeek data={stats.visitsByDayOfWeek} />
+                  <VisitsByTimeRange
+                    lunch={stats.visitsByTimeRange.lunch}
+                    dinner={stats.visitsByTimeRange.dinner}
+                    other={stats.visitsByTimeRange.other}
+                  />
+                </div>
 
-              {/* Operational Insights */}
-              <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-                <VisitsByDayOfWeek data={stats.visitsByDayOfWeek} />
-                <VisitsByTimeRange
-                  lunch={stats.visitsByTimeRange.lunch}
-                  dinner={stats.visitsByTimeRange.dinner}
-                  other={stats.visitsByTimeRange.other}
+                {/* Loyalty */}
+                <LoyaltySection
+                  newStudents={stats.newStudentsCount}
+                  returningStudents={stats.returningStudentsCount}
+                  avgVisitsPerStudent={stats.avgVisitsPerStudent}
                 />
+
+                {/* Recent Activity */}
+                <RecentActivity recentCodes={stats.recentQrCodes} />
+
+                {/* Advanced Panel */}
+                <AdvancedPanel
+                  allDiscountUses={stats.allDiscountUses}
+                  userQrCounts={stats.userQrCounts}
+                  userViewCounts={stats.userViewCounts}
+                />
+
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 sm:px-6">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">Monthly report</p>
+                    <p className="text-xs text-slate-500">Generate and download a PDF snapshot.</p>
+                  </div>
+                  <Button
+                    onClick={() => setReportModalOpen(true)}
+                    variant="default"
+                    className="whitespace-nowrap"
+                  >
+                    Download Monthly Report
+                  </Button>
+                </div>
               </div>
-
-              {/* Loyalty */}
-              <LoyaltySection
-                newStudents={stats.newStudentsCount}
-                returningStudents={stats.returningStudentsCount}
-                avgVisitsPerStudent={stats.avgVisitsPerStudent}
-              />
-
-              {/* Recent Activity */}
-              <RecentActivity recentCodes={stats.recentQrCodes} />
-
-              {/* Advanced Panel */}
-              <AdvancedPanel
-                allDiscountUses={stats.allDiscountUses}
-                userQrCounts={stats.userQrCounts}
-                userViewCounts={stats.userViewCounts}
-              />
             </div>
           )}
         </div>
@@ -396,6 +700,33 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                 {generatingReport ? 'Generating report...' : 'Generate Report'}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmAdvancedOpen} onOpenChange={setConfirmAdvancedOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Open advanced data?</DialogTitle>
+            <DialogDescription>
+              This section contains raw QR codes, user emails, and debug data.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmAdvancedOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setShowAdvancedMobile(true);
+                setConfirmAdvancedOpen(false);
+              }}
+            >
+              Continue
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
