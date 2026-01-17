@@ -77,7 +77,7 @@ export default function ForBusinessPage() {
               <p>
                 Want to become a partner?{' '}
                 <a
-                  href="mailto:business@dormup.it"
+                  href="mailto:join@dormup-it.com"
                   className="font-medium text-emerald-600 hover:text-emerald-700"
                 >
                   Contact us
