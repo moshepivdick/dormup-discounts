@@ -18,7 +18,7 @@ const getClientIp = (req: NextApiRequest): string => {
 export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiResponse) => {
   const allowed = await enforceRateLimit(req, res, {
     keyPrefix: 'confirm',
-    limit: 10,
+    limit: 60,
     windowMs: 60_000,
   });
   if (!allowed) return;

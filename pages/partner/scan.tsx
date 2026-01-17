@@ -17,6 +17,8 @@ export default function PartnerScanPage() {
   const [showAlreadyUsedWarning, setShowAlreadyUsedWarning] = useState(false);
   const isSubmittingRef = useRef(false);
   const processedCodesRef = useRef<Set<string>>(new Set()); // Track processed codes to prevent duplicate scans
+  const lastRequestAtRef = useRef(0);
+  const minRequestIntervalMs = 1200;
 
   useEffect(() => {
     const reader = new BrowserMultiFormatReader();
@@ -75,6 +77,13 @@ export default function PartnerScanPage() {
     }
 
     if (isSubmittingRef.current) return;
+    const now = Date.now();
+    if (now - lastRequestAtRef.current < minRequestIntervalMs) {
+      setStatus('error');
+      setMessage('Please wait a moment before confirming another code.');
+      return;
+    }
+    lastRequestAtRef.current = now;
     
     isSubmittingRef.current = true;
     setStatus('loading');
@@ -85,6 +94,12 @@ export default function PartnerScanPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: codeToConfirm }),
       });
+      if (response.status === 429) {
+        setStatus('error');
+        setMessage('Too many requests. Please slow down.');
+        return;
+      }
+
       const payload = await response.json();
       const success = payload.success ?? false;
       const msg = payload.data?.message ?? payload.message ?? '';
