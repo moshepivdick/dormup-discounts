@@ -223,9 +223,21 @@ export async function deletePlace(
     return { success: false, formError: 'Venue not found.' };
   }
 
-  await prisma.venue.delete({
-    where: { id: placeId },
-  });
+  try {
+    await prisma.$transaction([
+      prisma.partner.deleteMany({ where: { venueId: placeId } }),
+      prisma.discountUse.deleteMany({ where: { venueId: placeId } }),
+      prisma.venueView.deleteMany({ where: { venueId: placeId } }),
+      prisma.dailyPartnerMetrics.deleteMany({ where: { venue_id: placeId } }),
+      prisma.monthlyPartnerMetrics.deleteMany({ where: { venue_id: placeId } }),
+      prisma.reportSnapshot.deleteMany({ where: { venue_id: placeId } }),
+      prisma.userPlaceStats.deleteMany({ where: { place_id: placeId } }),
+      prisma.venue.delete({ where: { id: placeId } }),
+    ]);
+  } catch (error) {
+    console.error('Error deleting venue with relations:', error);
+    return { success: false, formError: 'Unable to delete place. Check related records.' };
+  }
 
   return { success: true };
 }
