@@ -77,7 +77,9 @@ export default function ForBusinessPage() {
               <p>
                 Want to become a partner?{' '}
                 <a
-                  href="mailto:join@dormup-it.com"
+                  href="https://mail.google.com/mail/?view=cm&fs=1&to=join@dormup-it.com"
+                  target="_blank"
+                  rel="noreferrer"
                   className="font-medium text-emerald-600 hover:text-emerald-700"
                 >
                   Contact us
