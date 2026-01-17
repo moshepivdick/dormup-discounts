@@ -16,6 +16,7 @@ export default function PartnerScanPage() {
   const [showQRConfirmation, setShowQRConfirmation] = useState(false);
   const [showAlreadyUsedWarning, setShowAlreadyUsedWarning] = useState(false);
   const isSubmittingRef = useRef(false);
+  const hasHandledScanRef = useRef(false);
   const processedCodesRef = useRef<Set<string>>(new Set()); // Track processed codes to prevent duplicate scans
   const lastRequestAtRef = useRef(0);
   const minRequestIntervalMs = 1200;
@@ -33,6 +34,10 @@ export default function PartnerScanPage() {
         videoElement,
         async (result, err) => {
           if (result) {
+            if (hasHandledScanRef.current) {
+              return;
+            }
+            hasHandledScanRef.current = true;
             // Stop scanning when QR code is detected
             try {
               const video = videoRef.current;
@@ -159,6 +164,10 @@ export default function PartnerScanPage() {
     } catch (error) {
       setStatus('error');
       setMessage('Failed to confirm code. Please try again.');
+      // Allow re-scan if a network error occurred
+      if (isQRCode) {
+        hasHandledScanRef.current = false;
+      }
     } finally {
       isSubmittingRef.current = false;
     }
