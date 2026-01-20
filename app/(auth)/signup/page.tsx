@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/browser';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -380,6 +381,15 @@ function SignupForm() {
                 'Send verification code'
               )}
             </Button>
+            <Link href="/login" className="block">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-11 rounded-xl text-sm font-semibold"
+              >
+                I already have an account
+              </Button>
+            </Link>
           </form>
         </CardContent>
       </Card>

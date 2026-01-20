@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/browser';
 import { isUniversityEmail } from '@/lib/universityDomains';
@@ -239,6 +240,11 @@ function LoginForm() {
                   'Send code'
                 )}
               </Button>
+              <Link href="/signup" className="block">
+                <Button type="button" variant="outline" className="w-full">
+                  Create an account
+                </Button>
+              </Link>
             </form>
           ) : (
             <form
