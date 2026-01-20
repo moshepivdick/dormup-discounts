@@ -241,7 +241,11 @@ function LoginForm() {
                 )}
               </Button>
               <Link href="/signup" className="block">
-                <Button type="button" variant="outline" className="w-full">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full text-slate-600 hover:text-[#014D40]"
+                >
                   Create an account
                 </Button>
               </Link>
