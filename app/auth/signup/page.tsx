@@ -345,8 +345,8 @@ function SignupForm() {
             </Button>
             <Button
               type="button"
-              variant="outline"
-              className="w-full h-11 rounded-xl text-sm font-semibold"
+              variant="ghost"
+              className="w-full h-11 rounded-xl text-sm font-semibold text-slate-600 hover:text-[#014D40]"
               onClick={() => {
                 window.location.href = '/auth/login';
               }}

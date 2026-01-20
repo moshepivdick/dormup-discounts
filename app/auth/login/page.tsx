@@ -12,7 +12,11 @@ export default function LoginPage() {
           If you don&apos;t have an account yet, create one to continue.
         </p>
         <Link href="/auth/signup" className="mt-6 block">
-          <Button type="button" className="w-full">
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full text-slate-600 hover:text-[#014D40]"
+          >
             Go to registration
           </Button>
         </Link>
