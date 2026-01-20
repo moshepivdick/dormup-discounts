@@ -19,6 +19,7 @@ import {
   buildFullAddress,
 } from '@/utils/address';
 import { VENUE_CATEGORY_LABELS } from '@/lib/constants/categories';
+import { createClient } from '@/lib/supabase/browser';
 
 type VenuePageProps = {
   venue: VenueDetails;
@@ -132,11 +133,23 @@ export default function VenuePage({ venue }: VenuePageProps) {
   // API-based discount code generation
   const handleGenerateDiscount = useCallback(async () => {
     try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        window.location.href = '/auth/signup';
+        return;
+      }
+
       const response = await fetch('/api/generate-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ venueId: venue.id }),
       });
+
+      if (response.status === 401) {
+        window.location.href = '/auth/signup';
+        return;
+      }
 
       if (!response.ok) {
         const error = await response.json();

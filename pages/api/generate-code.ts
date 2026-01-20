@@ -15,10 +15,13 @@ const payloadSchema = z.object({
 
 export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiResponse) => {
   try {
-    // Try to get authenticated user (optional - allow anonymous code generation)
+    // Require authenticated user for code generation
     const supabase = createClientFromRequest(req);
     const { data: { user } } = await supabase.auth.getUser();
-    const userId = user?.id || null;
+    if (!user) {
+      return apiResponse.error(res, 401, 'Authentication required');
+    }
+    const userId = user.id;
 
     const parsed = payloadSchema.safeParse(req.body);
     if (!parsed.success) {

@@ -188,7 +188,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
       } else {
         setPosition(null);
       }
-    }, [open, onOpenChange, sideOffset]);
+    }, [open, onOpenChange, sideOffset, align]);
 
     if (!open || !position) return null;
 
