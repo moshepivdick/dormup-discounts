@@ -343,6 +343,16 @@ function SignupForm() {
                 'Send verification code'
               )}
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-11 rounded-xl text-sm font-semibold"
+              onClick={() => {
+                window.location.href = '/auth/login';
+              }}
+            >
+              I already have an account
+            </Button>
           </form>
         </CardContent>
       </Card>
