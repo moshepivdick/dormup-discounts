@@ -1,8 +1,11 @@
 import Head from 'next/head';
 import Link from 'next/link';
+import { useState } from 'react';
 import { BrandLogo } from '@/components/BrandLogo';
 
 export default function ForBusinessPage() {
+  const [contactSubmitted, setContactSubmitted] = useState(false);
+
   return (
     <>
       <Head>
@@ -73,19 +76,34 @@ export default function ForBusinessPage() {
               </Link>
             </div>
 
-            <div className="pt-4 text-center text-sm text-slate-500">
-              <p>
-                Want to become a partner?{' '}
-                <a
-                  href="https://mail.google.com/mail/?view=cm&fs=1&to=partners@dormup-it.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-medium text-emerald-600 hover:text-emerald-700"
+            {contactSubmitted ? (
+              <div className="pt-4 text-center text-sm text-slate-500">
+                <p className="text-base font-semibold text-slate-700">
+                  Thanks for reaching out! We&apos;ll contact you soon.
+                </p>
+                <Link
+                  href="/"
+                  className="mt-3 inline-flex items-center justify-center rounded-2xl border border-emerald-200 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 hover:text-emerald-800"
                 >
-                  Contact us
-                </a>
-              </p>
-            </div>
+                  Back to main menu
+                </Link>
+              </div>
+            ) : (
+              <div className="pt-4 text-center text-sm text-slate-500">
+                <p>
+                  Want to become a partner?{' '}
+                  <a
+                    href="https://mail.google.com/mail/?view=cm&fs=1&to=partners@dormup-it.com"
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => setContactSubmitted(true)}
+                    className="font-medium text-emerald-600 hover:text-emerald-700"
+                  >
+                    Contact us
+                  </a>
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </main>
