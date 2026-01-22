@@ -105,18 +105,27 @@ const getPartnerFromRequest = async (req?: IncomingMessage) => {
 
   let subscriptionTier = 'BASIC';
   try {
-    const venueTier = await prisma.venue.findUnique({
-      where: { id: partner.venueId },
-      select: { subscriptionTier: true },
-    });
-    if (venueTier?.subscriptionTier) {
-      subscriptionTier = venueTier.subscriptionTier;
+    const columnCheck = await prisma.$queryRaw<Array<{ exists: number }>>`
+      SELECT 1 as "exists"
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'venues'
+        AND column_name = 'subscriptionTier'
+      LIMIT 1;
+    `;
+    const hasColumn = Boolean(columnCheck[0]?.exists);
+    if (hasColumn) {
+      const venueTier = await prisma.venue.findUnique({
+        where: { id: partner.venueId },
+        select: { subscriptionTier: true },
+      });
+      if (venueTier?.subscriptionTier) {
+        subscriptionTier = venueTier.subscriptionTier;
+      }
+    } else {
+      console.warn('Venue subscriptionTier column missing, defaulting to BASIC');
     }
   } catch (error: any) {
-    const isMissingColumn = error?.code === 'P2022' || error?.message?.includes('subscriptionTier');
-    if (!isMissingColumn) {
-      throw error;
-    }
     console.warn('Venue subscriptionTier column missing, defaulting to BASIC');
   }
 
