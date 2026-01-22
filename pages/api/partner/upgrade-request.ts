@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { apiResponse, withMethods } from '@/lib/api';
 import { prisma } from '@/lib/prisma';
 import { partnerUpgradeRequestSchema } from '@/lib/validators';
-import { tierRank } from '@/lib/subscription';
+import { hasTier } from '@/lib/subscription';
 import { SubscriptionTier } from '@prisma/client';
 
 export default withMethods(['GET', 'POST'], async (req: NextApiRequest, res: NextApiResponse) => {
@@ -16,7 +16,7 @@ export default withMethods(['GET', 'POST'], async (req: NextApiRequest, res: Nex
     return apiResponse.error(res, 400, 'Partner not associated with a venue');
   }
 
-  const currentTier = partner.venue?.subscriptionTier ?? SubscriptionTier.BASIC;
+  const currentTier = (partner.venue?.subscriptionTier ?? SubscriptionTier.BASIC) as SubscriptionTier;
 
   if (req.method === 'GET') {
     const pending = await prisma.upgradeRequest.findMany({
@@ -41,7 +41,7 @@ export default withMethods(['GET', 'POST'], async (req: NextApiRequest, res: Nex
   const { note } = parsed.data;
   const toTier = parsed.data.toTier as SubscriptionTier;
 
-  if (tierRank[currentTier] >= tierRank[toTier]) {
+  if (hasTier(currentTier, toTier)) {
     return apiResponse.error(res, 400, 'Requested tier must be above current tier');
   }
 
