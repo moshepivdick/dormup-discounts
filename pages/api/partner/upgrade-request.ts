@@ -4,7 +4,6 @@ import { apiResponse, withMethods } from '@/lib/api';
 import { prisma } from '@/lib/prisma';
 import { partnerUpgradeRequestSchema } from '@/lib/validators';
 import { hasTier } from '@/lib/subscription';
-import { sendUpgradeRequestEmail } from '@/lib/email';
 import { SubscriptionTier } from '@prisma/client';
 
 export default withMethods(['GET', 'POST'], async (req: NextApiRequest, res: NextApiResponse) => {
@@ -56,14 +55,21 @@ export default withMethods(['GET', 'POST'], async (req: NextApiRequest, res: Nex
     return apiResponse.error(res, 400, 'Requested tier must be above current tier');
   }
 
-  const existing = await prisma.upgradeRequest.findFirst({
-    where: {
-      venueId: partner.venueId,
-      partnerId: partner.id,
-      status: 'PENDING',
-      toTier,
-    },
-  });
+  let existing = null;
+  try {
+    existing = await prisma.upgradeRequest.findFirst({
+      where: {
+        venueId: partner.venueId,
+        partnerId: partner.id,
+        status: 'PENDING',
+        toTier,
+      },
+    });
+  } catch (error: any) {
+    if (error?.code !== 'P2021') {
+      throw error;
+    }
+  }
 
   if (existing) {
     return apiResponse.error(res, 409, 'Upgrade request already pending', {
@@ -90,18 +96,6 @@ export default withMethods(['GET', 'POST'], async (req: NextApiRequest, res: Nex
     } else {
       throw error;
     }
-  }
-
-  try {
-    await sendUpgradeRequestEmail({
-      venueName: partner.venue?.name || `Venue ${partner.venueId}`,
-      fromTier: currentTier,
-      toTier,
-      note: note?.trim() || null,
-      partnerEmail: partner.email,
-    });
-  } catch (error) {
-    console.error('Failed to send upgrade request email:', error);
   }
 
   if (!request) {
