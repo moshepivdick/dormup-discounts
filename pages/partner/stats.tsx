@@ -552,9 +552,9 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                     {showAdvancedMobile ? (
                       <div className="mt-4">
                         <AdvancedPanel
-                          allDiscountUses={stats.allDiscountUses}
-                          userQrCounts={stats.userQrCounts}
-                          userViewCounts={stats.userViewCounts}
+                          allDiscountUses={stats.allDiscountUses ?? []}
+                          userQrCounts={stats.userQrCounts ?? {}}
+                          userViewCounts={stats.userViewCounts ?? {}}
                         />
                       </div>
                     ) : null}
