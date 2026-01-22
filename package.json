@@ -46,6 +46,7 @@
     "@types/exceljs": "^0.5.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.16.10",
+    "@types/nodemailer": "^7.0.5",
     "@types/react": "^18.3.7",
     "@types/react-dom": "^18.3.2",
     "autoprefixer": "^10.4.20",
