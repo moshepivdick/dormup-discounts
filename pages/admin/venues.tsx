@@ -382,12 +382,21 @@ export const getServerSideProps = (async (ctx) => {
     const venues = await prisma.venue.findMany({
       orderBy: { createdAt: 'desc' },
     });
-    let upgradeRequests = [];
+    let upgradeRequests: UpgradeRequestInfo[] = [];
     try {
-      upgradeRequests = await prisma.upgradeRequest.findMany({
+      const dbRequests = await prisma.upgradeRequest.findMany({
         where: { status: 'PENDING' },
         orderBy: { createdAt: 'desc' },
       });
+      upgradeRequests = dbRequests.map((request) => ({
+        id: request.id,
+        venueId: request.venueId,
+        partnerId: request.partnerId,
+        fromTier: request.fromTier,
+        toTier: request.toTier,
+        note: request.note,
+        createdAt: request.createdAt.toISOString(),
+      }));
     } catch (error: any) {
       if (error?.code !== 'P2021') {
         throw error;
@@ -420,15 +429,7 @@ export const getServerSideProps = (async (ctx) => {
             if (!acc[request.venueId]) {
               acc[request.venueId] = [];
             }
-            acc[request.venueId].push({
-              id: request.id,
-              venueId: request.venueId,
-              partnerId: request.partnerId,
-              fromTier: request.fromTier,
-              toTier: request.toTier,
-              note: request.note,
-              createdAt: request.createdAt.toISOString(),
-            });
+            acc[request.venueId].push(request);
             return acc;
           },
           {},
