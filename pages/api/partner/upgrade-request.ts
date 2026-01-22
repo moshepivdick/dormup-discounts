@@ -38,7 +38,8 @@ export default withMethods(['GET', 'POST'], async (req: NextApiRequest, res: Nex
     return apiResponse.error(res, 400, 'Invalid payload', parsed.error.flatten());
   }
 
-  const { toTier, note } = parsed.data;
+  const { note } = parsed.data;
+  const toTier = parsed.data.toTier as SubscriptionTier;
 
   if (tierRank[currentTier] >= tierRank[toTier]) {
     return apiResponse.error(res, 400, 'Requested tier must be above current tier');
