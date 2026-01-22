@@ -87,7 +87,17 @@ export default function PartnerPage({ partner }: PartnerPageProps) {
         <title>Partner Console | DormUp Discounts</title>
       </Head>
       <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6 py-12">
-        <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-sm">
+        <div className="relative w-full max-w-md rounded-3xl bg-white p-8 shadow-sm">
+          <Link
+            href="/partner/settings"
+            className="absolute right-5 top-5 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+            aria-label="Settings"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9.5A2.5 2.5 0 1 0 12 14.5 2.5 2.5 0 0 0 12 9.5Z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.4 15a1.6 1.6 0 0 0 .32 1.76l.04.04a2 2 0 1 1-2.83 2.83l-.04-.04a1.6 1.6 0 0 0-1.76-.32 1.6 1.6 0 0 0-.94 1.46V22a2 2 0 1 1-4 0v-.06a1.6 1.6 0 0 0-.94-1.46 1.6 1.6 0 0 0-1.76.32l-.04.04a2 2 0 1 1-2.83-2.83l.04-.04A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.46-.94H3a2 2 0 1 1 0-4h.06A1.6 1.6 0 0 0 4.52 9a1.6 1.6 0 0 0-.32-1.76l-.04-.04a2 2 0 1 1 2.83-2.83l.04.04A1.6 1.6 0 0 0 9 4.6 1.6 1.6 0 0 0 9.94 3.14V3a2 2 0 1 1 4 0v.06A1.6 1.6 0 0 0 15 4.52a1.6 1.6 0 0 0 1.76-.32l.04-.04a2 2 0 1 1 2.83 2.83l-.04.04A1.6 1.6 0 0 0 19.4 9c0 .36.12.7.34.98.22.28.56.46.92.52H21a2 2 0 1 1 0 4h-.06a1.6 1.6 0 0 0-1.54 1.5Z" />
+            </svg>
+          </Link>
           <div className="mb-6 flex items-start justify-between gap-4 rounded-2xl bg-slate-50 p-4">
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
@@ -106,31 +116,30 @@ export default function PartnerPage({ partner }: PartnerPageProps) {
               Log out
             </button>
           </div>
-          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mb-5 space-y-3">
             <Link
               href="/partner/scan"
-              className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-4 text-base font-semibold text-white shadow-sm transition hover:bg-emerald-700"
             >
-              Scanner
+              <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.7">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 7V5a1 1 0 0 1 1-1h2M20 7V5a1 1 0 0 0-1-1h-2M4 17v2a1 1 0 0 0 1 1h2M20 17v2a1 1 0 0 1-1 1h-2M7 12h10" />
+              </svg>
+              Start Scan
             </Link>
-            <Link
-              href="/partner/stats"
-              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-            >
-              Statistics
-            </Link>
-            <Link
-              href="/partner/settings"
-              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-            >
-              Settings
-            </Link>
-            <Link
-              href="/partner/plans"
-              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-            >
-              Plans
-            </Link>
+            <div className="grid grid-cols-2 gap-3">
+              <Link
+                href="/partner/stats"
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              >
+                Statistics
+              </Link>
+              <Link
+                href="/partner/plans"
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              >
+                Plans
+              </Link>
+            </div>
           </div>
           <p className="text-sm uppercase tracking-[0.2em] text-slate-500">
             Partner console
