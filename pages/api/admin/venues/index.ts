@@ -80,7 +80,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         error?.code === 'P2022' || 
         error?.message?.includes('priceLevel') ||
         error?.message?.includes('typicalStudentSpend') ||
-        error?.message?.includes('avgStudentBill');
+        error?.message?.includes('avgStudentBill') ||
+        error?.message?.includes('subscriptionTier');
       
       if (isColumnError) {
         console.error('Prisma error, using fallback without price fields:', error);

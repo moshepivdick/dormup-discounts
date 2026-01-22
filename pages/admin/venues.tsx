@@ -379,9 +379,35 @@ export const getServerSideProps = (async (ctx) => {
   }
 
   try {
-    const venues = await prisma.venue.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
+    let venues = [];
+    try {
+      venues = await prisma.venue.findMany({
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch (error: any) {
+      if (error?.code !== 'P2022' || !error?.message?.includes('subscriptionTier')) {
+        throw error;
+      }
+      venues = await prisma.venue.findMany({
+        select: {
+          id: true,
+          name: true,
+          city: true,
+          category: true,
+          discountText: true,
+          isActive: true,
+          details: true,
+          openingHours: true,
+          mapUrl: true,
+          priceLevel: true,
+          typicalStudentSpendMin: true,
+          typicalStudentSpendMax: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
     let upgradeRequests: UpgradeRequestInfo[] = [];
     try {
       const dbRequests = await prisma.upgradeRequest.findMany({
@@ -421,7 +447,7 @@ export const getServerSideProps = (async (ctx) => {
             priceLevel: venue.priceLevel,
             typicalStudentSpendMin: venue.typicalStudentSpendMin,
             typicalStudentSpendMax: venue.typicalStudentSpendMax,
-            subscriptionTier: venue.subscriptionTier,
+            subscriptionTier: 'subscriptionTier' in venue ? (venue as any).subscriptionTier : 'BASIC',
           };
         }),
         upgradeRequestsByVenue: upgradeRequests.reduce<Record<number, UpgradeRequestInfo[]>>(
