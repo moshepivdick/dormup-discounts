@@ -32,6 +32,7 @@ model Venue {
   priceLevel                 PriceLevel?
   typicalStudentSpendMin     Int?
   typicalStudentSpendMax     Int?
+  subscriptionTier           SubscriptionTier         @default(BASIC)
   discountUses               DiscountUse[]
   partner           Partner?
   views             VenueView[]
@@ -39,6 +40,7 @@ model Venue {
   monthlyMetrics    MonthlyPartnerMetrics[]
   reportSnapshots   ReportSnapshot[]
   userPlaceStats    UserPlaceStats[]
+  upgradeRequests   UpgradeRequest[]
 
   @@index([city])
   @@index([category])
@@ -77,6 +79,7 @@ model Partner {
   dailyMetrics    DailyPartnerMetrics[]
   monthlyMetrics  MonthlyPartnerMetrics[]
   reportSnapshots ReportSnapshot[]
+  upgradeRequests UpgradeRequest[]
 
   @@schema("public")
 }
@@ -735,6 +738,23 @@ model ExportJob {
   @@schema("public")
 }
 
+model UpgradeRequest {
+  id         String               @id @default(uuid())
+  createdAt  DateTime             @default(now())
+  venueId    Int
+  partnerId  String               @db.Uuid
+  fromTier   SubscriptionTier
+  toTier     SubscriptionTier
+  status     UpgradeRequestStatus @default(PENDING)
+  note       String?
+  venue      Venue                @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  partner    Partner              @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, status])
+  @@index([partnerId, status])
+  @@schema("public")
+}
+
 enum aal_level {
   aal1
   aal2
@@ -809,6 +829,22 @@ enum PriceLevel {
   budget
   mid
   premium
+
+  @@schema("public")
+}
+
+enum SubscriptionTier {
+  BASIC
+  PRO
+  MAX
+
+  @@schema("public")
+}
+
+enum UpgradeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 
   @@schema("public")
 }

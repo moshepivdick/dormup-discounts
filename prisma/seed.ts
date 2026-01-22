@@ -1,4 +1,4 @@
-import { PrismaClient, PriceLevel } from '@prisma/client';
+import { PrismaClient, PriceLevel, SubscriptionTier } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { VENUE_CATEGORIES } from '../lib/constants/categories';
 
@@ -119,6 +119,7 @@ async function main() {
   await prisma.admin.deleteMany();
   await prisma.venue.deleteMany();
   await prisma.venue.createMany({ data: venues });
+  await prisma.venue.updateMany({ data: { subscriptionTier: SubscriptionTier.BASIC } });
 
   const targetVenue = await prisma.venue.findFirst({
     where: { name: 'Chi Burdlaz Garden' },

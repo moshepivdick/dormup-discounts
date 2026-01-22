@@ -106,7 +106,7 @@ export default function PartnerPage({ partner }: PartnerPageProps) {
               Log out
             </button>
           </div>
-          <div className="mb-4 grid grid-cols-3 gap-3">
+          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Link
               href="/partner/scan"
               className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
@@ -124,6 +124,12 @@ export default function PartnerPage({ partner }: PartnerPageProps) {
               className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
             >
               Settings
+            </Link>
+            <Link
+              href="/partner/plans"
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              Plans
             </Link>
           </div>
           <p className="text-sm uppercase tracking-[0.2em] text-slate-500">

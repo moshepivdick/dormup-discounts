@@ -8,9 +8,20 @@ import { VENUE_CATEGORY_VALUES, VENUE_CATEGORY_LABELS, mapLegacyCategory, isVali
 
 type AdminVenuesProps = {
   venues: VenueDetails[];
+  upgradeRequestsByVenue: Record<number, UpgradeRequestInfo[]>;
 };
 
-export default function AdminVenuesPage({ venues }: AdminVenuesProps) {
+type UpgradeRequestInfo = {
+  id: string;
+  venueId: number;
+  partnerId: string;
+  fromTier: 'BASIC' | 'PRO' | 'MAX';
+  toTier: 'BASIC' | 'PRO' | 'MAX';
+  note: string | null;
+  createdAt: string;
+};
+
+export default function AdminVenuesPage({ venues, upgradeRequestsByVenue }: AdminVenuesProps) {
   const [form, setForm] = useState({
     name: '',
     city: '',
@@ -29,6 +40,30 @@ export default function AdminVenuesPage({ venues }: AdminVenuesProps) {
   const [status, setStatus] = useState<'idle' | 'saving'>('idle');
   const [editStatus, setEditStatus] = useState<'idle' | 'saving'>('idle');
   const [message, setMessage] = useState('');
+  const [tierUpdatingId, setTierUpdatingId] = useState<number | null>(null);
+
+  const tierOrder: Array<'BASIC' | 'PRO' | 'MAX'> = ['BASIC', 'PRO', 'MAX'];
+
+  const getNextTier = (current?: 'BASIC' | 'PRO' | 'MAX') => {
+    const index = tierOrder.indexOf(current || 'BASIC');
+    return tierOrder[(index + 1) % tierOrder.length];
+  };
+
+  const handleTierUpdate = async (venueId: number, subscriptionTier: 'BASIC' | 'PRO' | 'MAX', requestId?: string) => {
+    setTierUpdatingId(venueId);
+    const response = await fetch(`/api/admin/venues/${venueId}/subscription`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscriptionTier, requestId }),
+    });
+    const result = await response.json();
+    if (!result.success) {
+      setMessage(result.message ?? 'Failed to update tier');
+    } else {
+      window.location.reload();
+    }
+    setTierUpdatingId(null);
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -198,6 +233,44 @@ export default function AdminVenuesPage({ venues }: AdminVenuesProps) {
                 {venue.city} · {venue.category}
               </p>
               <p className="text-xs text-white/60">{venue.discountText}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-white/70">
+                <span className="rounded-full border border-white/10 bg-white/10 px-2 py-0.5 font-semibold">
+                  {venue.subscriptionTier || 'BASIC'}
+                </span>
+                <button
+                  onClick={() => handleTierUpdate(venue.id, getNextTier(venue.subscriptionTier as any))}
+                  disabled={tierUpdatingId === venue.id}
+                  className="rounded-full border border-white/10 px-2 py-0.5 text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {tierUpdatingId === venue.id ? 'Updating…' : 'Cycle tier'}
+                </button>
+              </div>
+              {upgradeRequestsByVenue[venue.id]?.length ? (
+                <div className="mt-3 space-y-2 rounded-lg border border-white/10 bg-white/5 p-2">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-white/50">
+                    Pending upgrade requests
+                  </p>
+                  {upgradeRequestsByVenue[venue.id].map((request) => (
+                    <div key={request.id} className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/70">
+                      <div>
+                        <p className="font-medium">
+                          {request.fromTier} → {request.toTier}
+                        </p>
+                        {request.note ? (
+                          <p className="text-[11px] text-white/50">Note: {request.note}</p>
+                        ) : null}
+                      </div>
+                      <button
+                        onClick={() => handleTierUpdate(venue.id, request.toTier, request.id)}
+                        disabled={tierUpdatingId === venue.id}
+                        className="rounded-full border border-emerald-400/30 px-2 py-0.5 text-emerald-200 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Approve
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <div className="mt-2 flex items-center gap-2 text-xs text-white/50">
                 {venue.priceLevel && (
                   <span>
@@ -309,6 +382,10 @@ export const getServerSideProps = (async (ctx) => {
     const venues = await prisma.venue.findMany({
       orderBy: { createdAt: 'desc' },
     });
+    const upgradeRequests = await prisma.upgradeRequest.findMany({
+      where: { status: 'PENDING' },
+      orderBy: { createdAt: 'desc' },
+    });
 
     return {
       props: {
@@ -328,8 +405,27 @@ export const getServerSideProps = (async (ctx) => {
             priceLevel: venue.priceLevel,
             typicalStudentSpendMin: venue.typicalStudentSpendMin,
             typicalStudentSpendMax: venue.typicalStudentSpendMax,
+            subscriptionTier: venue.subscriptionTier,
           };
         }),
+        upgradeRequestsByVenue: upgradeRequests.reduce<Record<number, UpgradeRequestInfo[]>>(
+          (acc, request) => {
+            if (!acc[request.venueId]) {
+              acc[request.venueId] = [];
+            }
+            acc[request.venueId].push({
+              id: request.id,
+              venueId: request.venueId,
+              partnerId: request.partnerId,
+              fromTier: request.fromTier,
+              toTier: request.toTier,
+              note: request.note,
+              createdAt: request.createdAt.toISOString(),
+            });
+            return acc;
+          },
+          {},
+        ),
       },
     };
   } catch (error) {
@@ -337,6 +433,7 @@ export const getServerSideProps = (async (ctx) => {
     return {
       props: {
         venues: [],
+        upgradeRequestsByVenue: {},
       },
     };
   }

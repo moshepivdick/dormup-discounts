@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { apiResponse, withMethods } from '@/lib/api';
 import { getMonthlyPartnerReport, parseMonth } from '@/lib/reports';
 import { prisma } from '@/lib/prisma';
+import { assertTier } from '@/lib/subscription';
+import { SubscriptionTier } from '@prisma/client';
 
 export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResponse) => {
   // Get month and partnerId parameters
@@ -31,6 +33,10 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
     venueId = requestedPartner.venueId;
   } else if (partner) {
     // Partner can only request their own
+    const allowed = assertTier(partner.venue?.subscriptionTier, SubscriptionTier.PRO, res);
+    if (!allowed) {
+      return;
+    }
     venueId = partner.venueId;
   } else {
     return apiResponse.error(res, 400, 'partnerId required for admin requests');

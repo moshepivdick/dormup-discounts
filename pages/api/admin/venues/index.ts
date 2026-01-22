@@ -62,6 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           priceLevel: true,
           typicalStudentSpendMin: true,
           typicalStudentSpendMax: true,
+          subscriptionTier: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -113,6 +114,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             priceLevel: null,
             typicalStudentSpendMin: null,
             typicalStudentSpendMax: null,
+            subscriptionTier: 'BASIC',
           })),
         });
       }

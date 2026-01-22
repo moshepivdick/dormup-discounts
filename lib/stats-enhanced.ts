@@ -117,6 +117,7 @@ export const getPartnerVenueStatsWithDateRange = async (
   const pageViews = views.length;
   const uniqueStudents = new Set(views.map((v) => v.user_id).filter(Boolean)).size;
   const discountsRedeemed = discountUses.filter((d) => d.status === 'confirmed').length;
+  const qrGenerated = discountUses.length;
   
   // Verified student visits: count of confirmed discounts by verified students
   const verifiedStudentVisits = discountUses.filter(
@@ -184,6 +185,7 @@ export const getPartnerVenueStatsWithDateRange = async (
     pageViews,
     uniqueStudents,
     discountsRedeemed,
+    qrGenerated,
     verifiedStudentVisits,
     returningStudentsCount,
     newStudentsCount,

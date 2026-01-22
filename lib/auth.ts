@@ -92,6 +92,7 @@ const getPartnerFromRequest = async (req?: IncomingMessage) => {
             createdAt: true,
             updatedAt: true,
             phone: true,
+              subscriptionTier: true,
             // Explicitly exclude avgStudentBill to avoid P2022 error if column doesn't exist
           },
         },
@@ -121,7 +122,8 @@ const getPartnerFromRequest = async (req?: IncomingMessage) => {
                  'isActive', v."isActive",
                  'createdAt', v."createdAt",
                  'updatedAt', v."updatedAt",
-                 'phone', v.phone
+               'phone', v.phone,
+               'subscriptionTier', v."subscriptionTier"
                ) as venue
         FROM partners p
         LEFT JOIN venues v ON p."venueId" = v.id

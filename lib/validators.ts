@@ -107,6 +107,13 @@ export const partnerMutationSchema = z.object({
   venueId: z.number().int(),
 });
 
+export const subscriptionTierSchema = z.enum(['BASIC', 'PRO', 'MAX']);
+
+export const partnerUpgradeRequestSchema = z.object({
+  toTier: subscriptionTierSchema.exclude(['BASIC']),
+  note: z.string().max(500).optional(),
+});
+
 // Schema for partner updating their venue (limited fields)
 export const partnerVenueUpdateSchema = z.object({
   name: z.string().min(3).max(100).optional(),

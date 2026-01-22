@@ -14,12 +14,14 @@ import { AdvancedPanel } from '@/components/dashboard/AdvancedPanel';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { featureGate } from '@/lib/subscription';
 
 type PartnerStatsProps = {
   partner: {
     email: string;
     venueName: string;
     venueId: number;
+    subscriptionTier: 'BASIC' | 'PRO' | 'MAX';
   };
 };
 
@@ -28,23 +30,24 @@ type DateRange = '7d' | '30d' | '90d' | 'all';
 type Stats = {
   pageViews: number;
   uniqueStudents: number;
+  qrGenerated: number;
   discountsRedeemed: number;
   verifiedStudentVisits: number;
   returningStudentsCount: number;
   newStudentsCount: number;
   avgVisitsPerStudent: number;
-  conversionRates: {
+  conversionRates?: {
     viewsToStudents: number;
     studentsToDiscounts: number;
     discountsToVerified: number;
   };
-  visitsByDayOfWeek: Array<{
+  visitsByDayOfWeek?: Array<{
     day: number;
     dayName: string;
     views: number;
     confirmed: number;
   }>;
-  visitsByTimeRange: {
+  visitsByTimeRange?: {
     lunch: number;
     dinner: number;
     other: number;
@@ -56,9 +59,9 @@ type Stats = {
     createdAt: string | Date;
     confirmedAt: string | Date | null;
   }>;
-  userQrCounts: Record<string, { generated: number; verified: number; email?: string; name?: string }>;
-  userViewCounts: Record<string, number>;
-  allDiscountUses: Array<{
+  userQrCounts?: Record<string, { generated: number; verified: number; email?: string; name?: string }>;
+  userViewCounts?: Record<string, number>;
+  allDiscountUses?: Array<{
     id: number;
     generatedCode: string;
     status: string;
@@ -69,6 +72,10 @@ type Stats = {
 };
 
 export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
+  const featureFlags = featureGate(partner.subscriptionTier);
+  const canUsePro = featureFlags.canAdvancedAnalytics;
+  const canPdfReports = featureFlags.canPdfReports;
+  const canUseMax = featureFlags.canUseMax;
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange>('30d');
@@ -99,6 +106,9 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
         if (endDate) {
           params.append('endDate', endDate.toISOString());
         }
+        if (canUsePro) {
+          params.append('includeAdvanced', '1');
+        }
 
         const response = await fetch(`/api/partner/stats?${params.toString()}`);
         if (response.ok) {
@@ -115,7 +125,7 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
     };
 
     fetchStats();
-  }, [dateRange]);
+  }, [dateRange, canUsePro]);
 
   // Load avgStudentBill from venue
   useEffect(() => {
@@ -207,6 +217,32 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
     }
   };
 
+  const LockedCard = ({
+    title,
+    description,
+    requiredTier = 'PRO',
+  }: {
+    title: string;
+    description: string;
+    requiredTier?: 'PRO' | 'MAX';
+  }) => (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-slate-900">{title}</p>
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+          {requiredTier}
+        </span>
+      </div>
+      <p className="mt-2 text-xs text-slate-500">{description}</p>
+      <Link
+        href="/partner/plans"
+        className="mt-3 inline-flex text-xs font-semibold text-emerald-600"
+      >
+        Compare plans
+      </Link>
+    </div>
+  );
+
   const estimatedRevenue = stats
     ? stats.discountsRedeemed * parseFloat(avgStudentBill || '0')
     : 0;
@@ -228,12 +264,20 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
               <div className="sm:order-none">
                 <DateRangeSelector value={dateRange} onChange={setDateRange} />
               </div>
-              <Link
-                href="/partner"
-                className="text-sm text-slate-600 hover:text-slate-900 transition sm:text-right"
-              >
-                Back to Console
-              </Link>
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/partner/plans"
+                  className="text-sm font-medium text-emerald-600 hover:text-emerald-700 transition"
+                >
+                  Plans
+                </Link>
+                <Link
+                  href="/partner"
+                  className="text-sm text-slate-600 hover:text-slate-900 transition sm:text-right"
+                >
+                  Back to Console
+                </Link>
+              </div>
             </div>
           </div>
 
@@ -254,12 +298,20 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                   <div className="mt-3">
                     <DateRangeSelector value={dateRange} onChange={setDateRange} />
                   </div>
-                  <Link
-                    href="/partner"
-                    className="mt-3 inline-flex text-sm text-slate-600 hover:text-slate-900"
-                  >
-                    Back to Console
-                  </Link>
+                  <div className="mt-3 flex items-center gap-4">
+                    <Link
+                      href="/partner/plans"
+                      className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
+                    >
+                      Plans
+                    </Link>
+                    <Link
+                      href="/partner"
+                      className="text-sm text-slate-600 hover:text-slate-900"
+                    >
+                      Back to Console
+                    </Link>
+                  </div>
                 </div>
 
                 <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -270,19 +322,19 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                   <div className="mt-4 grid grid-cols-2 gap-4">
                     {[
                       {
-                        label: 'Verified visits',
-                        value: stats.verifiedStudentVisits.toLocaleString(),
-                        tooltip: 'Confirmed discount redemptions by verified students.',
+                        label: 'Page views',
+                        value: stats.pageViews.toLocaleString(),
+                        tooltip: 'Total venue page views in this period.',
                       },
                       {
-                        label: 'Discounts redeemed',
+                        label: 'QR generated',
+                        value: stats.qrGenerated.toLocaleString(),
+                        tooltip: 'Total number of generated discount codes.',
+                      },
+                      {
+                        label: 'QR redeemed',
                         value: stats.discountsRedeemed.toLocaleString(),
                         tooltip: 'Total number of confirmed discount codes.',
-                      },
-                      {
-                        label: 'Unique students',
-                        value: stats.uniqueStudents.toLocaleString(),
-                        tooltip: 'Students who viewed your venue page.',
                       },
                       {
                         label: 'Estimated revenue',
@@ -314,131 +366,149 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
 
                 <div className="mt-6 space-y-4">
                   <p className="text-2xl font-semibold text-slate-900">When students come</p>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    {(() => {
-                      const sortedDays = [...stats.visitsByDayOfWeek].sort(
-                        (a, b) => b.confirmed - a.confirmed,
-                      );
-                      const topDays = showAllDays ? sortedDays : sortedDays.slice(0, 3);
-                      const topDay = sortedDays[0];
-                      const maxValue = Math.max(1, ...sortedDays.map((day) => day.confirmed));
+                  {canUsePro && stats.visitsByDayOfWeek && stats.visitsByTimeRange ? (
+                    <>
+                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        {(() => {
+                          const sortedDays = [...stats.visitsByDayOfWeek].sort(
+                            (a, b) => b.confirmed - a.confirmed,
+                          );
+                          const topDays = showAllDays ? sortedDays : sortedDays.slice(0, 3);
+                          const topDay = sortedDays[0];
+                          const maxValue = Math.max(1, ...sortedDays.map((day) => day.confirmed));
 
-                      return (
-                        <>
-                          <p className="text-sm font-semibold text-slate-900">Peak day</p>
-                          <p className="mt-1 text-sm text-slate-600">
-                            {topDay.dayName} — {topDay.confirmed} visits
-                          </p>
-                          <div className="mt-4 space-y-3">
-                            {topDays.map((day) => (
-                              <div key={day.day} className="space-y-2">
-                                <div className="flex items-center justify-between text-xs text-slate-600">
-                                  <span>{day.dayName}</span>
-                                  <span>{day.confirmed}</span>
-                                </div>
-                                <div className="h-2 w-full rounded-full bg-slate-100">
-                                  <div
-                                    className="h-2 rounded-full bg-emerald-500"
-                                    style={{ width: `${(day.confirmed / maxValue) * 100}%` }}
-                                  />
-                                </div>
+                          return (
+                            <>
+                              <p className="text-sm font-semibold text-slate-900">Peak day</p>
+                              <p className="mt-1 text-sm text-slate-600">
+                                {topDay.dayName} — {topDay.confirmed} visits
+                              </p>
+                              <div className="mt-4 space-y-3">
+                                {topDays.map((day) => (
+                                  <div key={day.day} className="space-y-2">
+                                    <div className="flex items-center justify-between text-xs text-slate-600">
+                                      <span>{day.dayName}</span>
+                                      <span>{day.confirmed}</span>
+                                    </div>
+                                    <div className="h-2 w-full rounded-full bg-slate-100">
+                                      <div
+                                        className="h-2 rounded-full bg-emerald-500"
+                                        style={{ width: `${(day.confirmed / maxValue) * 100}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setShowAllDays((prev) => !prev)}
-                            className="mt-4 text-xs font-semibold text-emerald-600"
-                          >
-                            {showAllDays ? 'Show top days' : 'Show all days'}
-                          </button>
-                        </>
-                      );
-                    })()}
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    {(() => {
-                      const timeBuckets = [
-                        { key: 'lunch', label: 'Lunch (12–15)', value: stats.visitsByTimeRange.lunch },
-                        { key: 'dinner', label: 'Dinner (18–22)', value: stats.visitsByTimeRange.dinner },
-                        { key: 'other', label: 'Other times', value: stats.visitsByTimeRange.other },
-                      ];
-                      const sortedTimes = [...timeBuckets].sort((a, b) => b.value - a.value);
-                      const topTimes = showAllTimes ? sortedTimes : sortedTimes.slice(0, 3);
-                      const topTime = sortedTimes[0];
-                      const maxValue = Math.max(1, ...sortedTimes.map((item) => item.value));
-
-                      return (
-                        <>
-                          <p className="text-sm font-semibold text-slate-900">Peak time</p>
-                          <p className="mt-1 text-sm text-slate-600">
-                            {topTime.label} — {topTime.value} visits
-                          </p>
-                          <div className="mt-4 space-y-3">
-                            {topTimes.map((item) => (
-                              <div key={item.key} className="space-y-2">
-                                <div className="flex items-center justify-between text-xs text-slate-600">
-                                  <span>{item.label}</span>
-                                  <span>{item.value}</span>
-                                </div>
-                                <div className="h-2 w-full rounded-full bg-slate-100">
-                                  <div
-                                    className="h-2 rounded-full bg-emerald-500"
-                                    style={{ width: `${(item.value / maxValue) * 100}%` }}
-                                  />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setShowAllTimes((prev) => !prev)}
-                            className="mt-4 text-xs font-semibold text-emerald-600"
-                          >
-                            {showAllTimes ? 'Show top times' : 'Show all times'}
-                          </button>
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
-
-                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <p className="text-2xl font-semibold text-slate-900">Loyalty</p>
-                  <div className="mt-4 grid grid-cols-1 gap-4">
-                    {[
-                      {
-                        label: 'New students',
-                        value: Math.max(0, stats.newStudentsCount).toLocaleString(),
-                        tooltip: 'Students whose first confirmed scan at your venue is in this period.',
-                      },
-                      {
-                        label: 'Returning students',
-                        value: stats.returningStudentsCount.toLocaleString(),
-                        tooltip: 'Students who scanned before and returned during this period.',
-                      },
-                      {
-                        label: 'Avg visits / student',
-                        value: stats.avgVisitsPerStudent.toLocaleString(),
-                        tooltip: 'Average number of visits per student.',
-                      },
-                    ].map((item) => (
-                      <div key={item.label} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                        <div>
-                          <p className="text-sm font-medium text-slate-700">{item.label}</p>
-                          <p className="text-2xl font-semibold text-slate-900">{item.value}</p>
-                        </div>
-                        <span
-                          className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-[11px] font-semibold text-emerald-600"
-                          title={item.tooltip}
-                        >
-                          i
-                        </span>
+                              <button
+                                type="button"
+                                onClick={() => setShowAllDays((prev) => !prev)}
+                                className="mt-4 text-xs font-semibold text-emerald-600"
+                              >
+                                {showAllDays ? 'Show top days' : 'Show all days'}
+                              </button>
+                            </>
+                          );
+                        })()}
                       </div>
-                    ))}
-                  </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        {(() => {
+                          const timeBuckets = [
+                            { key: 'lunch', label: 'Lunch (12–15)', value: stats.visitsByTimeRange.lunch },
+                            { key: 'dinner', label: 'Dinner (18–22)', value: stats.visitsByTimeRange.dinner },
+                            { key: 'other', label: 'Other times', value: stats.visitsByTimeRange.other },
+                          ];
+                          const sortedTimes = [...timeBuckets].sort((a, b) => b.value - a.value);
+                          const topTimes = showAllTimes ? sortedTimes : sortedTimes.slice(0, 3);
+                          const topTime = sortedTimes[0];
+                          const maxValue = Math.max(1, ...sortedTimes.map((item) => item.value));
+
+                          return (
+                            <>
+                              <p className="text-sm font-semibold text-slate-900">Peak time</p>
+                              <p className="mt-1 text-sm text-slate-600">
+                                {topTime.label} — {topTime.value} visits
+                              </p>
+                              <div className="mt-4 space-y-3">
+                                {topTimes.map((item) => (
+                                  <div key={item.key} className="space-y-2">
+                                    <div className="flex items-center justify-between text-xs text-slate-600">
+                                      <span>{item.label}</span>
+                                      <span>{item.value}</span>
+                                    </div>
+                                    <div className="h-2 w-full rounded-full bg-slate-100">
+                                      <div
+                                        className="h-2 rounded-full bg-emerald-500"
+                                        style={{ width: `${(item.value / maxValue) * 100}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setShowAllTimes((prev) => !prev)}
+                                className="mt-4 text-xs font-semibold text-emerald-600"
+                              >
+                                {showAllTimes ? 'Show top times' : 'Show all times'}
+                              </button>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </>
+                  ) : (
+                    <LockedCard
+                      title="Advanced traffic insights"
+                      description="Unlock peak day/time and trend charts with PRO."
+                    />
+                  )}
                 </div>
+
+                {canUsePro ? (
+                  <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <p className="text-2xl font-semibold text-slate-900">Loyalty</p>
+                    <div className="mt-4 grid grid-cols-1 gap-4">
+                      {[
+                        {
+                          label: 'New students',
+                          value: Math.max(0, stats.newStudentsCount).toLocaleString(),
+                          tooltip: 'Students whose first confirmed scan at your venue is in this period.',
+                        },
+                        {
+                          label: 'Returning students',
+                          value: stats.returningStudentsCount.toLocaleString(),
+                          tooltip: 'Students who scanned before and returned during this period.',
+                        },
+                        {
+                          label: 'Avg visits / student',
+                          value: stats.avgVisitsPerStudent.toLocaleString(),
+                          tooltip: 'Average number of visits per student.',
+                        },
+                      ].map((item) => (
+                        <div key={item.label} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                          <div>
+                            <p className="text-sm font-medium text-slate-700">{item.label}</p>
+                            <p className="text-2xl font-semibold text-slate-900">{item.value}</p>
+                          </div>
+                          <span
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-[11px] font-semibold text-emerald-600"
+                            title={item.tooltip}
+                          >
+                            i
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-6">
+                    <LockedCard
+                      title="Loyalty insights"
+                      description="Track returning vs new students with PRO analytics."
+                    />
+                  </div>
+                )}
 
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <p className="text-2xl font-semibold text-slate-900">Recent discount activity</p>
@@ -466,28 +536,37 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                   </div>
                 </div>
 
-                <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
-                  <p className="text-lg font-semibold text-amber-900">Advanced (internal)</p>
-                  <p className="mt-1 text-xs text-amber-700">
-                    Contains raw QR codes, user emails, and debug data.
-                  </p>
-                  <Button
-                    variant="outline"
-                    className="mt-4 w-full border-amber-300 text-amber-900 hover:bg-amber-100"
-                    onClick={() => setConfirmAdvancedOpen(true)}
-                  >
-                    {showAdvancedMobile ? 'Hide advanced data' : 'Show advanced data'}
-                  </Button>
-                  {showAdvancedMobile ? (
-                    <div className="mt-4">
-                      <AdvancedPanel
-                        allDiscountUses={stats.allDiscountUses}
-                        userQrCounts={stats.userQrCounts}
-                        userViewCounts={stats.userViewCounts}
-                      />
-                    </div>
-                  ) : null}
-                </div>
+                {canUsePro ? (
+                  <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                    <p className="text-lg font-semibold text-amber-900">Advanced (internal)</p>
+                    <p className="mt-1 text-xs text-amber-700">
+                      Contains raw QR codes, user emails, and debug data.
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="mt-4 w-full border-amber-300 text-amber-900 hover:bg-amber-100"
+                      onClick={() => setConfirmAdvancedOpen(true)}
+                    >
+                      {showAdvancedMobile ? 'Hide advanced data' : 'Show advanced data'}
+                    </Button>
+                    {showAdvancedMobile ? (
+                      <div className="mt-4">
+                        <AdvancedPanel
+                          allDiscountUses={stats.allDiscountUses}
+                          userQrCounts={stats.userQrCounts}
+                          userViewCounts={stats.userViewCounts}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="mt-6">
+                    <LockedCard
+                      title="Advanced panel"
+                      description="Access raw QR data and student details on PRO."
+                    />
+                  </div>
+                )}
 
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <p className="text-2xl font-semibold text-slate-900">Settings</p>
@@ -515,65 +594,131 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                   </div>
                 </div>
 
-                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <p className="text-sm font-medium text-slate-900">
-                    Download a full summary for the selected period.
-                  </p>
-                  <Button
-                    onClick={() => setReportModalOpen(true)}
-                    variant="outline"
-                    className="mt-4 w-full gap-2"
-                  >
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      className="h-4 w-4"
+                {canPdfReports ? (
+                  <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <p className="text-sm font-medium text-slate-900">
+                      Download a full summary for the selected period.
+                    </p>
+                    <Button
+                      onClick={() => setReportModalOpen(true)}
+                      variant="outline"
+                      className="mt-4 w-full gap-2"
                     >
-                      <path d="M10 3a1 1 0 0 1 1 1v7.586l2.293-2.293a1 1 0 1 1 1.414 1.414l-4.004 4.004a1 1 0 0 1-1.414 0l-4.004-4.004a1 1 0 1 1 1.414-1.414L9 11.586V4a1 1 0 0 1 1-1Z" />
-                      <path d="M4 13a1 1 0 0 1 1 1v2h10v-2a1 1 0 1 1 2 0v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1Z" />
-                    </svg>
-                    Download Monthly Report
-                  </Button>
-                </div>
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        className="h-4 w-4"
+                      >
+                        <path d="M10 3a1 1 0 0 1 1 1v7.586l2.293-2.293a1 1 0 1 1 1.414 1.414l-4.004 4.004a1 1 0 0 1-1.414 0l-4.004-4.004a1 1 0 1 1 1.414-1.414L9 11.586V4a1 1 0 0 1 1-1Z" />
+                        <path d="M4 13a1 1 0 0 1 1 1v2h10v-2a1 1 0 1 1 2 0v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1Z" />
+                      </svg>
+                      Download Monthly Report
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="mt-6">
+                    <LockedCard
+                      title="Monthly PDF report"
+                      description="Generate partner reports on the PRO plan."
+                    />
+                  </div>
+                )}
+
+                {canUseMax ? (
+                  <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <p className="text-sm font-medium text-slate-900">Exports & white-label</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      CSV/XLSX exports and branded reports are preparing for launch.
+                    </p>
+                    <Link
+                      href="/partner/plans"
+                      className="mt-3 inline-flex text-xs font-semibold text-emerald-600"
+                    >
+                      See MAX benefits
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="mt-6">
+                    <LockedCard
+                      title="Exports & white-label"
+                      description="Unlock CSV/XLSX exports and branded reports with MAX."
+                      requiredTier="MAX"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="hidden md:block">
                 {/* Executive Summary - KPI Cards */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <KPICard
-                    title="Verified Student Visits"
-                    value={stats.verifiedStudentVisits}
-                    subtitle={getDateRangeLabel()}
-                    highlight
-                    hero
-                    tooltip="Number of confirmed discount redemptions by verified students"
-                  />
-                  <KPICard
-                    title="Unique Students"
-                    value={stats.uniqueStudents}
-                    subtitle={getDateRangeLabel()}
-                    tooltip="Number of unique students who viewed your venue page"
-                  />
-                  <KPICard
-                    title="Discounts Redeemed"
-                    value={stats.discountsRedeemed}
-                    subtitle={getDateRangeLabel()}
-                    tooltip="Total number of discount codes confirmed/redeemed"
-                  />
-                  <KPICard
-                    title="Returning Students"
-                    value={stats.returningStudentsCount}
-                    subtitle={getDateRangeLabel()}
-                    tooltip="Students who scanned before and returned during this period"
-                  />
-                  <KPICard
-                    title="Estimated Revenue"
-                    value={`€${estimatedRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                    subtitle={getDateRangeLabel()}
-                    highlight
-                    tooltip="Estimated revenue based on redeemed discounts and average student bill"
-                  />
+                  {canUsePro ? (
+                    <>
+                      <KPICard
+                        title="Verified Student Visits"
+                        value={stats.verifiedStudentVisits}
+                        subtitle={getDateRangeLabel()}
+                        highlight
+                        hero
+                        tooltip="Number of confirmed discount redemptions by verified students"
+                      />
+                      <KPICard
+                        title="Unique Students"
+                        value={stats.uniqueStudents}
+                        subtitle={getDateRangeLabel()}
+                        tooltip="Number of unique students who viewed your venue page"
+                      />
+                      <KPICard
+                        title="Discounts Redeemed"
+                        value={stats.discountsRedeemed}
+                        subtitle={getDateRangeLabel()}
+                        tooltip="Total number of discount codes confirmed/redeemed"
+                      />
+                      <KPICard
+                        title="Returning Students"
+                        value={stats.returningStudentsCount}
+                        subtitle={getDateRangeLabel()}
+                        tooltip="Students who scanned before and returned during this period"
+                      />
+                      <KPICard
+                        title="Estimated Revenue"
+                        value={`€${estimatedRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        subtitle={getDateRangeLabel()}
+                        highlight
+                        tooltip="Estimated revenue based on redeemed discounts and average student bill"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <KPICard
+                        title="Page Views"
+                        value={stats.pageViews}
+                        subtitle={getDateRangeLabel()}
+                        highlight
+                        hero
+                        tooltip="Total venue page views"
+                      />
+                      <KPICard
+                        title="QR Generated"
+                        value={stats.qrGenerated}
+                        subtitle={getDateRangeLabel()}
+                        tooltip="Total discount codes generated"
+                      />
+                      <KPICard
+                        title="QR Redeemed"
+                        value={stats.discountsRedeemed}
+                        subtitle={getDateRangeLabel()}
+                        tooltip="Total confirmed discount codes"
+                      />
+                      <KPICard
+                        title="Estimated Revenue"
+                        value={`€${estimatedRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        subtitle={getDateRangeLabel()}
+                        highlight
+                        tooltip="Estimated revenue based on redeemed discounts and average student bill"
+                      />
+                    </>
+                  )}
                 </div>
 
                 {/* Revenue Input - Compact Inline */}
@@ -599,54 +744,91 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                   </Button>
                 </div>
 
-                {/* Student Journey */}
-                <StudentJourney
-                  pageViews={stats.pageViews}
-                  uniqueStudents={stats.uniqueStudents}
-                  discountsRedeemed={stats.discountsRedeemed}
-                  verifiedVisits={stats.verifiedStudentVisits}
-                />
+                {canUsePro ? (
+                  <>
+                    <StudentJourney
+                      pageViews={stats.pageViews}
+                      uniqueStudents={stats.uniqueStudents}
+                      discountsRedeemed={stats.discountsRedeemed}
+                      verifiedVisits={stats.verifiedStudentVisits}
+                    />
 
-                {/* Operational Insights */}
-                <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-                  <VisitsByDayOfWeek data={stats.visitsByDayOfWeek} />
-                  <VisitsByTimeRange
-                    lunch={stats.visitsByTimeRange.lunch}
-                    dinner={stats.visitsByTimeRange.dinner}
-                    other={stats.visitsByTimeRange.other}
+                    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                      <VisitsByDayOfWeek data={stats.visitsByDayOfWeek || []} />
+                      <VisitsByTimeRange
+                        lunch={stats.visitsByTimeRange?.lunch ?? 0}
+                        dinner={stats.visitsByTimeRange?.dinner ?? 0}
+                        other={stats.visitsByTimeRange?.other ?? 0}
+                      />
+                    </div>
+
+                    <LoyaltySection
+                      newStudents={stats.newStudentsCount}
+                      returningStudents={stats.returningStudentsCount}
+                      avgVisitsPerStudent={stats.avgVisitsPerStudent}
+                    />
+                  </>
+                ) : (
+                  <LockedCard
+                    title="Advanced analytics"
+                    description="Unlock conversion funnels, loyalty, and time charts with PRO."
                   />
-                </div>
-
-                {/* Loyalty */}
-                <LoyaltySection
-                  newStudents={stats.newStudentsCount}
-                  returningStudents={stats.returningStudentsCount}
-                  avgVisitsPerStudent={stats.avgVisitsPerStudent}
-                />
+                )}
 
                 {/* Recent Activity */}
                 <RecentActivity recentCodes={stats.recentQrCodes} />
 
-                {/* Advanced Panel */}
-                <AdvancedPanel
-                  allDiscountUses={stats.allDiscountUses}
-                  userQrCounts={stats.userQrCounts}
-                  userViewCounts={stats.userViewCounts}
-                />
+                {canUsePro ? (
+                  <AdvancedPanel
+                    allDiscountUses={stats.allDiscountUses}
+                    userQrCounts={stats.userQrCounts}
+                    userViewCounts={stats.userViewCounts}
+                  />
+                ) : null}
 
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 sm:px-6">
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">Monthly report</p>
-                    <p className="text-xs text-slate-500">Generate and download a PDF snapshot.</p>
+                {canPdfReports ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 sm:px-6">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">Monthly report</p>
+                      <p className="text-xs text-slate-500">Generate and download a PDF snapshot.</p>
+                    </div>
+                    <Button
+                      onClick={() => setReportModalOpen(true)}
+                      variant="default"
+                      className="whitespace-nowrap"
+                    >
+                      Download Monthly Report
+                    </Button>
                   </div>
-                  <Button
-                    onClick={() => setReportModalOpen(true)}
-                    variant="default"
-                    className="whitespace-nowrap"
-                  >
-                    Download Monthly Report
-                  </Button>
-                </div>
+                ) : (
+                  <LockedCard
+                    title="Monthly PDF report"
+                    description="Generate partner reports on the PRO plan."
+                  />
+                )}
+
+                {canUseMax ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 sm:px-6">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">Exports & white-label</p>
+                      <p className="text-xs text-slate-500">
+                        CSV/XLSX exports and branded reports are preparing for launch.
+                      </p>
+                    </div>
+                    <Link
+                      href="/partner/plans"
+                      className="text-xs font-semibold text-emerald-600"
+                    >
+                      MAX details
+                    </Link>
+                  </div>
+                ) : (
+                  <LockedCard
+                    title="Exports & white-label"
+                    description="Unlock CSV/XLSX exports and branded reports with MAX."
+                    requiredTier="MAX"
+                  />
+                )}
               </div>
             </div>
           )}
@@ -757,6 +939,7 @@ export const getServerSideProps = async (ctx: GetServerSidePropsContext) => {
         email: partner.email,
         venueName: partner.venue.name,
         venueId: partner.venueId,
+        subscriptionTier: partner.venue.subscriptionTier || 'BASIC',
       },
     },
   };

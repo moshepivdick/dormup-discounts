@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { apiResponse, withMethods } from '@/lib/api';
 import { prisma } from '@/lib/prisma';
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { assertTier } from '@/lib/subscription';
+import { SubscriptionTier } from '@prisma/client';
 
 export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResponse) => {
   // Verify admin or partner
@@ -26,6 +28,10 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
   }
   if (partner && !admin) {
     // Partners can only see their own snapshots
+    const allowed = assertTier(partner.venue?.subscriptionTier, SubscriptionTier.PRO, res);
+    if (!allowed) {
+      return;
+    }
     where.partner_id = partner.id;
   }
 

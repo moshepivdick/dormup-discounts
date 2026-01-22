@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { apiResponse, withMethods } from '@/lib/api';
 import { prisma } from '@/lib/prisma';
 import { parseMonth, getMonthBounds } from '@/lib/reports';
+import { assertTier } from '@/lib/subscription';
+import { SubscriptionTier } from '@prisma/client';
 
 export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResponse) => {
   // Verify admin or partner
@@ -43,6 +45,10 @@ export default withMethods(['GET'], async (req: NextApiRequest, res: NextApiResp
     } else if (partner) {
       // Partner requesting their own
       venueId = partner.venueId;
+      const allowed = assertTier(partner.venue?.subscriptionTier, SubscriptionTier.MAX, res);
+      if (!allowed) {
+        return;
+      }
     } else {
       return apiResponse.error(res, 400, 'partnerId required for partner scope');
     }

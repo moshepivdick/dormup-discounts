@@ -5,6 +5,7 @@ export type VenueSummary = {
   category: string;
   discountText: string;
   isActive: boolean;
+  subscriptionTier?: 'BASIC' | 'PRO' | 'MAX';
   imageUrl?: string | null;
   thumbnailUrl?: string | null;
   openingHoursShort?: string | null;

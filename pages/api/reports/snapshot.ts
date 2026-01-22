@@ -6,6 +6,8 @@ import { parseMonth, getMonthBounds } from '@/lib/reports';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { createClientFromRequest } from '@/lib/supabase/pages-router';
 import { generateReportToken, generateReportHash } from '@/lib/report-token';
+import { assertTier } from '@/lib/subscription';
+import { SubscriptionTier } from '@prisma/client';
 // Playwright will be imported dynamically to avoid build errors if not installed
 import * as crypto from 'crypto';
 
@@ -94,6 +96,10 @@ export default withMethods(['POST'], async (req: NextApiRequest, res: NextApiRes
       partnerIdFinal = requestedPartner.id;
     } else if (partner) {
       // Partner requesting their own
+      const allowed = assertTier(partner.venue?.subscriptionTier, SubscriptionTier.PRO, res);
+      if (!allowed) {
+        return;
+      }
       venueId = partner.venueId;
       partnerIdFinal = partner.id;
     } else {
