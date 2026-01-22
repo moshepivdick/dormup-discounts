@@ -217,14 +217,16 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
     }
   };
 
-  const LockedCard = ({
+  const BlurredSection = ({
     title,
     description,
     requiredTier = 'PRO',
+    children,
   }: {
     title: string;
-    description: string;
+    description?: string;
     requiredTier?: 'PRO' | 'MAX';
+    children: React.ReactNode;
   }) => (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between gap-3">
@@ -233,13 +235,26 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
           {requiredTier}
         </span>
       </div>
-      <p className="mt-2 text-xs text-slate-500">{description}</p>
-      <Link
-        href="/partner/plans"
-        className="mt-3 inline-flex text-xs font-semibold text-emerald-600"
-      >
-        Compare plans
-      </Link>
+      {description ? <p className="mt-2 text-xs text-slate-500">{description}</p> : null}
+      <div className="relative mt-4">
+        <div className="pointer-events-none select-none blur-sm">{children}</div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Link
+            href="/partner/plans"
+            className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-emerald-600 shadow-sm"
+          >
+            Compare plans
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+
+  const PlaceholderLines = ({ rows = 3 }: { rows?: number }) => (
+    <div className="space-y-3">
+      {Array.from({ length: rows }).map((_, index) => (
+        <div key={index} className="h-4 w-full rounded-full bg-slate-100" />
+      ))}
     </div>
   );
 
@@ -458,10 +473,19 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                       </div>
                     </>
                   ) : (
-                    <LockedCard
-                      title="Advanced traffic insights"
+                    <BlurredSection
+                      title="When students come"
                       description="Unlock peak day/time and trend charts with PRO."
-                    />
+                    >
+                      <div className="space-y-4">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                          <PlaceholderLines rows={4} />
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                          <PlaceholderLines rows={4} />
+                        </div>
+                      </div>
+                    </BlurredSection>
                   )}
                 </div>
 
@@ -503,10 +527,16 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                   </div>
                 ) : (
                   <div className="mt-6">
-                    <LockedCard
-                      title="Loyalty insights"
+                    <BlurredSection
+                      title="Loyalty"
                       description="Track returning vs new students with PRO analytics."
-                    />
+                    >
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="h-14 rounded-2xl bg-slate-100" />
+                        <div className="h-14 rounded-2xl bg-slate-100" />
+                        <div className="h-14 rounded-2xl bg-slate-100" />
+                      </div>
+                    </BlurredSection>
                   </div>
                 )}
 
@@ -561,10 +591,12 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                   </div>
                 ) : (
                   <div className="mt-6">
-                    <LockedCard
-                      title="Advanced panel"
+                    <BlurredSection
+                      title="Advanced (internal)"
                       description="Access raw QR data and student details on PRO."
-                    />
+                    >
+                      <PlaceholderLines rows={5} />
+                    </BlurredSection>
                   </div>
                 )}
 
@@ -618,10 +650,12 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                   </div>
                 ) : (
                   <div className="mt-6">
-                    <LockedCard
-                      title="Monthly PDF report"
+                    <BlurredSection
+                      title="Monthly report"
                       description="Generate partner reports on the PRO plan."
-                    />
+                    >
+                      <div className="h-10 rounded-2xl bg-slate-100" />
+                    </BlurredSection>
                   </div>
                 )}
 
@@ -640,11 +674,13 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                   </div>
                 ) : (
                   <div className="mt-6">
-                    <LockedCard
+                    <BlurredSection
                       title="Exports & white-label"
                       description="Unlock CSV/XLSX exports and branded reports with MAX."
                       requiredTier="MAX"
-                    />
+                    >
+                      <PlaceholderLines rows={3} />
+                    </BlurredSection>
                   </div>
                 )}
               </div>
@@ -769,10 +805,19 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                     />
                   </>
                 ) : (
-                  <LockedCard
+                  <BlurredSection
                     title="Advanced analytics"
                     description="Unlock conversion funnels, loyalty, and time charts with PRO."
-                  />
+                  >
+                    <div className="space-y-4">
+                      <div className="h-24 rounded-2xl bg-slate-100" />
+                      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        <div className="h-32 rounded-2xl bg-slate-100" />
+                        <div className="h-32 rounded-2xl bg-slate-100" />
+                      </div>
+                      <div className="h-20 rounded-2xl bg-slate-100" />
+                    </div>
+                  </BlurredSection>
                 )}
 
                 {/* Recent Activity */}
@@ -784,7 +829,14 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                     userQrCounts={stats.userQrCounts ?? {}}
                     userViewCounts={stats.userViewCounts ?? {}}
                   />
-                ) : null}
+                ) : (
+                  <BlurredSection
+                    title="Advanced data"
+                    description="Raw QR history and user detail breakdowns are on PRO."
+                  >
+                    <PlaceholderLines rows={5} />
+                  </BlurredSection>
+                )}
 
                 {canPdfReports ? (
                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 sm:px-6">
@@ -801,10 +853,12 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                     </Button>
                   </div>
                 ) : (
-                  <LockedCard
-                    title="Monthly PDF report"
+                  <BlurredSection
+                    title="Monthly report"
                     description="Generate partner reports on the PRO plan."
-                  />
+                  >
+                    <div className="h-10 rounded-2xl bg-slate-100" />
+                  </BlurredSection>
                 )}
 
                 {canUseMax ? (
@@ -823,11 +877,13 @@ export default function PartnerStatsPage({ partner }: PartnerStatsProps) {
                     </Link>
                   </div>
                 ) : (
-                  <LockedCard
+                  <BlurredSection
                     title="Exports & white-label"
                     description="Unlock CSV/XLSX exports and branded reports with MAX."
                     requiredTier="MAX"
-                  />
+                  >
+                    <PlaceholderLines rows={3} />
+                  </BlurredSection>
                 )}
               </div>
             </div>
