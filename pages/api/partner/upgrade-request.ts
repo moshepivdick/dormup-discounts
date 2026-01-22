@@ -4,6 +4,7 @@ import { apiResponse, withMethods } from '@/lib/api';
 import { prisma } from '@/lib/prisma';
 import { partnerUpgradeRequestSchema } from '@/lib/validators';
 import { hasTier } from '@/lib/subscription';
+import { sendUpgradeRequestEmail } from '@/lib/email';
 import { SubscriptionTier } from '@prisma/client';
 
 export default withMethods(['GET', 'POST'], async (req: NextApiRequest, res: NextApiResponse) => {
@@ -19,18 +20,28 @@ export default withMethods(['GET', 'POST'], async (req: NextApiRequest, res: Nex
   const currentTier = (partner.venue?.subscriptionTier ?? SubscriptionTier.BASIC) as SubscriptionTier;
 
   if (req.method === 'GET') {
-    const pending = await prisma.upgradeRequest.findMany({
-      where: {
-        venueId: partner.venueId,
-        partnerId: partner.id,
-        status: 'PENDING',
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    return apiResponse.success(res, {
-      currentTier,
-      pending,
-    });
+    try {
+      const pending = await prisma.upgradeRequest.findMany({
+        where: {
+          venueId: partner.venueId,
+          partnerId: partner.id,
+          status: 'PENDING',
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      return apiResponse.success(res, {
+        currentTier,
+        pending,
+      });
+    } catch (error: any) {
+      if (error?.code === 'P2021') {
+        return apiResponse.success(res, {
+          currentTier,
+          pending: [],
+        });
+      }
+      throw error;
+    }
   }
 
   const parsed = partnerUpgradeRequestSchema.safeParse(req.body);
@@ -61,16 +72,44 @@ export default withMethods(['GET', 'POST'], async (req: NextApiRequest, res: Nex
     });
   }
 
-  const request = await prisma.upgradeRequest.create({
-    data: {
-      venueId: partner.venueId,
-      partnerId: partner.id,
+  let request;
+  try {
+    request = await prisma.upgradeRequest.create({
+      data: {
+        venueId: partner.venueId,
+        partnerId: partner.id,
+        fromTier: currentTier,
+        toTier,
+        status: 'PENDING',
+        note: note?.trim() || null,
+      },
+    });
+  } catch (error: any) {
+    if (error?.code === 'P2021') {
+      request = null;
+    } else {
+      throw error;
+    }
+  }
+
+  try {
+    await sendUpgradeRequestEmail({
+      venueName: partner.venue?.name || `Venue ${partner.venueId}`,
       fromTier: currentTier,
       toTier,
-      status: 'PENDING',
       note: note?.trim() || null,
-    },
-  });
+      partnerEmail: partner.email,
+    });
+  } catch (error) {
+    console.error('Failed to send upgrade request email:', error);
+  }
+
+  if (!request) {
+    return apiResponse.error(res, 503, 'Upgrade requests are not available yet', {
+      error: 'UPGRADE_REQUESTS_NOT_READY',
+      message: 'Apply database migrations to enable upgrade requests in the admin panel.',
+    });
+  }
 
   return apiResponse.success(res, { request });
 });

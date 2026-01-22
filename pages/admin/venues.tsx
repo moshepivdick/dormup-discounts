@@ -382,10 +382,17 @@ export const getServerSideProps = (async (ctx) => {
     const venues = await prisma.venue.findMany({
       orderBy: { createdAt: 'desc' },
     });
-    const upgradeRequests = await prisma.upgradeRequest.findMany({
-      where: { status: 'PENDING' },
-      orderBy: { createdAt: 'desc' },
-    });
+    let upgradeRequests = [];
+    try {
+      upgradeRequests = await prisma.upgradeRequest.findMany({
+        where: { status: 'PENDING' },
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch (error: any) {
+      if (error?.code !== 'P2021') {
+        throw error;
+      }
+    }
 
     return {
       props: {

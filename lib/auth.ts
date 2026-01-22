@@ -69,82 +69,64 @@ const getPartnerFromRequest = async (req?: IncomingMessage) => {
   const payload = verifyToken('partner', token);
   if (!payload) return null;
   
-  try {
-    return await prisma.partner.findUnique({
-      where: { id: payload.partnerId },
-      include: {
-        venue: {
-          select: {
-            id: true,
-            name: true,
-            city: true,
-            category: true,
-            discountText: true,
-            details: true,
-            openingHours: true,
-            openingHoursShort: true,
-            mapUrl: true,
-            latitude: true,
-            longitude: true,
-            imageUrl: true,
-            thumbnailUrl: true,
-            isActive: true,
-            createdAt: true,
-            updatedAt: true,
-            phone: true,
-              subscriptionTier: true,
-            // Explicitly exclude avgStudentBill to avoid P2022 error if column doesn't exist
-          },
+  const partner = await prisma.partner.findUnique({
+    where: { id: payload.partnerId },
+    include: {
+      venue: {
+        select: {
+          id: true,
+          name: true,
+          city: true,
+          category: true,
+          discountText: true,
+          details: true,
+          openingHours: true,
+          openingHoursShort: true,
+          mapUrl: true,
+          latitude: true,
+          longitude: true,
+          imageUrl: true,
+          thumbnailUrl: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+          phone: true,
+          // Explicitly exclude avgStudentBill/subscriptionTier to avoid P2022 errors
         },
       },
+    },
+  });
+
+  if (!partner) return null;
+
+  if (!partner.venue) {
+    return partner as any;
+  }
+
+  let subscriptionTier = 'BASIC';
+  try {
+    const venueTier = await prisma.venue.findUnique({
+      where: { id: partner.venueId },
+      select: { subscriptionTier: true },
     });
+    if (venueTier?.subscriptionTier) {
+      subscriptionTier = venueTier.subscriptionTier;
+    }
   } catch (error: any) {
-    const isMissingColumn =
-      error?.code === 'P2022' ||
-      error?.message?.includes('avgStudentBill') ||
-      error?.message?.includes('subscriptionTier');
+    const isMissingColumn = error?.code === 'P2022' || error?.message?.includes('subscriptionTier');
     if (!isMissingColumn) {
       throw error;
     }
-    console.error('Prisma error with venue include, retrying fallback:', error);
-    const partner = await prisma.partner.findUnique({
-      where: { id: payload.partnerId },
-      include: {
-        venue: {
-          select: {
-            id: true,
-            name: true,
-            city: true,
-            category: true,
-            discountText: true,
-            details: true,
-            openingHours: true,
-            openingHoursShort: true,
-            mapUrl: true,
-            latitude: true,
-            longitude: true,
-            imageUrl: true,
-            thumbnailUrl: true,
-            isActive: true,
-            createdAt: true,
-            updatedAt: true,
-            phone: true,
-          },
-        },
-      },
-    });
-    if (!partner) return null;
-    if (partner.venue && !('subscriptionTier' in partner.venue)) {
-      return {
-        ...partner,
-        venue: {
-          ...partner.venue,
-          subscriptionTier: 'BASIC',
-        } as any,
-      } as any;
-    }
-    return partner as any;
+    console.warn('Venue subscriptionTier column missing, defaulting to BASIC');
   }
+
+  return {
+    ...partner,
+    venue: {
+      ...partner.venue,
+      subscriptionTier,
+    } as any,
+  } as any;
 };
 
 const getAdminFromRequest = async (req?: IncomingMessage) => {

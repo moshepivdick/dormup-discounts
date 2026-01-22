@@ -39,16 +39,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 
   if (requestId) {
-    await prisma.upgradeRequest.updateMany({
-      where: {
-        id: requestId,
-        venueId: id,
-        status: 'PENDING',
-      },
-      data: {
-        status: 'APPROVED',
-      },
-    });
+    try {
+      await prisma.upgradeRequest.updateMany({
+        where: {
+          id: requestId,
+          venueId: id,
+          status: 'PENDING',
+        },
+        data: {
+          status: 'APPROVED',
+        },
+      });
+    } catch (error: any) {
+      if (error?.code !== 'P2021') {
+        throw error;
+      }
+    }
   }
 
   return apiResponse.success(res, { venue });
